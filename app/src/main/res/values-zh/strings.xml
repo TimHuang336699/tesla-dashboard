@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== 应用 ===== -->
+    <string name="app_name">Tesla Dashboard</string>
+
+    <!-- ===== Dashboard 标题栏 ===== -->
+    <string name="title_dashboard">TESLA DASHBOARD</string>
+
+    <!-- ===== 标签文字 ===== -->
+    <string name="label_battery">BATTERY</string>
+    <string name="label_range">RANGE</string>
+    <string name="label_temperature">TEMPERATURE</string>
+    <string name="label_trip">TRIP</string>
+    <string name="label_odometer">ODO</string>
+    <string name="label_gforce">G-FORCE</string>
+    <string name="label_latitude">LAT</string>
+    <string name="label_longitude">LON</string>
+    <string name="label_heading">HDG</string>
+
+    <!-- ===== 单位 ===== -->
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_km">km</string>
+    <string name="unit_degree">°</string>
+    <string name="unit_mph">mph</string>
+    <string name="unit_mi">mi</string>
+    <string name="unit_celsius">°C</string>
+    <string name="unit_fahrenheit">°F</string>
+
+    <!-- ===== 按钮 ===== -->
+    <string name="btn_start">START</string>
+    <string name="btn_stop">STOP</string>
+    <string name="btn_history">HISTORY</string>
+
+    <!-- ===== 状态文字 ===== -->
+    <string name="tesla_connected">Tesla: 已连接</string>
+    <string name="tesla_disconnected">Tesla: 未连接</string>
+    <string name="gps_locked">GPS: 已锁定</string>
+    <string name="gps_searching">GPS: 搜索中</string>
+
+    <!-- ===== 默认占位符 ===== -->
+    <string name="default_value">--</string>
+
+    <!-- ===== 通用 ===== -->
+    <string name="back_arrow">←</string>
+    <string name="dashboard_history_btn">历史</string>
+    <string name="ready_label">READY</string>
+
+    <!-- ===== 历史记录页 ===== -->
+    <string name="title_history">Trip History</string>
+    <string name="label_date">DATE</string>
+    <string name="label_distance">DISTANCE</string>
+    <string name="label_duration">DURATION</string>
+    <string name="label_avg_speed">AVG SPEED</string>
+    <string name="no_trips">暂无行程记录</string>
+
+    <!-- ===== 通知 ===== -->
+    <string name="notification_channel_name">行程记录</string>
+    <string name="notification_channel_desc">行程记录进行中的持续通知</string>
+    <string name="notification_title">Tesla Dashboard</string>
+    <string name="notification_text">正在记录行程…</string>
+
+    <!-- ===== 设置页 ===== -->
+    <string name="title_settings">设置</string>
+    <string name="settings_tesla_ble">特斯拉蓝牙</string>
+    <string name="settings_vin">VIN</string>
+    <string name="settings_pair_vehicle">配对车辆</string>
+    <string name="settings_unpair_vehicle">解除配对</string>
+    <string name="settings_test_connection">测试连接</string>
+    <string name="settings_pairing_status">配对状态</string>
+    <string name="settings_indicators">状态指示灯</string>
+    <string name="settings_paired">已配对</string>
+    <string name="settings_not_paired">未配对</string>
+    <string name="settings_pairing_in_progress">配对中…</string>
+    <string name="settings_vehicle">车辆信息</string>
+    <string name="settings_battery_model">电池车型</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_tesla_blue">特斯拉蓝</string>
+    <string name="settings_theme_forest_green">森林绿</string>
+    <string name="settings_theme_ember_orange">琥珀橙</string>
+    <string name="settings_theme_midnight_purple">午夜紫</string>
+    <string name="settings_connection_success">BLE 连接成功</string>
+    <string name="settings_connection_failed">BLE 连接失败</string>
+    <string name="settings_pairing_success">配对成功</string>
+    <string name="settings_pairing_failed">配对失败</string>
+    <string name="settings_pairing_nfc_prompt">请在车机上用 NFC 卡片确认配对</string>
+    <string name="settings_version_format">Tesla Dashboard v%1$s</string>
+    <string name="settings_bluetooth_disabled">请先开启蓝牙</string>
+    <string name="settings_ble_permissions_needed">需要蓝牙权限，请授予后重试</string>
+    <string name="settings_vin_masked_hint">已配对车辆（尾号隐藏）</string>
+
+    <!-- ===== 设置页列表/二级页 (安卓分级) ===== -->
+    <string name="settings_ble_vehicle">蓝牙与车辆</string>
+    <string name="settings_display_appearance">显示与外观</string>
+    <string name="settings_unit">单位</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_unit_system">单位系统</string>
+    <string name="settings_unit_metric">公制 (km/h, km, °C)</string>
+    <string name="settings_unit_imperial">英制 (mph, mi, °F)</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_language_zh">中文</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_switch_failed">语言切换失败，请重试</string>
+    <string name="about_description">Tesla BLE 直连仪表盘应用。通过蓝牙安全连接车辆，实时显示车速、电量、温度与行程数据。</string>
+    <string name="settings_export_logs">导出诊断日志</string>
+    <string name="settings_logs_share_subject">Tesla Dashboard 诊断日志</string>
+    <string name="settings_logs_empty">暂无日志记录</string>
+    <string name="settings_logs_export_failed">日志导出失败：%1$s</string>
+
+    <!-- ===== 主题选项 (显示名, 下拉菜单) ===== -->
+    <string name="theme_option_tesla_blue_dark">特斯拉蓝（深色）</string>
+    <string name="theme_option_tesla_blue_light">特斯拉蓝（浅色）</string>
+    <string name="theme_option_forest_green_dark">森林绿（深色）</string>
+    <string name="theme_option_forest_green_light">森林绿（浅色）</string>
+    <string name="theme_option_ember_orange_dark">琥珀橙（深色）</string>
+    <string name="theme_option_ember_orange_light">琥珀橙（浅色）</string>
+    <string name="theme_option_midnight_purple_dark">午夜紫（深色）</string>
+    <string name="theme_option_midnight_purple_light">午夜紫（浅色）</string>
+
+    <!-- ===== 车型选项 (显示名, 下拉菜单) ===== -->
+    <string name="battery_model_s_60">Model S 60 kWh (Nosecone 初代)</string>
+    <string name="battery_model_s_75">Model S 75 kWh (Nosecone/Facelift)</string>
+    <string name="battery_model_s_85">Model S 85 kWh (Nosecone 初代)</string>
+    <string name="battery_model_s_90">Model S 90 kWh (Nosecone 初代)</string>
+    <string name="battery_model_s_100">Model S 100 kWh (Facelift/Raven)</string>
+    <string name="battery_model_s_plaid">Model S Plaid (100 kWh Palladium)</string>
+    <string name="battery_model_3_standard">Model 3 标准版 (60 kWh LFP)</string>
+    <string name="battery_model_3_standard_nmc">Model 3 标准版 (75 kWh NMC)</string>
+    <string name="battery_model_3_long_range">Model 3 长续航 (78 kWh)</string>
+    <string name="battery_model_3_performance">Model 3 Performance (78 kWh 旧版)</string>
+    <string name="battery_model_3_performance_highland">Model 3 Performance (82 kWh Highland)</string>
+    <string name="battery_model_x_75">Model X 75 kWh (Original 初代)</string>
+    <string name="battery_model_x_90">Model X 90 kWh (Original 初代)</string>
+    <string name="battery_model_x_100">Model X 100 kWh (Original/Raven)</string>
+    <string name="battery_model_x_plaid">Model X Plaid (100 kWh Palladium)</string>
+    <string name="battery_model_y_standard">Model Y 标准版 (60 kWh LFP)</string>
+    <string name="battery_model_y_standard_nmc">Model Y 标准版 (75 kWh NMC)</string>
+    <string name="battery_model_y_long_range">Model Y 长续航 (78 kWh 旧版)</string>
+    <string name="battery_model_y_long_range_juniper">Model Y 长续航 (81 kWh Juniper)</string>
+    <string name="battery_model_y_performance">Model Y Performance (78 kWh)</string>
+    <string name="battery_model_cybertruck_dual">Cybertruck 双电机 (123 kWh)</string>
+    <string name="battery_model_cybertruck_tri">Cybertruck 三电机 (123 kWh)</string>
+
+    <!-- ===== 配对流程 ===== -->
+    <string name="pairing_back">返回</string>
+    <string name="pairing_step_format">Step %1$d/%2$d</string>
+    <string name="pairing_vin_title">输入车辆 VIN</string>
+    <string name="pairing_vin_subtitle">请输入 17 位车辆识别号以开始配对</string>
+    <string name="pairing_vin_hint">5YJSA1E47HF000000</string>
+    <string name="pairing_vehicle_info">车辆信息</string>
+    <string name="pairing_label_model">车型</string>
+    <string name="pairing_label_generation">代际</string>
+    <string name="pairing_label_year">年份</string>
+    <string name="pairing_label_battery">电池</string>
+    <string name="pairing_label_chemistry">电池化学</string>
+    <string name="pairing_label_drive">驱动</string>
+    <string name="pairing_label_body">车身</string>
+    <string name="pairing_label_factory">工厂</string>
+    <string name="pairing_keygen_title">正在生成密钥...</string>
+    <string name="pairing_keygen_subtitle">正在生成 ECC 密钥对并建立加密通道</string>
+    <string name="pairing_nfc_location_desc">NFC 刷卡位置</string>
+    <string name="pairing_nfc_card_desc">NFC 卡片</string>
+    <string name="pairing_nfc_title">刷 NFC 卡片确认</string>
+    <string name="pairing_success_desc">配对成功</string>
+    <string name="pairing_success_subtitle">车辆已成功配对,现在可以开始使用仪表盘了</string>
+    <string name="pairing_finish">完成</string>
+    <string name="pairing_prev">上一步</string>
+    <string name="pairing_next">下一步</string>
+    <string name="pairing_saving_key">正在保存密钥...</string>
+
+    <!-- ===== 配对进度 (设置页/配对页共用) ===== -->
+    <string name="pairing_progress_generating">正在生成密钥…</string>
+    <string name="pairing_progress_scanning">正在扫描车辆…</string>
+    <string name="pairing_progress_connecting">正在连接车辆…</string>
+    <string name="pairing_progress_handshaking">正在建立加密通道…</string>
+    <string name="pairing_progress_sending">正在发送配对请求…</string>
+    <string name="pairing_progress_saving">正在保存密钥…</string>
+    <string name="pairing_progress_failed">配对失败: %1$s</string>
+
+    <!-- ===== 错误/提示 ===== -->
+    <string name="error_vin_required">请先输入 VIN</string>
+    <string name="error_vin_length">VIN 应为 17 位</string>
+    <string name="error_vin_invalid">无法识别该 VIN,请确认是否为 Tesla 车辆</string>
+    <string name="error_ble_permissions">需要蓝牙权限,请授予后重试</string>
+    <string name="success_unpaired">已解除配对</string>
+
+    <!-- ===== 格式化模板 ===== -->
+    <string name="format_speed_value">%1$.0f %2$s</string>
+    <string name="format_distance_value">%1$.1f %2$s</string>
+    <string name="format_temperature_value">%1$d°</string>
+    <string name="format_temperature_pair">%1$s / %2$s</string>
+    <string name="format_duration_h_m">%1$dh %2$dm</string>
+    <string name="format_duration_m_s">%1$dm %2$ds</string>
+    <string name="format_duration_s">%1$ds</string>
+
+    <!-- ===== 配对流程 Step 3 NFC 位置提示文案 (根据车型代际切换) ===== -->
+    <string name="pairing_nfc_instruction_highland">请在中控台无线充电板上方刷 NFC 卡片</string>
+    <string name="pairing_nfc_instruction_legacy">请在前排中央扶手杯架后方刷 NFC 卡片</string>
+    <string name="pairing_nfc_instruction_default">请在车辆中控台刷 NFC 卡片确认配对</string>
+
+</resources>

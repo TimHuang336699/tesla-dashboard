@@ -7,6 +7,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.tesla.dashboard.R
 import com.tesla.dashboard.databinding.ActivityLanguageSettingsBinding
+import com.tesla.dashboard.util.AppLog
 import com.tesla.dashboard.util.BaseImmersiveActivity
 import com.tesla.dashboard.util.LanguageManager
 import com.tesla.dashboard.util.ThemeColors
@@ -78,20 +79,19 @@ class LanguageSettingsActivity : BaseImmersiveActivity() {
     /**
      * 切换语言并重建页面
      *
-     * 已处于目标语言则跳过 (用静态缓存 [LanguageManager.currentLanguage] 判断,
-     * 不依赖表单填充时序, 点击必定生效; 异常通过 Toast 可见)。
+     * 不做"语言缓存相等跳过"——点击必须产生反馈:
+     * 即使与缓存相同也执行保存 + 重建, 让用户看到明确响应
+     * (历史 bug: 相等守卫在缓存与界面不一致时静默拦截点击)。
      *
      * @param code 语言代码 ("system"/"zh"/"en")
      */
     private fun changeLanguage(code: String) {
-        // 已处于目标语言: 跳过 (点击当前已选中项属正常无变化)
-        if (code == LanguageManager.currentLanguage) return
         lifecycleScope.launch {
             try {
                 languageManager.setLanguage(code)
                 recreate()
             } catch (e: Exception) {
-                android.util.Log.w("LangDebug", "changeLanguage failed: ${e.message}")
+                AppLog.e("LangDebug", "changeLanguage failed: ${e.message}", e)
                 Toast.makeText(
                     this@LanguageSettingsActivity,
                     R.string.settings_language_switch_failed,

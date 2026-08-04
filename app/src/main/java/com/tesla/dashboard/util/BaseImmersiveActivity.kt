@@ -55,13 +55,28 @@ abstract class BaseImmersiveActivity : AppCompatActivity() {
      */
     override fun attachBaseContext(newBase: Context) {
         val language = LanguageManager.currentLanguage
-        AppLog.d("AttachBase", "${javaClass.simpleName} attachBaseContext language=$language")
+
+        // 基于现有配置复制, 仅覆盖 locale, 保留 density/屏幕等其余配置
+        val config = Configuration(newBase.resources.configuration)
+
+        if (language != LanguageManager.DEFAULT_LANGUAGE) {
+            // 只按语言代码应用, 避免设备多语言包产生 en_CN 等组合 locale 干扰解析
+            config.setLocale(Locale(language))
+            // 华为等 ROM 兜底: applyOverrideConfiguration 必须在 super.attachBaseContext 之前
+            applyOverrideConfiguration(config)
+        }
+
         val base = if (language != LanguageManager.DEFAULT_LANGUAGE) {
-            val config = Configuration(newBase.resources.configuration)
-            config.setLocale(Locale.forLanguageTag(language))
             newBase.createConfigurationContext(config)
         } else {
             newBase
+        }
+        // 验证实际生效的 locale (诊断: 兜底机制是否在设备 ROM 上真正生效)
+        runCatching {
+            AppLog.d(
+                "AttachBase",
+                "${javaClass.simpleName} lang=$language actualLocale=${base.resources.configuration.locales[0]}",
+            )
         }
         super.attachBaseContext(base)
     }
