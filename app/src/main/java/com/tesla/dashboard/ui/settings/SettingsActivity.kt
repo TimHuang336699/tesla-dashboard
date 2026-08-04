@@ -26,6 +26,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.tesla.dashboard.BuildConfig
 import com.tesla.dashboard.R
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.databinding.ActivitySettingsBinding
@@ -211,6 +212,18 @@ class SettingsActivity : AppCompatActivity() {
 
         // 7. 观察数据
         observeViewModel()
+
+        // 8. 显示应用版本号
+        setupVersionLabel()
+    }
+
+    /**
+     * 在设置页底部显示应用版本号
+     *
+     * 从 BuildConfig 读取 versionName,格式: "Tesla Dashboard v0.2.1.2"
+     */
+    private fun setupVersionLabel() {
+        binding.tvVersion.text = getString(R.string.settings_version_format, BuildConfig.VERSION_NAME)
     }
 
     /**
@@ -446,6 +459,9 @@ class SettingsActivity : AppCompatActivity() {
         // ===== 状态指示灯条配色 =====
         binding.indicatorStrip.setActiveColor(c.accentGreen)
         binding.indicatorStrip.setInactiveColor(c.textSecondary)
+
+        // ===== 版本号文字 =====
+        binding.tvVersion.setTextColor(c.textSecondary)
     }
 
     /**
