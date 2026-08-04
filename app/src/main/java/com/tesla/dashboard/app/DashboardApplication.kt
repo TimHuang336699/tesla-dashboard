@@ -32,10 +32,10 @@ class DashboardApplication : Application() {
         // 启动主题监听，自动应用保存的主题模式
         themeManager.observeTheme()
 
-        // 启动语言监听，自动应用保存的应用语言
-        languageManager.observeLanguage()
+        // 同步应用已保存的语言 (首帧即正确, 不闪切)
+        languageManager.applyStoredLanguageSync()
 
-        // 启动语言对账，保持系统设置与 DataStore 一致
-        languageManager.initReconcile()
+        // 监听语言设置，变化时自动应用 (无需重启)
+        languageManager.observeLanguage()
     }
 }
