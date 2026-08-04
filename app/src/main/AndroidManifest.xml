@@ -44,17 +44,27 @@
         android:usesCleartextTraffic="false"
         tools:targetApi="31">
 
+        <!-- 启动页 (主入口: 狐狸 logo 动画 1s) -->
+        <activity
+            android:name=".ui.splash.SplashActivity"
+            android:screenOrientation="landscape"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode|density|fontScale"
+            android:exported="true"
+            android:theme="@style/Theme.TeslaSplash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".ui.dashboard.DashboardActivity"
             android:screenOrientation="landscape"
             android:resizeableActivity="true"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode|density|fontScale"
-            android:exported="true"
+            android:exported="false"
             android:theme="@style/Theme.TeslaDashboard">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
 
         <activity

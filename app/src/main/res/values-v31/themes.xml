@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    启动页主题 (API 31+) — 系统 SplashScreen
+    使用 android:windowSplashScreen* 属性定制系统启动页:
+    - 背景: 深蓝黑
+    - 动画图标: 狐狸 logo 动画 (1s)
+-->
+<resources>
+
+    <style name="Theme.TeslaSplash" parent="Theme.TeslaDashboard">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_fox_anim</item>
+        <item name="android:windowSplashScreenAnimationDuration">1000</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_background</item>
+    </style>
+
+</resources>

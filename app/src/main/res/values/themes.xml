@@ -50,4 +50,13 @@
 
     </style>
 
+    <!--
+        启动页主题 (API 26-30 自定义启动动画)
+        深蓝黑背景 + 居中狐狸 logo; API 31+ 由 values-v31 覆盖为系统 SplashScreen
+    -->
+    <style name="Theme.TeslaSplash" parent="Theme.TeslaDashboard">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
 </resources>

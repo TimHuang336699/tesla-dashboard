@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    应用图标背景 — 深蓝黑 (与仪表盘速度表背景 0xFF1A1A2E 一致)
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#007AFF" />
-    <corners android:radius="24dp" />
+    <solid android:color="#1B1B2E" />
 </shape>

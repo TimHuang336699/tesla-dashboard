@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    启动动画 — 狐狸 logo 淡入 + 缩放 + 大小眼先后眨眼 (总时长 ~1s)
+-->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_fox">
+
+    <!-- 整体淡入 -->
+    <target
+        android:name="foxWhole"
+        android:animation="@animator/splash_fade_in" />
+
+    <!-- 整体轻微放大 -->
+    <target
+        android:name="foxWhole"
+        android:animation="@animator/splash_scale_x" />
+
+    <target
+        android:name="foxWhole"
+        android:animation="@animator/splash_scale_y" />
+
+    <!-- 大眼眨眼 -->
+    <target
+        android:name="bigEye"
+        android:animation="@animator/splash_blink_big" />
+
+    <!-- 小眼眨眼 (错开) -->
+    <target
+        android:name="smallEye"
+        android:animation="@animator/splash_blink_small" />
+
+</animated-vector>

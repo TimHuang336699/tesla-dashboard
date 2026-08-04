@@ -8,6 +8,7 @@
     <!-- 背景 / 表面 -->
     <color name="background">#F2F2F7</color>
     <color name="surface">#FFFFFF</color>
+    <color name="splash_background">#1B1B2E</color>
     <color name="divider">#E5E5EA</color>
 
     <!-- 文字 -->
