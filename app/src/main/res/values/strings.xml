@@ -105,6 +105,7 @@
     <string name="settings_language_system">跟随系统</string>
     <string name="settings_language_zh">中文</string>
     <string name="settings_language_en">English</string>
+    <string name="settings_language_switch_failed">语言切换失败，请重试</string>
     <string name="about_description">Tesla BLE 直连仪表盘应用。通过蓝牙安全连接车辆，实时显示车速、电量、温度与行程数据。</string>
 
     <!-- ===== 主题选项 (显示名, 下拉菜单) ===== -->

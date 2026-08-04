@@ -1,6 +1,7 @@
 package com.tesla.dashboard.util
 
 import android.content.Context
+import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.tesla.dashboard.data.local.SettingsRepository
@@ -18,12 +19,13 @@ import javax.inject.Singleton
  * 应用语言管理器 — 应用内多语言切换
  *
  * ## 双保险机制
- * 1. **显式缓存 + Activity 级应用**: [currentLanguage] 缓存当前语言,
- *    每个 Activity 在 [android.app.Activity.attachBaseContext] 中通过
- *    [createConfigurationContext] 强制应用, 不依赖任何库的隐式行为。
- * 2. **系统级联动**: 调用 [AppCompatDelegate.setApplicationLocales],
- *    让 Android 13+ 系统设置中的应用语言选项与进程级 locale 同步
- *    (所有异常被吞掉, 不影响主链路)。
+ * 1. **静态语言缓存 + Activity 级应用**: [currentLanguage] 为静态字段,
+ *    每个 Activity 在 [android.app.Activity.attachBaseContext] 中直接读取
+ *    并通过 [createConfigurationContext] 强制应用 —— 不依赖 Hilt 注入时机,
+ *    任何情况下都可读。
+ * 2. **系统级联动**: 调用 [AppCompatDelegate.setApplicationLocales] 让
+ *    Android 13+ 系统设置中的应用语言与进程级 locale 同步
+ *    (异常被吞掉, 不影响主链路)。
  *
  * ## 语言代码
  * - "system": 跟随系统 (默认)
@@ -49,26 +51,18 @@ class LanguageManager @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     /**
-     * 当前语言代码缓存 ("system"/"zh"/"en")
-     *
-     * 由 [applyLanguage] 更新, 供各 Activity 的 attachBaseContext 同步读取。
-     */
-    @Volatile
-    var currentLanguage: String = DEFAULT_LANGUAGE
-        private set
-
-    /**
      * 同步应用已保存的语言 — 在首个 Activity 创建前调用
      *
      * Application.onCreate 中同步读取 DataStore 首值并立即应用,
-     * 确保冷启动首帧即为正确语言。DataStore 首读为磁盘小文件 (<100ms),
-     * 对启动耗时影响可忽略; 异常被捕获, 不影响应用启动。
+     * 确保冷启动首帧即为正确语言。异常被捕获, 不影响应用启动。
      */
     fun applyStoredLanguageSync() {
         runCatching {
             runBlocking { settingsRepository.appLanguageFlow.first() }
         }.onSuccess { language ->
             applyLanguage(language)
+        }.onFailure { e ->
+            Log.w(TAG, "applyStoredLanguageSync failed: ${e.message}")
         }
     }
 
@@ -83,6 +77,7 @@ class LanguageManager @Inject constructor(
     fun observeLanguage() {
         scope.launch {
             settingsRepository.appLanguageFlow.collect { language ->
+                Log.d(TAG, "collect language=$language")
                 applyLanguage(language)
             }
         }
@@ -91,13 +86,14 @@ class LanguageManager @Inject constructor(
     /**
      * 保存并应用语言 — 设置页切换语言的唯一入口
      *
-     * 同步完成"写入 DataStore + 更新缓存 + 系统级应用",
+     * 同步完成"写入 DataStore + 更新静态缓存 + 系统级应用",
      * 返回后调用方可安全 [android.app.Activity.recreate],
      * 重建时 attachBaseContext 读到的新缓存即为目标语言。
      *
      * @param language 语言代码 ("system"/"zh"/"en")
      */
     suspend fun setLanguage(language: String) {
+        Log.d(TAG, "setLanguage=$language")
         settingsRepository.saveAppLanguage(language)
         applyLanguage(language)
     }
@@ -105,7 +101,7 @@ class LanguageManager @Inject constructor(
     /**
      * 根据语言代码应用语言
      *
-     * 1. 更新 [currentLanguage] 缓存 (attachBaseContext 依赖)
+     * 1. 更新 [currentLanguage] 静态缓存 (attachBaseContext 依赖)
      * 2. 调用 setApplicationLocales 与系统联动 (异常吞掉, 不终止监听)
      *
      * @param language 语言代码 ("system"/"zh"/"en")
@@ -119,11 +115,25 @@ class LanguageManager @Inject constructor(
                 else -> LocaleListCompat.getEmptyLocaleList() // 跟随系统
             }
             AppCompatDelegate.setApplicationLocales(locales)
+            Log.d(TAG, "setApplicationLocales applied=$language")
+        }.onFailure { e ->
+            Log.w(TAG, "setApplicationLocales failed: ${e.message}")
         }
     }
 
     companion object {
+        private const val TAG = "LangDebug"
+
         /** 默认语言: 跟随系统 */
         const val DEFAULT_LANGUAGE = "system"
+
+        /**
+         * 当前语言代码缓存 ("system"/"zh"/"en") — 静态字段
+         *
+         * 由 [applyLanguage] 更新, 供各 Activity 的 attachBaseContext
+         * 直接读取 (不依赖 Hilt 注入, 任何时序下可读)。
+         */
+        @Volatile
+        var currentLanguage: String = DEFAULT_LANGUAGE
     }
 }

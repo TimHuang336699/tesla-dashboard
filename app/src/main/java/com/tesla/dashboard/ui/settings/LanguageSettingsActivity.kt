@@ -2,6 +2,7 @@ package com.tesla.dashboard.ui.settings
 
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.tesla.dashboard.R
@@ -56,20 +57,46 @@ class LanguageSettingsActivity : BaseImmersiveActivity() {
     /**
      * 设置语言单选监听 — 选中即保存并重建
      *
-     * 时序: setLanguage 同步完成 (DataStore 写入 + 缓存更新 + 系统联动),
-     * 之后 recreate 触发本页重建, attachBaseContext 读到新缓存即新语言。
+     * 直接给三个 RadioButton 绑定点击事件 (不依赖 RadioGroup 回调,
+     * 避免程序化 check() 触发干扰), 点击立即:
+     * 1. setLanguage 同步完成 (DataStore 写入 + 静态缓存更新 + 系统联动)
+     * 2. recreate() 重建本页, attachBaseContext 读到新缓存即新语言
+     * 失败时 Toast 提示 (异常可见, 不静默失效)。
      */
     private fun setupRadioListener() {
-        binding.rgLanguage.setOnCheckedChangeListener { _, checkedId ->
-            if (!isFormPopulated) return@setOnCheckedChangeListener
-            val code = when (checkedId) {
-                R.id.rbLanguageZh -> "zh"
-                R.id.rbLanguageEn -> "en"
-                else -> "system"
-            }
-            lifecycleScope.launch {
+        binding.rbLanguageZh.setOnClickListener {
+            changeLanguage("zh")
+        }
+        binding.rbLanguageEn.setOnClickListener {
+            changeLanguage("en")
+        }
+        binding.rbLanguageSystem.setOnClickListener {
+            changeLanguage("system")
+        }
+    }
+
+    /**
+     * 切换语言并重建页面
+     *
+     * 已处于目标语言则跳过 (用静态缓存 [LanguageManager.currentLanguage] 判断,
+     * 不依赖表单填充时序, 点击必定生效; 异常通过 Toast 可见)。
+     *
+     * @param code 语言代码 ("system"/"zh"/"en")
+     */
+    private fun changeLanguage(code: String) {
+        // 已处于目标语言: 跳过 (点击当前已选中项属正常无变化)
+        if (code == LanguageManager.currentLanguage) return
+        lifecycleScope.launch {
+            try {
                 languageManager.setLanguage(code)
                 recreate()
+            } catch (e: Exception) {
+                android.util.Log.w("LangDebug", "changeLanguage failed: ${e.message}")
+                Toast.makeText(
+                    this@LanguageSettingsActivity,
+                    R.string.settings_language_switch_failed,
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         }
     }

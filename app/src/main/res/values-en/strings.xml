@@ -105,6 +105,7 @@
     <string name="settings_language_system">System default</string>
     <string name="settings_language_zh">中文</string>
     <string name="settings_language_en">English</string>
+    <string name="settings_language_switch_failed">Language switch failed, please retry</string>
     <string name="about_description">Tesla BLE direct-connection dashboard. Securely connects to your vehicle over Bluetooth to display live speed, battery, temperature and trip data.</string>
 
     <!-- ===== Theme Options (display names, dropdown) ===== -->
