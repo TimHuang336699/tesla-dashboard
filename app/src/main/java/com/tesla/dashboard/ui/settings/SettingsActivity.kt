@@ -3,6 +3,7 @@ package com.tesla.dashboard.ui.settings
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -27,8 +28,11 @@ import com.tesla.dashboard.R
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.databinding.ActivitySettingsBinding
 import com.tesla.dashboard.ui.pairing.PairingActivity
+import com.tesla.dashboard.util.ThemeColors
+import com.tesla.dashboard.util.ThemeManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * 电池车型选项数据类
@@ -67,6 +71,13 @@ class SettingsActivity : AppCompatActivity() {
 
     /** 设置页面 ViewModel,由 Hilt 自动提供 */
     private val viewModel: SettingsViewModel by viewModels()
+
+    /** 主题管理器,由 Hilt 自动注入 — 用于设置页实时应用主题配色 */
+    @Inject
+    lateinit var themeManager: ThemeManager
+
+    /** 当前主题颜色(由 colors 流更新,供 UI 实时应用) */
+    private var currentColors: ThemeColors = ThemeColors.Dark
 
     /**
      * 表单是否已填充标记
@@ -159,7 +170,10 @@ class SettingsActivity : AppCompatActivity() {
         // 5. 设置即时自动保存
         setupAutoSave()
 
-        // 6. 观察数据
+        // 6. 立即应用当前主题配色 (避免初始回退色闪现)
+        applyThemeColors(themeManager.colors.value)
+
+        // 7. 观察数据
         observeViewModel()
     }
 
@@ -272,6 +286,90 @@ class SettingsActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // 观察主题颜色 — 实时应用配色(切换主题后设置页即时刷新)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                themeManager.colors.collect { colors ->
+                    applyThemeColors(colors)
+                }
+            }
+        }
+    }
+
+    /**
+     * 应用主题颜色到设置页所有 UI 元素
+     *
+     * 在 [ThemeManager.colors] 发射新值时调用,统一刷新:
+     * - 根布局背景
+     * - 标题与返回按钮
+     * - 三张卡片的背景/描边
+     * - 分区标题、输入框、下拉框
+     * - 配对状态与三个 BLE 按钮
+     * - 主题选项 RadioButton
+     *
+     * @param c 当前主题颜色集合
+     */
+    private fun applyThemeColors(c: ThemeColors) {
+        currentColors = c
+
+        // ===== 根布局背景 =====
+        binding.rootScroll.setBackgroundColor(c.background)
+
+        // ===== 顶部标题栏 =====
+        binding.btnBack.imageTintList = ColorStateList.valueOf(c.accentCyan)
+        binding.tvTitle.setTextColor(c.textPrimary)
+
+        // ===== 卡片背景与描边 =====
+        binding.cardTeslaBle.strokeColor = c.divider
+        binding.cardTeslaBle.setCardBackgroundColor(c.cardBackground)
+        binding.cardVehicle.strokeColor = c.divider
+        binding.cardVehicle.setCardBackgroundColor(c.cardBackground)
+        binding.cardAppearance.strokeColor = c.divider
+        binding.cardAppearance.setCardBackgroundColor(c.cardBackground)
+
+        // ===== 分区标题 (强调色) =====
+        binding.tvSectionBle.setTextColor(c.accentCyan)
+        binding.tvSectionVehicle.setTextColor(c.accentCyan)
+        binding.tvSectionAppearance.setTextColor(c.accentCyan)
+
+        // ===== VIN 输入框 =====
+        binding.tilVin.boxStrokeColor = c.accentCyan
+        binding.etVin.setTextColor(c.textPrimary)
+
+        // ===== 配对状态 =====
+        binding.tvPairingStatus.setTextColor(
+            if (viewModel.uiState.value.isPaired) c.accentGreen else c.textSecondary,
+        )
+        binding.tvPairingProgress.setTextColor(c.accentCyan)
+
+        // ===== BLE 按钮 =====
+        binding.btnPair.backgroundTintList = ColorStateList.valueOf(c.accentCyan)
+        binding.btnTestConnection.setTextColor(c.accentGreen)
+        binding.btnTestConnection.strokeColor = ColorStateList.valueOf(c.accentGreen)
+        binding.btnUnpair.setTextColor(c.textSecondary)
+        binding.btnUnpair.strokeColor = ColorStateList.valueOf(c.divider)
+
+        // ===== 车型下拉框 =====
+        binding.tilBatteryModel.boxStrokeColor = c.accentCyan
+        binding.actvBatteryModel.setTextColor(c.textPrimary)
+
+        // ===== 外观卡: 主题标签与 RadioButton =====
+        binding.tvThemeLabel.setTextColor(c.textSecondary)
+        val btnTint = ColorStateList.valueOf(c.accentCyan)
+        val radioButtons = listOf(
+            binding.rbThemeSystem,
+            binding.rbThemeDark,
+            binding.rbThemeLight,
+            binding.rbThemeTeslaBlue,
+            binding.rbThemeForestGreen,
+            binding.rbThemeEmberOrange,
+            binding.rbThemeMidnightPurple,
+        )
+        radioButtons.forEach { rb ->
+            rb.buttonTintList = btnTint
+            rb.setTextColor(c.textPrimary)
+        }
     }
 
     /**
@@ -285,7 +383,10 @@ class SettingsActivity : AppCompatActivity() {
         when (state.themeMode) {
             "dark" -> binding.rbThemeDark.isChecked = true
             "light" -> binding.rbThemeLight.isChecked = true
-            "system" -> binding.rbThemeSystem.isChecked = true
+            "tesla_blue" -> binding.rbThemeTeslaBlue.isChecked = true
+            "forest_green" -> binding.rbThemeForestGreen.isChecked = true
+            "ember_orange" -> binding.rbThemeEmberOrange.isChecked = true
+            "midnight_purple" -> binding.rbThemeMidnightPurple.isChecked = true
             else -> binding.rbThemeSystem.isChecked = true
         }
 
@@ -309,17 +410,13 @@ class SettingsActivity : AppCompatActivity() {
     private fun updatePairingStatus(isPaired: Boolean) {
         if (isPaired) {
             binding.tvPairingStatus.text = getString(R.string.settings_paired)
-            binding.tvPairingStatus.setTextColor(
-                ContextCompat.getColor(this, R.color.accent_green)
-            )
+            binding.tvPairingStatus.setTextColor(currentColors.accentGreen)
             binding.btnPair.isEnabled = false
             binding.btnTestConnection.isEnabled = true
             binding.btnUnpair.isEnabled = true
         } else {
             binding.tvPairingStatus.text = getString(R.string.settings_not_paired)
-            binding.tvPairingStatus.setTextColor(
-                ContextCompat.getColor(this, R.color.text_secondary)
-            )
+            binding.tvPairingStatus.setTextColor(currentColors.textSecondary)
             binding.btnPair.isEnabled = true
             binding.btnTestConnection.isEnabled = false
             binding.btnUnpair.isEnabled = false
@@ -550,11 +647,15 @@ class SettingsActivity : AppCompatActivity() {
     /**
      * 获取当前选中的主题模式
      *
-     * @return "dark" / "light" / "system"
+     * @return 主题模式 ID ("dark"/"light"/"system"/"tesla_blue"/"forest_green"/"ember_orange"/"midnight_purple")
      */
     private fun getSelectedThemeMode(): String = when (binding.rgTheme.checkedRadioButtonId) {
         R.id.rbThemeDark -> "dark"
         R.id.rbThemeLight -> "light"
+        R.id.rbThemeTeslaBlue -> "tesla_blue"
+        R.id.rbThemeForestGreen -> "forest_green"
+        R.id.rbThemeEmberOrange -> "ember_orange"
+        R.id.rbThemeMidnightPurple -> "midnight_purple"
         R.id.rbThemeSystem -> "system"
         else -> "system"
     }

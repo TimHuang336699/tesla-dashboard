@@ -17,6 +17,7 @@
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_dark"
@@ -101,6 +102,7 @@
 
                         <!-- 分区标题 -->
                         <TextView
+                            android:id="@+id/tvSectionBle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="16dp"
@@ -255,6 +257,7 @@
 
                         <!-- 分区标题 -->
                         <TextView
+                            android:id="@+id/tvSectionVehicle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="16dp"
@@ -315,6 +318,7 @@
 
                         <!-- 分区标题 -->
                         <TextView
+                            android:id="@+id/tvSectionAppearance"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="16dp"
@@ -327,6 +331,7 @@
 
                         <!-- 主题选择标签 -->
                         <TextView
+                            android:id="@+id/tvThemeLabel"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
@@ -336,46 +341,17 @@
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
-                        <!-- 主题选择 RadioGroup -->
+                        <!-- 主题选择 RadioGroup (纵向列表, 支持多主题) -->
                         <RadioGroup
                             android:id="@+id/rgTheme"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal">
-
-                            <RadioButton
-                                android:id="@+id/rbThemeDark"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_dark"
-                                android:textColor="@color/text_primary"
-                                android:textSize="13sp" />
-
-                            <RadioButton
-                                android:id="@+id/rbThemeLight"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_light"
-                                android:textColor="@color/text_primary"
-                                android:textSize="13sp" />
+                            android:orientation="vertical">
 
                             <RadioButton
                                 android:id="@+id/rbThemeSystem"
-                                android:layout_width="0dp"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_weight="1"
                                 android:buttonTint="@color/accent_cyan"
                                 android:checked="true"
                                 android:fontFamily="sans-serif-medium"
@@ -384,7 +360,85 @@
                                 android:paddingStart="8dp"
                                 android:text="@string/settings_theme_system"
                                 android:textColor="@color/text_primary"
-                                android:textSize="13sp" />
+                                android:textSize="14sp" />
+
+                            <RadioButton
+                                android:id="@+id/rbThemeDark"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_cyan"
+                                android:fontFamily="sans-serif-medium"
+                                android:minWidth="0dp"
+                                android:minHeight="36dp"
+                                android:paddingStart="8dp"
+                                android:text="@string/settings_theme_dark"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
+
+                            <RadioButton
+                                android:id="@+id/rbThemeLight"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_cyan"
+                                android:fontFamily="sans-serif-medium"
+                                android:minWidth="0dp"
+                                android:minHeight="36dp"
+                                android:paddingStart="8dp"
+                                android:text="@string/settings_theme_light"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
+
+                            <RadioButton
+                                android:id="@+id/rbThemeTeslaBlue"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_cyan"
+                                android:fontFamily="sans-serif-medium"
+                                android:minWidth="0dp"
+                                android:minHeight="36dp"
+                                android:paddingStart="8dp"
+                                android:text="@string/settings_theme_tesla_blue"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
+
+                            <RadioButton
+                                android:id="@+id/rbThemeForestGreen"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_cyan"
+                                android:fontFamily="sans-serif-medium"
+                                android:minWidth="0dp"
+                                android:minHeight="36dp"
+                                android:paddingStart="8dp"
+                                android:text="@string/settings_theme_forest_green"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
+
+                            <RadioButton
+                                android:id="@+id/rbThemeEmberOrange"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_cyan"
+                                android:fontFamily="sans-serif-medium"
+                                android:minWidth="0dp"
+                                android:minHeight="36dp"
+                                android:paddingStart="8dp"
+                                android:text="@string/settings_theme_ember_orange"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
+
+                            <RadioButton
+                                android:id="@+id/rbThemeMidnightPurple"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_cyan"
+                                android:fontFamily="sans-serif-medium"
+                                android:minWidth="0dp"
+                                android:minHeight="36dp"
+                                android:paddingStart="8dp"
+                                android:text="@string/settings_theme_midnight_purple"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp" />
 
                         </RadioGroup>
 
