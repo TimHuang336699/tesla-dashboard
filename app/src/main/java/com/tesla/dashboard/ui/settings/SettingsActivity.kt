@@ -251,7 +251,11 @@ class SettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
-                    if (!isFormPopulated) {
+                    // 仅当 DataStore 数据已加载时填充表单。
+                    // 修复竞态: stateIn 的 initialValue(全默认空值) 会先于真实数据发射,
+                    // 若不加 isLoaded 守卫, 空值会先填充表单并将 isFormPopulated 置 true,
+                    // 导致真实已保存数据被跳过, 界面始终显示默认值(看起来"恢复原设置")。
+                    if (state.isLoaded && !isFormPopulated) {
                         populateForm(state)
                         isFormPopulated = true
                     }
@@ -556,11 +560,19 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     /**
-     * 销毁时清理待执行的 VIN 保存任务
+     * 销毁时清理并立即执行未触发的 VIN 保存任务
+     *
+     * VIN 自动保存采用 500ms debounce, 若用户在 debounce 窗口内退出,
+     * 未执行的保存任务会被清除导致丢失。此处先移除回调再同步执行,
+     * 确保退出前最后一次输入的 VIN 也能写入。
      */
     override fun onDestroy() {
         super.onDestroy()
-        vinDebounceHandler.removeCallbacksAndMessages(null)
+        vinSaveRunnable?.let { runnable ->
+            vinDebounceHandler.removeCallbacks(runnable)
+            runnable.run()
+        }
+        vinSaveRunnable = null
     }
 
     companion object {

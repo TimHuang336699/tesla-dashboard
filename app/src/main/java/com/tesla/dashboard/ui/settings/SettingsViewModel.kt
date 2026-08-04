@@ -6,6 +6,10 @@ import com.tesla.dashboard.data.local.SettingsRepository
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.data.source.ble.TeslaKeyManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,12 +25,14 @@ import javax.inject.Inject
  * @property themeMode 主题模式:"dark"(深色) / "light"(浅色) / "system"(跟随系统)
  * @property batteryModel 车型代码(如 "model_3_long_range"),空字符串表示未设置
  * @property isPaired BLE 是否已配对
+ * @property isLoaded 是否已从 DataStore 加载真实数据 (initialValue 为 false)
  */
 data class SettingsUiState(
     val vin: String = "",
     val themeMode: String = SettingsRepository.DEFAULT_THEME_MODE,
     val batteryModel: String = "",
     val isPaired: Boolean = false,
+    val isLoaded: Boolean = false,
 )
 
 /**
@@ -54,6 +60,16 @@ class SettingsViewModel @Inject constructor(
     private val _isPaired = MutableStateFlow(false)
 
     /**
+     * 设置保存专用作用域 — 不随 Activity 销毁取消
+     *
+     * DataStore 写入通过 [saveVin] / [saveThemeMode] / [saveBatteryModel] 在此作用域执行。
+     * 用户修改设置后可能立即退出设置页, 若用 viewModelScope 则 Activity 销毁时会取消
+     * 正在进行的写入, 导致"退出后设置未保存、再次进入恢复原值"。
+     * 写入任务极短 (<100ms), 独立作用域自然完成后即释放, 无泄漏风险。
+     */
+    private val saveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
      * 当前正在运行的配对协程句柄 — 持有此 Job 用于 [cancelPairing] 主动取消,
      * 防止 PairingActivity 销毁后协程残留导致后续无法再次配对。
      */
@@ -76,6 +92,7 @@ class SettingsViewModel @Inject constructor(
             themeMode = themeMode,
             batteryModel = batteryModel,
             isPaired = isPaired,
+            isLoaded = true,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -127,7 +144,7 @@ class SettingsViewModel @Inject constructor(
      * @param vin 用户输入的车辆识别号
      */
     fun saveVin(vin: String) {
-        viewModelScope.launch {
+        saveScope.launch {
             settingsRepository.saveVin(vin)
             teslaBleProvider.vin = vin.trim().ifBlank { null }
         }
@@ -139,7 +156,7 @@ class SettingsViewModel @Inject constructor(
      * @param themeMode 主题模式:"dark" / "light" / "system"
      */
     fun saveThemeMode(themeMode: String) {
-        viewModelScope.launch {
+        saveScope.launch {
             settingsRepository.saveThemeMode(themeMode)
         }
     }
@@ -150,7 +167,7 @@ class SettingsViewModel @Inject constructor(
      * @param batteryModel 车型代码(对应 BatteryConfig 中的 key)
      */
     fun saveBatteryModel(batteryModel: String) {
-        viewModelScope.launch {
+        saveScope.launch {
             settingsRepository.saveBatteryModel(batteryModel)
         }
     }

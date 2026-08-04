@@ -52,8 +52,8 @@
     <string name="notification_text">正在记录行程…</string>
 
     <!-- ===== 设置页 ===== -->
-    <string name="title_settings">Settings</string>
-    <string name="settings_tesla_ble">Tesla BLE</string>
+    <string name="title_settings">设置</string>
+    <string name="settings_tesla_ble">特斯拉蓝牙</string>
     <string name="settings_vin">VIN</string>
     <string name="settings_pair_vehicle">配对车辆</string>
     <string name="settings_unpair_vehicle">解除配对</string>
@@ -62,10 +62,10 @@
     <string name="settings_paired">已配对</string>
     <string name="settings_not_paired">未配对</string>
     <string name="settings_pairing_in_progress">配对中…</string>
-    <string name="settings_vehicle">Vehicle</string>
-    <string name="settings_battery_model">Battery Model</string>
-    <string name="settings_appearance">Appearance</string>
-    <string name="settings_theme">Theme</string>
+    <string name="settings_vehicle">车辆信息</string>
+    <string name="settings_battery_model">电池车型</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_theme">主题</string>
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_system">跟随系统</string>
