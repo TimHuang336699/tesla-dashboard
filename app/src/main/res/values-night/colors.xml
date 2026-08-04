@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== 暗色模式颜色覆盖 ===== -->
+
+    <!-- 背景 / 表面 -->
+    <color name="background">#000000</color>
+    <color name="surface">#1C1C1E</color>
+    <color name="divider">#38383A</color>
+
+    <!-- 文字 -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8E8E93</color>
+
+    <!-- 强调色 (Apple System Colors — 暗色模式) -->
+    <color name="accent_blue">#0A84FF</color>
+    <color name="accent_green">#30D158</color>
+    <color name="accent_red">#FF453A</color>
+    <color name="accent_orange">#FF9F0A</color>
+
+    <!-- 旧名称别名覆盖 -->
+    <color name="background_dark">@color/background</color>
+    <color name="surface_dark">@color/surface</color>
+    <color name="accent_cyan">@color/accent_blue</color>
+
+    <!-- ===== 固定色值 (不随主题切换) ===== -->
+    <color name="tesla_cyan">#00D4FF</color>
+
+</resources>

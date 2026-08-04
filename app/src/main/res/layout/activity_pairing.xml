@@ -1,0 +1,672 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    BLE 配对向导布局 — 分步引导式配对流程,苹果式简约设计,横屏全屏
+
+    布局结构:
+    1. 顶部栏: 返回按钮 + 步骤指示器 (Step 1/4 … Step 4/4) + 步骤进度点
+    2. 内容区: ViewFlipper (id=stepContainer) 包含 4 个步骤页面
+       - Step 1: VIN 输入页 — 大号输入框 + 自动解码车辆信息展示
+       - Step 2: 密钥生成页 — 加载动画 + "正在生成密钥..."
+       - Step 3: NFC 确认页 — NFC 引导插图 + 操作说明
+       - Step 4: 成功页 — 勾选图标 + "配对成功" + "完成" 按钮
+    3. 底部栏: "上一步" / "下一步" 按钮 (根据步骤动态显隐)
+
+    设计风格: 苹果式简约
+    - 大号字体,宽松间距
+    - 圆角按钮 (12dp)
+    - 纯色背景,无多余装饰
+    - 主题颜色由 ThemeManager 在代码中实时应用
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+
+    <!-- ===== 顶部栏: 返回 + 步骤指示器 ===== -->
+
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:layout_marginBottom="4dp">
+
+        <!-- 返回按钮 -->
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="返回"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/accent_cyan" />
+
+        <!-- 步骤指示文字 (如 "Step 1/4") -->
+        <TextView
+            android:id="@+id/tvStepIndicator"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"
+            android:text="Step 1/4"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <!-- ===== 步骤进度点 (4 个圆点) ===== -->
+
+    <LinearLayout
+        android:id="@+id/stepDotsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <!-- 进度点 1 -->
+        <View
+            android:id="@+id/dot1"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_dot"
+            android:backgroundTint="@color/accent_cyan" />
+
+        <!-- 进度点 2 -->
+        <View
+            android:id="@+id/dot2"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_dot"
+            android:backgroundTint="@color/divider" />
+
+        <!-- 进度点 3 -->
+        <View
+            android:id="@+id/dot3"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_dot"
+            android:backgroundTint="@color/divider" />
+
+        <!-- 进度点 4 -->
+        <View
+            android:id="@+id/dot4"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_dot"
+            android:backgroundTint="@color/divider" />
+
+    </LinearLayout>
+
+    <!-- ===== 内容区: ScrollView 包裹 ViewFlipper, 支持纵向滚动避免内容被截断 ===== -->
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+    <ViewFlipper
+        android:id="@+id/stepContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:measureAllChildren="false">
+
+        <!-- ========== Step 1: VIN 输入页 ========== -->
+
+        <LinearLayout
+            android:id="@+id/stepVinInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal|top"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <!-- 页面标题 -->
+            <TextView
+                android:id="@+id/tvVinTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="输入车辆 VIN"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp" />
+
+            <!-- 页面副标题 -->
+            <TextView
+                android:id="@+id/tvVinSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="请输入 17 位车辆识别号以开始配对"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <!-- VIN 大号输入框 -->
+            <EditText
+                android:id="@+id/etVinInput"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_vin_input"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:hint="5YJSA1E47HF000000"
+                android:inputType="textCapCharacters"
+                android:maxLength="17"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAllCaps="true"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:textSize="18sp"
+                android:letterSpacing="0.1" />
+
+            <!-- 错误提示文字 (默认隐藏) -->
+            <TextView
+                android:id="@+id/tvVinError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="@color/accent_red"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <!-- 解码后的车辆信息卡片 (默认隐藏, VIN 满 17 位时显示) -->
+            <LinearLayout
+                android:id="@+id/layoutVinInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_info_card"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:visibility="gone">
+
+                <!-- 卡片标题 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.1"
+                    android:text="车辆信息"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <!-- 车型行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="车型"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleModel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <!-- 代际行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="代际"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleGeneration"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <!-- 年份行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="年份"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleYear"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <!-- 电池行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="电池"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleBattery"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <!-- 电池化学类型行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="电池化学"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleChemistry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <!-- 驱动类型行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="驱动"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleDrive"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <!-- 车身类型行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="车身"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleBodyType"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+                <!-- 制造商行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="工厂"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvVehicleManufacturer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- ========== Step 2: 密钥生成页 ========== -->
+
+        <LinearLayout
+            android:id="@+id/stepGenerateKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal|top"
+            android:orientation="vertical"
+            android:paddingTop="40dp"
+            android:paddingBottom="40dp">
+
+            <!-- 加载动画 (旋转 ProgressBar) -->
+            <ProgressBar
+                android:id="@+id/progressBarKeyGen"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginBottom="16dp"
+                android:indeterminateTint="@color/accent_cyan" />
+
+            <!-- 生成密钥提示文字 -->
+            <TextView
+                android:id="@+id/tvKeyGenText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="正在生成密钥..."
+                android:textColor="@color/text_primary"
+                android:textSize="18sp" />
+
+            <!-- 副标题说明 -->
+            <TextView
+                android:id="@+id/tvKeyGenSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="正在生成 ECC 密钥对并建立加密通道"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <!-- ========== Step 3: NFC 确认页 ========== -->
+
+        <LinearLayout
+            android:id="@+id/stepNfcConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal|top"
+            android:orientation="vertical"
+            android:paddingTop="16dp"
+            android:paddingBottom="20dp">
+
+            <!-- NFC 位置插图 (根据车型代际动态切换: 焕新版→中控台, 老款→杯架) -->
+            <ImageView
+                android:id="@+id/ivNfcLocation"
+                android:layout_width="240dp"
+                android:layout_height="160dp"
+                android:layout_marginBottom="8dp"
+                android:adjustViewBounds="true"
+                android:contentDescription="NFC 刷卡位置"
+                android:scaleType="fitCenter"
+                android:src="@drawable/nfc_location_highland" />
+
+            <!-- NFC 涟漪动画容器 (FrameLayout: 涟漪 + 中心卡片图标) -->
+            <FrameLayout
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:layout_marginBottom="12dp">
+
+                <!-- 涟漪动画 (3 层青色同心圆扩散) -->
+                <com.tesla.dashboard.ui.dashboard.NfcRippleView
+                    android:id="@+id/nfcRipple"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:rippleColor="@color/tesla_cyan"
+                    app:rippleCount="3"
+                    app:rippleDuration="1500" />
+
+                <!-- 中心 NFC 卡片图标 -->
+                <ImageView
+                    android:id="@+id/ivNfcCard"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="NFC 卡片"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_nfc_card" />
+
+            </FrameLayout>
+
+            <!-- NFC 确认提示标题 -->
+            <TextView
+                android:id="@+id/tvNfcTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="刷 NFC 卡片确认"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp" />
+
+            <!-- NFC 确认操作说明 (根据车型代际动态切换文案) -->
+            <TextView
+                android:id="@+id/tvNfcInstruction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:text="请在车辆中控台刷 NFC 卡片确认配对"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <!-- 车型代际标签 (小角标,显示当前是焕新版/老款) -->
+            <TextView
+                android:id="@+id/tvNfcGenTag"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="@color/accent_cyan"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- ========== Step 4: 成功页 ========== -->
+
+        <LinearLayout
+            android:id="@+id/stepSuccess"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal|top"
+            android:orientation="vertical"
+            android:paddingTop="40dp"
+            android:paddingBottom="20dp">
+
+            <!-- 成功勾选图标 -->
+            <ImageView
+                android:id="@+id/ivSuccessCheck"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_marginBottom="20dp"
+                android:contentDescription="配对成功"
+                android:src="@drawable/ic_checkmark_circle" />
+
+            <!-- 成功标题 -->
+            <TextView
+                android:id="@+id/tvSuccessTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="配对成功"
+                android:textColor="@color/text_primary"
+                android:textSize="24sp" />
+
+            <!-- 成功副标题 -->
+            <TextView
+                android:id="@+id/tvSuccessSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:text="车辆已成功配对,现在可以开始使用仪表盘了"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <!-- 完成按钮 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFinish"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="200dp"
+                android:layout_height="44dp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:text="完成"
+                android:textColor="@android:color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/accent_cyan"
+                app:cornerRadius="10dp" />
+
+        </LinearLayout>
+
+    </ViewFlipper>
+
+    </ScrollView>
+
+    <!-- ===== 底部按钮栏: 上一步 / 下一步 ===== -->
+
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="visible">
+
+        <!-- 上一步按钮 (描边样式) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPrev"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"
+            android:text="上一步"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            app:backgroundTint="@android:color/transparent"
+            app:cornerRadius="10dp"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp" />
+
+        <!-- 下一步按钮 (填充样式) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNext"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:enabled="false"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"
+            android:text="下一步"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/accent_cyan"
+            app:cornerRadius="10dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

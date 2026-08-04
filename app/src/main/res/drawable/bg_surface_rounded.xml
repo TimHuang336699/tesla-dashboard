@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    圆角表面背景 — 用于详情区等容器 (替代 MaterialCardView)
+    颜色引用 @color/surface, 随 DayNight 主题切换;
+    运行时仍可由代码覆盖具体颜色。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/surface" />
+    <corners android:radius="16dp" />
+</shape>

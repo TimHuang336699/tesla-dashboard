@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    步骤进度点背景 — 圆形
+    用于配对向导顶部的 4 个步骤指示点
+    颜色由 ThemeManager 在代码中通过 backgroundTint 覆盖
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <solid android:color="@color/divider" />
+
+</shape>

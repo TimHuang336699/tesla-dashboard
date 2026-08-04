@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== NfcRippleView ===== -->
+    <declare-styleable name="NfcRippleView">
+        <attr name="rippleColor" format="color" />
+        <attr name="rippleCount" format="integer" />
+        <attr name="rippleDuration" format="integer" />
+        <attr name="rippleMaxRadius" format="dimension" />
+    </declare-styleable>
+
+    <!-- ===== SpeedDisplayView ===== -->
+    <declare-styleable name="SpeedDisplayView">
+        <attr name="sdvMaxSpeed" format="integer" />
+        <attr name="sdvSpeed" format="float" />
+        <attr name="sdvUnit" format="string" />
+    </declare-styleable>
+
+    <!-- ===== VerticalGaugeView ===== -->
+    <declare-styleable name="VerticalGaugeView">
+        <attr name="vgLabel" format="string" />
+        <attr name="vgValue" format="float" />
+        <attr name="vgMaxValue" format="float" />
+        <attr name="vgTrackColor" format="color" />
+        <attr name="vgFillColor" format="color" />
+    </declare-styleable>
+
+    <!-- ===== AutonomousStatusView ===== -->
+    <declare-styleable name="AutonomousStatusView">
+        <attr name="asvLabel" format="string" />
+        <attr name="asvState" format="enum">
+            <enum name="inactive" value="0" />
+            <enum name="standby" value="1" />
+            <enum name="active" value="2" />
+            <enum name="warning" value="3" />
+        </attr>
+    </declare-styleable>
+
+    <!-- ===== IndicatorStripView ===== -->
+    <declare-styleable name="IndicatorStripView">
+        <attr name="isvIndicatorSpacing" format="dimension" />
+        <attr name="isvIndicatorSize" format="dimension" />
+    </declare-styleable>
+
+    <!-- ===== CarSilhouetteView ===== -->
+    <declare-styleable name="CarSilhouetteView">
+        <attr name="csvBodyColor" format="color" />
+        <attr name="csvStrokeColor" format="color" />
+        <attr name="csvGlassColor" format="color" />
+        <attr name="csvWheelColor" format="color" />
+    </declare-styleable>
+
+    <!-- ===== TurnSignalView ===== -->
+    <declare-styleable name="TurnSignalView">
+        <attr name="tsvActiveColor" format="color" />
+        <attr name="tsvInactiveColor" format="color" />
+        <attr name="tsvArrowSize" format="dimension" />
+    </declare-styleable>
+
+</resources>

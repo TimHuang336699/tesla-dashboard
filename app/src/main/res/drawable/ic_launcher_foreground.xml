@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer ring (stroke, white, centered at 54,54, radius=28) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:fillColor="#00000000"
+        android:pathData="M26,54 a28,28 0 1,0 56,0 a28,28 0 1,0 -56,0" />
+
+    <!-- Center hub (fill, white, radius=7) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M47,54 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+
+    <!-- Spoke at 0 degrees (pointing up) -->
+    <group
+        android:name="spoke0"
+        android:rotation="0"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M51,26 L57,26 L57,47 L51,47 Z" />
+    </group>
+
+    <!-- Spoke at 120 degrees -->
+    <group
+        android:name="spoke120"
+        android:rotation="120"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M51,26 L57,26 L57,47 L51,47 Z" />
+    </group>
+
+    <!-- Spoke at 240 degrees -->
+    <group
+        android:name="spoke240"
+        android:rotation="240"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M51,26 L57,26 L57,47 L51,47 Z" />
+    </group>
+
+</vector>

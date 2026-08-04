@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    成功勾选图标 — 圆形背景 + 白色对勾
+    用于配对成功页面展示
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+
+    <!-- 圆形背景 -->
+    <path
+        android:fillColor="#34C759"
+        android:pathData="M48,48m-48,0a48,48 0,1 1,96 0a48,48 0,1 1,-96 0" />
+
+    <!-- 白色对勾 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40.5,64.5 L24,48 L29,43 L40.5,54.5 L67,28 L72,33 Z" />
+
+</vector>

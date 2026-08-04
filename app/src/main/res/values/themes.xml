@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        Tesla Dashboard 主题 — 苹果式简约设计
+
+        使用 DayNight 主题自动适配日夜模式。
+        - 暗色模式: 纯黑背景 + Apple System Blue
+        - 亮色模式: 浅灰背景 + Apple System Blue
+
+        颜色通过 values/values-night 资源限定符自动切换。
+    -->
+    <style name="Theme.TeslaDashboard" parent="Theme.Material3.DayNight.NoActionBar">
+
+        <!-- 窗口背景色 (DayNight 自动切换) -->
+        <item name="android:windowBackground">@color/background</item>
+
+        <!-- 无标题栏 -->
+        <item name="android:windowNoTitle">true</item>
+
+        <!-- 全屏(配合代码中的 WindowInsetsController 实现沉浸式) -->
+        <item name="android:windowFullscreen">true</item>
+
+        <!-- 透明系统栏 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+
+        <!-- 状态栏图标颜色 (DayNight: 亮色模式用深色图标,暗色模式用浅色图标) -->
+        <item name="android:windowLightStatusBar">@bool/window_light_status_bar</item>
+
+        <!-- ===== Material3 颜色覆盖 — Apple System Blue ===== -->
+
+        <item name="colorPrimary">@color/accent_blue</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorPrimaryContainer">@color/surface</item>
+        <item name="colorOnPrimaryContainer">@color/accent_blue</item>
+
+        <!-- 表面色 -->
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+
+        <!-- 次要色 -->
+        <item name="colorSecondary">@color/accent_green</item>
+        <item name="colorOnSecondary">@android:color/white</item>
+
+        <!-- 错误色 -->
+        <item name="colorError">@color/accent_red</item>
+        <item name="colorOnError">@android:color/white</item>
+
+    </style>
+
+</resources>

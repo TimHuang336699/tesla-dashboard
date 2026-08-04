@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    下拉菜单列表项布局 — 用于车型选择的 ExposedDropdownMenu
+
+    适配深色主题的文字颜色,确保下拉项在暗色背景上清晰可读。
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ellipsize="end"
+    android:fontFamily="sans-serif-medium"
+    android:maxLines="1"
+    android:paddingStart="16dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="14dp"
+    android:textColor="@color/text_primary"
+    android:textSize="14sp" />

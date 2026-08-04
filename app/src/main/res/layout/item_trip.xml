@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    行程列表项布局
+
+    每行显示一次行程的摘要信息:
+    - 日期(左,占 2/5 宽度)
+    - 里程(中左,占 1/5,青色数值)
+    - 时长(中右,占 1/5)
+    - 均速(右,占 1/5,青色数值)
+
+    使用 surface_dark 背景区分行,底部 margin 提供行间距。
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/surface_dark"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="14dp"
+    android:layout_marginBottom="6dp"
+    android:weightSum="5">
+
+    <!-- 日期 -->
+    <TextView
+        android:id="@+id/dateText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp" />
+
+    <!-- 里程(青色强调) -->
+    <TextView
+        android:id="@+id/distanceText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textColor="@color/accent_cyan"
+        android:textSize="14sp" />
+
+    <!-- 时长 -->
+    <TextView
+        android:id="@+id/durationText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp" />
+
+    <!-- 均速(青色强调) -->
+    <TextView
+        android:id="@+id/avgSpeedText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:textColor="@color/accent_cyan"
+        android:textSize="14sp" />
+
+</LinearLayout>

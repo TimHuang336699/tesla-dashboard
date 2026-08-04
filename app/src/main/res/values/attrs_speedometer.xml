@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="SpeedometerView">
+        <attr name="maxSpeed" format="integer" />
+        <attr name="currentSpeed" format="float" />
+        <attr name="arcWidth" format="dimension" />
+        <attr name="isDarkMode" format="boolean" />
+    </declare-styleable>
+</resources>

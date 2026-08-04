@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    返回箭头图标 — 用于设置页面顶部标题栏的返回按钮
+    简约线条风格,与苹果式设计一致
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/text_primary">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M15.4,7.4L14,6L8,12L14,18L15.4,16.6L10.8,12Z" />
+</vector>

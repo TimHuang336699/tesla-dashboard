@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== 语义化颜色名称 (DayNight 自动切换) ===== -->
+    <!-- values/colors.xml = 亮色模式默认值 -->
+    <!-- values-night/colors.xml = 暗色模式覆盖值 -->
+
+    <!-- 背景 / 表面 -->
+    <color name="background">#F2F2F7</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="divider">#E5E5EA</color>
+
+    <!-- 文字 -->
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#8E8E93</color>
+
+    <!-- 强调色 (Apple System Colors — 亮色模式) -->
+    <color name="accent_blue">#007AFF</color>
+    <color name="accent_green">#34C759</color>
+    <color name="accent_red">#FF3B30</color>
+    <color name="accent_orange">#FF9500</color>
+
+    <!-- ===== 旧名称别名 (保持向后兼容,同样参与 DayNight 切换) ===== -->
+    <color name="background_dark">@color/background</color>
+    <color name="surface_dark">@color/surface</color>
+    <color name="accent_cyan">@color/accent_blue</color>
+
+    <!-- ===== 固定色值 (不随主题切换) ===== -->
+    <color name="transparent">#00000000</color>
+    <color name="semi_transparent_dark">#AA000000</color>
+    <color name="ic_launcher_background">#007AFF</color>
+    <color name="tesla_cyan">#00D4FF</color>
+
+</resources>
