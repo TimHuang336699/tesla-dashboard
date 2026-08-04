@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -13,7 +12,6 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -102,9 +100,6 @@ class DashboardActivity : AppCompatActivity() {
         // 2. 初始化 ViewBinding
         binding = ActivityDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        // 2c. 初始化指示灯条图标
-        setupIndicatorStrip()
 
         // 3. 设置按钮
         setupButtons()
@@ -262,10 +257,6 @@ class DashboardActivity : AppCompatActivity() {
         binding.verticalGauge.setTrackColor(c.divider)
         binding.verticalGauge.setLabelColor(c.textSecondary)
         binding.verticalGauge.setValueColor(c.textPrimary)
-
-        // ===== 指示灯条配色 =====
-        binding.indicatorStrip.setActiveColor(c.accentGreen)
-        binding.indicatorStrip.setInactiveColor(c.textSecondary)
     }
 
     /**
@@ -346,15 +337,6 @@ class DashboardActivity : AppCompatActivity() {
         } else {
             "--"
         }
-
-        // ===== 指示灯条更新 =====
-        binding.indicatorStrip.updateIndicator("ble", data.isTeslaConnected)
-        binding.indicatorStrip.updateIndicator(
-            "gps", data.isTeslaConnected && data.latitude != 0.0
-        )
-        binding.indicatorStrip.updateIndicator(
-            "compass", data.isTeslaConnected && data.heading != 0f
-        )
 
         // ===== Tesla BLE 连接状态 =====
         binding.teslaStatusText.text = if (data.isTeslaConnected) {
@@ -467,32 +449,6 @@ class DashboardActivity : AppCompatActivity() {
         val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         detail.measure(widthSpec, heightSpec)
         return detail.measuredHeight
-    }
-
-    /**
-     * 初始化指示灯条
-     *
-     * 加载系统图标作为指示灯,初始全部非激活状态。
-     * 后续由 [updateUI] 根据车辆数据更新激活/闪烁状态。
-     */
-    private fun setupIndicatorStrip() {
-        val bleIcon: Drawable = ResourcesCompat.getDrawable(
-            resources, android.R.drawable.stat_sys_data_bluetooth, theme
-        ) ?: return
-        val gpsIcon: Drawable = ResourcesCompat.getDrawable(
-            resources, android.R.drawable.ic_menu_mylocation, theme
-        ) ?: return
-        val compassIcon: Drawable = ResourcesCompat.getDrawable(
-            resources, android.R.drawable.ic_menu_compass, theme
-        ) ?: return
-
-        binding.indicatorStrip.setIndicators(
-            listOf(
-                IndicatorStripView.Indicator("ble", bleIcon, active = false),
-                IndicatorStripView.Indicator("gps", gpsIcon, active = false),
-                IndicatorStripView.Indicator("compass", compassIcon, active = false),
-            )
-        )
     }
 
     /**

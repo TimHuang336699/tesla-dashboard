@@ -274,15 +274,6 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
-        <!-- 中右: 指示灯条 (BLE/GPS/罗盘) -->
-        <com.tesla.dashboard.ui.dashboard.IndicatorStripView
-            android:id="@+id/indicatorStrip"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            app:isvIndicatorSize="24dp"
-            app:isvIndicatorSpacing="16dp" />
-
         <!-- 右侧: 历史 + 设置按钮 -->
         <LinearLayout
             android:layout_width="wrap_content"

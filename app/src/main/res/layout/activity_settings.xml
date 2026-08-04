@@ -150,6 +150,31 @@
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
+                        <!-- 状态指示灯条 (BLE/GPS/罗盘) -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="@string/settings_indicators"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp" />
+
+                            <com.tesla.dashboard.ui.dashboard.IndicatorStripView
+                                android:id="@+id/indicatorStrip"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                app:isvIndicatorSize="24dp"
+                                app:isvIndicatorSpacing="16dp" />
+                        </LinearLayout>
+
                         <!-- 配对状态值 -->
                         <TextView
                             android:id="@+id/tvPairingStatus"
@@ -341,106 +366,32 @@
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
-                        <!-- 主题选择 RadioGroup (纵向列表, 支持多主题) -->
-                        <RadioGroup
-                            android:id="@+id/rgTheme"
+                        <!-- 主题选择下拉菜单 -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilTheme"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical">
+                            android:hint="@string/settings_theme"
+                            app:boxCornerRadiusBottomEnd="12dp"
+                            app:boxCornerRadiusBottomStart="12dp"
+                            app:boxCornerRadiusTopEnd="12dp"
+                            app:boxCornerRadiusTopStart="12dp"
+                            app:boxStrokeColor="@color/accent_cyan"
+                            app:endIconTint="@color/text_secondary">
 
-                            <RadioButton
-                                android:id="@+id/rbThemeSystem"
+                            <AutoCompleteTextView
+                                android:id="@+id/actvTheme"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:buttonTint="@color/accent_cyan"
-                                android:checked="true"
                                 android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_system"
+                                android:inputType="none"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="8dp"
                                 android:textColor="@color/text_primary"
                                 android:textSize="14sp" />
 
-                            <RadioButton
-                                android:id="@+id/rbThemeDark"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_dark"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <RadioButton
-                                android:id="@+id/rbThemeLight"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_light"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <RadioButton
-                                android:id="@+id/rbThemeTeslaBlue"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_tesla_blue"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <RadioButton
-                                android:id="@+id/rbThemeForestGreen"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_forest_green"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <RadioButton
-                                android:id="@+id/rbThemeEmberOrange"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_ember_orange"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <RadioButton
-                                android:id="@+id/rbThemeMidnightPurple"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:buttonTint="@color/accent_cyan"
-                                android:fontFamily="sans-serif-medium"
-                                android:minWidth="0dp"
-                                android:minHeight="36dp"
-                                android:paddingStart="8dp"
-                                android:text="@string/settings_theme_midnight_purple"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                        </RadioGroup>
+                        </com.google.android.material.textfield.TextInputLayout>
 
                     </LinearLayout>
 

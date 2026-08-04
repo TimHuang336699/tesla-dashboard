@@ -59,6 +59,7 @@
     <string name="settings_unpair_vehicle">解除配对</string>
     <string name="settings_test_connection">测试连接</string>
     <string name="settings_pairing_status">配对状态</string>
+    <string name="settings_indicators">状态指示灯</string>
     <string name="settings_paired">已配对</string>
     <string name="settings_not_paired">未配对</string>
     <string name="settings_pairing_in_progress">配对中…</string>

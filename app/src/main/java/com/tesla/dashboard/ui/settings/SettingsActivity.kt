@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -18,6 +19,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -27,6 +29,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.tesla.dashboard.R
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.databinding.ActivitySettingsBinding
+import com.tesla.dashboard.ui.dashboard.IndicatorStripView
 import com.tesla.dashboard.ui.pairing.PairingActivity
 import com.tesla.dashboard.util.ThemeColors
 import com.tesla.dashboard.util.ThemeManager
@@ -116,6 +119,33 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     /**
+     * 主题选项数据类
+     *
+     * @property displayName 用户可见的主题名称
+     * @property code 主题代码,对应 [com.tesla.dashboard.util.ThemeManager] 的 applyTheme 分支
+     */
+    private data class ThemeOption(val displayName: String, val code: String)
+
+    /**
+     * 可选主题列表(显示名称 ↔ 主题代码)
+     *
+     * 包含经典深/浅 + 4 种彩色主题(深/浅各一) + 跟随系统。
+     */
+    private val themeOptions = listOf(
+        ThemeOption("跟随系统", "system"),
+        ThemeOption("深色", "dark"),
+        ThemeOption("浅色", "light"),
+        ThemeOption("特斯拉蓝（深色）", "tesla_blue"),
+        ThemeOption("特斯拉蓝（浅色）", "tesla_blue_light"),
+        ThemeOption("森林绿（深色）", "forest_green"),
+        ThemeOption("森林绿（浅色）", "forest_green_light"),
+        ThemeOption("琥珀橙（深色）", "ember_orange"),
+        ThemeOption("琥珀橙（浅色）", "ember_orange_light"),
+        ThemeOption("午夜紫（深色）", "midnight_purple"),
+        ThemeOption("午夜紫（浅色）", "midnight_purple_light"),
+    )
+
+    /**
      * 可选车型列表(显示名称 ↔ 车型代码)
      *
      * 显示名称包含电池容量和化学类型，便于用户精确选择。
@@ -164,6 +194,12 @@ class SettingsActivity : AppCompatActivity() {
         // 3. 设置车型下拉菜单
         setupBatteryModelDropdown()
 
+        // 3b. 设置主题下拉菜单
+        setupThemeDropdown()
+
+        // 3c. 初始化状态指示灯条
+        setupIndicatorStrip()
+
         // 4. 设置按钮监听
         setupClickListeners()
 
@@ -210,6 +246,54 @@ class SettingsActivity : AppCompatActivity() {
                 viewModel.saveBatteryModel(selectedBatteryModel)
             }
         }
+    }
+
+    /**
+     * 设置主题下拉菜单
+     *
+     * 主题选项列表: 跟随系统 / 深色 / 浅色 + 4 种彩色主题(深浅各一)
+     */
+    private fun setupThemeDropdown() {
+        val adapter = ArrayAdapter(
+            this,
+            R.layout.item_dropdown,
+            themeOptions.map { it.displayName },
+        )
+        binding.actvTheme.setAdapter(adapter)
+
+        binding.actvTheme.setOnItemClickListener { _, _, position, _ ->
+            val mode = themeOptions[position].code
+            // 主题选择后即时自动保存并实时应用
+            if (isFormPopulated) {
+                viewModel.saveThemeMode(mode)
+                themeManager.setThemeMode(mode)
+            }
+        }
+    }
+
+    /**
+     * 初始化状态指示灯条 (BLE/GPS/罗盘)
+     *
+     * BLE 状态由配对状态驱动, GPS/罗盘在设置页无数据源, 默认非激活。
+     */
+    private fun setupIndicatorStrip() {
+        val bleIcon: Drawable = ResourcesCompat.getDrawable(
+            resources, android.R.drawable.stat_sys_data_bluetooth, theme
+        ) ?: return
+        val gpsIcon: Drawable = ResourcesCompat.getDrawable(
+            resources, android.R.drawable.ic_menu_mylocation, theme
+        ) ?: return
+        val compassIcon: Drawable = ResourcesCompat.getDrawable(
+            resources, android.R.drawable.ic_menu_compass, theme
+        ) ?: return
+
+        binding.indicatorStrip.setIndicators(
+            listOf(
+                IndicatorStripView.Indicator("ble", bleIcon, active = false),
+                IndicatorStripView.Indicator("gps", gpsIcon, active = false),
+                IndicatorStripView.Indicator("compass", compassIcon, active = false),
+            )
+        )
     }
 
     /**
@@ -354,22 +438,14 @@ class SettingsActivity : AppCompatActivity() {
         binding.tilBatteryModel.boxStrokeColor = c.accentCyan
         binding.actvBatteryModel.setTextColor(c.textPrimary)
 
-        // ===== 外观卡: 主题标签与 RadioButton =====
+        // ===== 外观卡: 主题标签与主题下拉框 =====
         binding.tvThemeLabel.setTextColor(c.textSecondary)
-        val btnTint = ColorStateList.valueOf(c.accentCyan)
-        val radioButtons = listOf(
-            binding.rbThemeSystem,
-            binding.rbThemeDark,
-            binding.rbThemeLight,
-            binding.rbThemeTeslaBlue,
-            binding.rbThemeForestGreen,
-            binding.rbThemeEmberOrange,
-            binding.rbThemeMidnightPurple,
-        )
-        radioButtons.forEach { rb ->
-            rb.buttonTintList = btnTint
-            rb.setTextColor(c.textPrimary)
-        }
+        binding.tilTheme.boxStrokeColor = c.accentCyan
+        binding.actvTheme.setTextColor(c.textPrimary)
+
+        // ===== 状态指示灯条配色 =====
+        binding.indicatorStrip.setActiveColor(c.accentGreen)
+        binding.indicatorStrip.setInactiveColor(c.textSecondary)
     }
 
     /**
@@ -379,15 +455,10 @@ class SettingsActivity : AppCompatActivity() {
         // VIN
         binding.etVin.setText(state.vin)
 
-        // 主题
-        when (state.themeMode) {
-            "dark" -> binding.rbThemeDark.isChecked = true
-            "light" -> binding.rbThemeLight.isChecked = true
-            "tesla_blue" -> binding.rbThemeTeslaBlue.isChecked = true
-            "forest_green" -> binding.rbThemeForestGreen.isChecked = true
-            "ember_orange" -> binding.rbThemeEmberOrange.isChecked = true
-            "midnight_purple" -> binding.rbThemeMidnightPurple.isChecked = true
-            else -> binding.rbThemeSystem.isChecked = true
+        // 主题 (下拉菜单)
+        val themeOption = themeOptions.find { it.code == state.themeMode }
+        if (themeOption != null) {
+            binding.actvTheme.setText(themeOption.displayName, false)
         }
 
         // 车型
@@ -408,6 +479,8 @@ class SettingsActivity : AppCompatActivity() {
      * @param isPaired 是否已配对
      */
     private fun updatePairingStatus(isPaired: Boolean) {
+        // 同步 BLE 状态指示灯
+        binding.indicatorStrip.updateIndicator("ble", isPaired)
         if (isPaired) {
             binding.tvPairingStatus.text = getString(R.string.settings_paired)
             binding.tvPairingStatus.setTextColor(currentColors.accentGreen)
@@ -609,7 +682,7 @@ class SettingsActivity : AppCompatActivity() {
      *
      * 所有设置项修改后立即持久化到 DataStore,无需点击保存按钮:
      * - VIN: TextWatcher + 500ms debounce,防止每次按键都写磁盘
-     * - 主题: RadioGroup 变化时立即保存
+     * - 主题: 下拉菜单选择时立即保存 (在 [setupThemeDropdown] 中注册)
      * - 车型: 下拉选择时立即保存 (在 [setupBatteryModelDropdown] 中注册)
      *
      * 注意: 通过 [isFormPopulated] 守卫, 避免 [populateForm] 回填表单时触发误保存。
@@ -635,29 +708,6 @@ class SettingsActivity : AppCompatActivity() {
                 vinDebounceHandler.postDelayed(vinSaveRunnable!!, VIN_DEBOUNCE_MS)
             }
         })
-
-        // 主题即时保存
-        binding.rgTheme.setOnCheckedChangeListener { _, _ ->
-            if (isFormPopulated) {
-                viewModel.saveThemeMode(getSelectedThemeMode())
-            }
-        }
-    }
-
-    /**
-     * 获取当前选中的主题模式
-     *
-     * @return 主题模式 ID ("dark"/"light"/"system"/"tesla_blue"/"forest_green"/"ember_orange"/"midnight_purple")
-     */
-    private fun getSelectedThemeMode(): String = when (binding.rgTheme.checkedRadioButtonId) {
-        R.id.rbThemeDark -> "dark"
-        R.id.rbThemeLight -> "light"
-        R.id.rbThemeTeslaBlue -> "tesla_blue"
-        R.id.rbThemeForestGreen -> "forest_green"
-        R.id.rbThemeEmberOrange -> "ember_orange"
-        R.id.rbThemeMidnightPurple -> "midnight_purple"
-        R.id.rbThemeSystem -> "system"
-        else -> "system"
     }
 
     /**

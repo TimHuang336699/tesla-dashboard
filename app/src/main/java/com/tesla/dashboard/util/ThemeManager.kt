@@ -200,6 +200,98 @@ data class ThemeColors(
             speedometerTick = 0xFF4A3A66.toInt(),
             speedometerTickText = 0xFF9C84C9.toInt(),
         )
+
+        /**
+         * 特斯拉蓝(浅色) — 浅蓝白底色 + 冰蓝强调
+         */
+        val TeslaBlueLight = ThemeColors(
+            background = 0xFFF0F5FB.toInt(),
+            surface = 0xFFFFFFFF.toInt(),
+            cardBackground = 0xFFFFFFFF.toInt(),
+            divider = 0xFFD9E3EF.toInt(),
+            textPrimary = 0xFF0B1220.toInt(),
+            textSecondary = 0xFF5A6B80.toInt(),
+            accentBlue = 0xFF0077E6.toInt(),
+            accentGreen = 0xFF34C759.toInt(),
+            accentRed = 0xFFFF3B30.toInt(),
+            accentOrange = 0xFFFF9500.toInt(),
+            accentCyan = 0xFF0099CC.toInt(),
+            speedometerProgress = 0xFF0077E6.toInt(),   // 冰蓝指针
+            speedometerBg = 0xFFDEE9F5.toInt(),
+            speedometerText = 0xFF0B1220.toInt(),
+            speedometerUnit = 0xFF5A6B80.toInt(),
+            speedometerTick = 0xFFA9BCD1.toInt(),
+            speedometerTickText = 0xFF6E85A0.toInt(),
+        )
+
+        /**
+         * 森林绿(浅色) — 浅绿白底色 + 翠绿强调
+         */
+        val ForestGreenLight = ThemeColors(
+            background = 0xFFF0F7F2.toInt(),
+            surface = 0xFFFFFFFF.toInt(),
+            cardBackground = 0xFFFFFFFF.toInt(),
+            divider = 0xFFD8E8DD.toInt(),
+            textPrimary = 0xFF0E1A14.toInt(),
+            textSecondary = 0xFF5A7263.toInt(),
+            accentBlue = 0xFF0077E6.toInt(),
+            accentGreen = 0xFF27A85A.toInt(),
+            accentRed = 0xFFFF3B30.toInt(),
+            accentOrange = 0xFFFF9500.toInt(),
+            accentCyan = 0xFF00A88C.toInt(),
+            speedometerProgress = 0xFF00A65A.toInt(),   // 翠绿指针
+            speedometerBg = 0xFFDCEAE0.toInt(),
+            speedometerText = 0xFF0E1A14.toInt(),
+            speedometerUnit = 0xFF5A7263.toInt(),
+            speedometerTick = 0xFFA8C4B1.toInt(),
+            speedometerTickText = 0xFF6B8A76.toInt(),
+        )
+
+        /**
+         * 琥珀橙(浅色) — 浅米白底色 + 暖橙强调
+         */
+        val EmberOrangeLight = ThemeColors(
+            background = 0xFFFBF6F0.toInt(),
+            surface = 0xFFFFFFFF.toInt(),
+            cardBackground = 0xFFFFFFFF.toInt(),
+            divider = 0xFFEDE0D2.toInt(),
+            textPrimary = 0xFF1C140E.toInt(),
+            textSecondary = 0xFF7A6A5A.toInt(),
+            accentBlue = 0xFF0077E6.toInt(),
+            accentGreen = 0xFF4CAF50.toInt(),
+            accentRed = 0xFFFF5252.toInt(),
+            accentOrange = 0xFFE8700A.toInt(),
+            accentCyan = 0xFFE89A3C.toInt(),
+            speedometerProgress = 0xFFE8700A.toInt(),   // 烈焰橙指针
+            speedometerBg = 0xFFF0E2D0.toInt(),
+            speedometerText = 0xFF1C140E.toInt(),
+            speedometerUnit = 0xFF7A6A5A.toInt(),
+            speedometerTick = 0xFFD0B898.toInt(),
+            speedometerTickText = 0xFFA07C52.toInt(),
+        )
+
+        /**
+         * 午夜紫(浅色) — 浅紫白底色 + 紫罗兰强调
+         */
+        val MidnightPurpleLight = ThemeColors(
+            background = 0xFFF6F2FA.toInt(),
+            surface = 0xFFFFFFFF.toInt(),
+            cardBackground = 0xFFFFFFFF.toInt(),
+            divider = 0xFFE4DBEF.toInt(),
+            textPrimary = 0xFF14101E.toInt(),
+            textSecondary = 0xFF6E6286.toInt(),
+            accentBlue = 0xFF7C4DFF.toInt(),
+            accentGreen = 0xFF3ECB8B.toInt(),
+            accentRed = 0xFFFF5252.toInt(),
+            accentOrange = 0xFFFFB74D.toInt(),
+            accentCyan = 0xFFAA5AC7.toInt(),
+            speedometerProgress = 0xFF7C3AED.toInt(),   // 紫罗兰指针
+            speedometerBg = 0xFFE6DDF2.toInt(),
+            speedometerText = 0xFF14101E.toInt(),
+            speedometerUnit = 0xFF6E6286.toInt(),
+            speedometerTick = 0xFFC3B3DC.toInt(),
+            speedometerTickText = 0xFF8E76B5.toInt(),
+        )
     }
 }
 
@@ -271,9 +363,13 @@ class ThemeManager @Inject constructor(
      * - "dark": 经典深色
      * - "light": 经典浅色
      * - "tesla_blue": 特斯拉蓝(深色)
+     * - "tesla_blue_light": 特斯拉蓝(浅色)
      * - "forest_green": 森林绿(深色)
+     * - "forest_green_light": 森林绿(浅色)
      * - "ember_orange": 琥珀橙(深色)
+     * - "ember_orange_light": 琥珀橙(浅色)
      * - "midnight_purple": 午夜紫(深色)
+     * - "midnight_purple_light": 午夜紫(浅色)
      * - 其他(含 "system"): 跟随系统深/浅, 默认使用经典配色
      *
      * @param mode 主题模式字符串
@@ -283,9 +379,13 @@ class ThemeManager @Inject constructor(
             "dark" -> ThemeColors.Dark
             "light" -> ThemeColors.Light
             "tesla_blue" -> ThemeColors.TeslaBlue
+            "tesla_blue_light" -> ThemeColors.TeslaBlueLight
             "forest_green" -> ThemeColors.ForestGreen
+            "forest_green_light" -> ThemeColors.ForestGreenLight
             "ember_orange" -> ThemeColors.EmberOrange
+            "ember_orange_light" -> ThemeColors.EmberOrangeLight
             "midnight_purple" -> ThemeColors.MidnightPurple
+            "midnight_purple_light" -> ThemeColors.MidnightPurpleLight
             else -> if (isSystemDarkMode()) ThemeColors.Dark else ThemeColors.Light
         }
         setThemeColors(colors)
@@ -329,6 +429,18 @@ class ThemeManager @Inject constructor(
     fun setDarkMode(isDark: Boolean) {
         _isDarkMode.value = isDark
         _colors.value = if (isDark) ThemeColors.Dark else ThemeColors.Light
+    }
+
+    /**
+     * 根据主题代码立即应用主题(无需 Activity 重启)
+     *
+     * 供设置页主题下拉菜单在选择后即时调用,与 [applyTheme] 相同的映射逻辑。
+     * 仅更新内存状态,持久化由调用方通过 [SettingsRepository.saveThemeMode] 完成。
+     *
+     * @param mode 主题模式字符串 (同 [applyTheme] 的入参)
+     */
+    fun setThemeMode(mode: String) {
+        applyTheme(mode)
     }
 
     /**
