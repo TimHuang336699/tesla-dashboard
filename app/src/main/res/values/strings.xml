@@ -74,6 +74,13 @@
     <string name="settings_theme_forest_green">森林绿</string>
     <string name="settings_theme_ember_orange">琥珀橙</string>
     <string name="settings_theme_midnight_purple">午夜紫</string>
+    <string name="settings_background">仪表背景</string>
+    <string name="settings_background_default">默认氛围</string>
+    <string name="settings_background_stealth">黑武士</string>
+    <string name="settings_background_ocean">深海蓝</string>
+    <string name="settings_background_nebula">深紫星云</string>
+    <string name="settings_background_crimson">深红</string>
+    <string name="settings_background_wine">酒红</string>
     <string name="settings_connection_success">BLE 连接成功</string>
     <string name="settings_connection_failed">BLE 连接失败</string>
     <string name="settings_pairing_success">配对成功</string>

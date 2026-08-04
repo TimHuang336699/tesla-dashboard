@@ -32,6 +32,7 @@ import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.databinding.ActivitySettingsBinding
 import com.tesla.dashboard.ui.dashboard.IndicatorStripView
 import com.tesla.dashboard.ui.pairing.PairingActivity
+import com.tesla.dashboard.util.BackgroundManager
 import com.tesla.dashboard.util.ThemeColors
 import com.tesla.dashboard.util.ThemeManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -80,6 +81,10 @@ class SettingsActivity : AppCompatActivity() {
     @Inject
     lateinit var themeManager: ThemeManager
 
+    /** 仪表背景管理器,由 Hilt 自动注入 — 用于背景选择即时预览 */
+    @Inject
+    lateinit var backgroundManager: BackgroundManager
+
     /** 当前主题颜色(由 colors 流更新,供 UI 实时应用) */
     private var currentColors: ThemeColors = ThemeColors.Dark
 
@@ -126,6 +131,23 @@ class SettingsActivity : AppCompatActivity() {
      * @property code 主题代码,对应 [com.tesla.dashboard.util.ThemeManager] 的 applyTheme 分支
      */
     private data class ThemeOption(val displayName: String, val code: String)
+
+    /**
+     * 可选背景列表(显示名称 ↔ 背景代码)
+     */
+    private data class BackgroundOption(val displayName: String, val code: String)
+
+    /**
+     * 可选仪表背景列表,复刻 Dash for Tesla 1.8.0 的经典背景
+     */
+    private val backgroundOptions = listOf(
+        BackgroundOption("默认氛围", "default"),
+        BackgroundOption("黑武士", "stealth"),
+        BackgroundOption("深海蓝", "ocean"),
+        BackgroundOption("深紫星云", "nebula"),
+        BackgroundOption("深红", "crimson"),
+        BackgroundOption("酒红", "wine"),
+    )
 
     /**
      * 可选主题列表(显示名称 ↔ 主题代码)
@@ -200,6 +222,9 @@ class SettingsActivity : AppCompatActivity() {
 
         // 3c. 初始化状态指示灯条
         setupIndicatorStrip()
+
+        // 3d. 设置仪表背景下拉菜单
+        setupBackgroundDropdown()
 
         // 4. 设置按钮监听
         setupClickListeners()
@@ -280,6 +305,29 @@ class SettingsActivity : AppCompatActivity() {
             if (isFormPopulated) {
                 viewModel.saveThemeMode(mode)
                 themeManager.setThemeMode(mode)
+            }
+        }
+    }
+
+    /**
+     * 设置仪表背景下拉菜单
+     *
+     * 选择后即时保存并实时预览背景(主界面同步切换)。
+     */
+    private fun setupBackgroundDropdown() {
+        val adapter = ArrayAdapter(
+            this,
+            R.layout.item_dropdown,
+            backgroundOptions.map { it.displayName },
+        )
+        binding.actvBackground.setAdapter(adapter)
+
+        binding.actvBackground.setOnItemClickListener { _, _, position, _ ->
+            val code = backgroundOptions[position].code
+            // 背景选择后即时自动保存并实时预览
+            if (isFormPopulated) {
+                viewModel.saveDashBackground(code)
+                backgroundManager.applyBackground(code)
             }
         }
     }
@@ -456,6 +504,11 @@ class SettingsActivity : AppCompatActivity() {
         binding.tilTheme.boxStrokeColor = c.accentCyan
         binding.actvTheme.setTextColor(c.textPrimary)
 
+        // ===== 仪表背景下拉框 =====
+        binding.tvBackgroundLabel.setTextColor(c.textSecondary)
+        binding.tilBackground.boxStrokeColor = c.accentCyan
+        binding.actvBackground.setTextColor(c.textPrimary)
+
         // ===== 状态指示灯条配色 =====
         binding.indicatorStrip.setActiveColor(c.accentGreen)
         binding.indicatorStrip.setInactiveColor(c.textSecondary)
@@ -475,6 +528,12 @@ class SettingsActivity : AppCompatActivity() {
         val themeOption = themeOptions.find { it.code == state.themeMode }
         if (themeOption != null) {
             binding.actvTheme.setText(themeOption.displayName, false)
+        }
+
+        // 仪表背景 (下拉菜单)
+        val bgOption = backgroundOptions.find { it.code == state.dashBackground }
+        if (bgOption != null) {
+            binding.actvBackground.setText(bgOption.displayName, false)
         }
 
         // 车型

@@ -127,18 +127,17 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ================================================================ -->
-    <!-- ===== 左列: 速度数字显示 (SpeedDisplayView, 原 AP 状态位置) ===== -->
+    <!-- ===== 左列: Dash 风格圆形仪表盘 (GaugeView) ===== -->
     <!-- ================================================================ -->
-    <com.tesla.dashboard.ui.dashboard.SpeedDisplayView
-        android:id="@+id/speedDisplay"
+    <com.tesla.dashboard.ui.dashboard.GaugeView
+        android:id="@+id/gaugeView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
-        app:sdvMaxSpeed="240"
-        app:sdvSpeed="0"
-        app:sdvUnit="km/h"
+        app:maxSpeed="240"
+        app:currentSpeed="0"
         app:layout_constraintTop_toBottomOf="@id/topDivider"
         app:layout_constraintBottom_toTopOf="@id/bottomBar"
         app:layout_constraintStart_toStartOf="parent"
@@ -148,12 +147,23 @@
     <!-- ===== 中列: 车辆剪影 (转向灯 UI 已隐藏, 代码保留) ===== -->
     <!-- ================================================================ -->
 
+    <!-- 转向灯 (Dash 绿色箭头, 居中, 顶部) — 已隐藏显示, 代码保留 -->
+    <com.tesla.dashboard.ui.dashboard.TurnSignalView
+        android:id="@+id/turnSignals"
+        android:layout_width="0dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/topDivider"
+        app:layout_constraintStart_toStartOf="@id/centerGuide"
+        app:layout_constraintEnd_toStartOf="@id/rightGuide" />
+
     <!-- 车辆俯视剪影 (中列居中, 放大尺寸) -->
     <com.tesla.dashboard.ui.dashboard.CarSilhouetteView
         android:id="@+id/carSilhouette"
         android:layout_width="260dp"
         android:layout_height="170dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         app:layout_constraintTop_toBottomOf="@id/topDivider"
         app:layout_constraintBottom_toTopOf="@id/bottomBar"
         app:layout_constraintStart_toStartOf="@id/centerGuide"

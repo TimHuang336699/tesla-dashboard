@@ -2,23 +2,26 @@ package com.tesla.dashboard.ui.dashboard
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.Shader
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
+import com.tesla.dashboard.R
 
 /**
- * 转向灯指示 View — Dash for Tesla 风格的左右转向灯渐变指示
+ * 转向灯指示 View — 复刻 Dash for Tesla 1.8.0 绿色箭头转向灯
  *
  * ## 设计特征
- * - 左右两侧箭头形指示灯
- * - 激活时绿色渐变填充 + 闪烁动画
+ * - 使用 Dash for Tesla 的左右箭头图标资源 (ic_left.png / ic_right.png)
+ * - 激活时绿色 (#12D37C) + 闪烁动画
  * - 非激活时灰色低透明度
  * - 支持左转/右转/双闪模式
+ * - 警告场景 (门未关) 可切换红色
  *
  * ## 闪烁模式
  * - 500ms 循环 (alpha 0.2 → 1.0)
@@ -26,6 +29,7 @@ import android.view.animation.LinearInterpolator
  *
  * @param context 上下文
  * @param attrs XML 属性集
+ * @param defStyleAttr 默认样式
  */
 class TurnSignalView @JvmOverloads constructor(
     context: Context,
@@ -33,22 +37,21 @@ class TurnSignalView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
 
-    /** 激活颜色 (绿色) */
-    private var activeColor: Int = 0xFF30D158.toInt()
+    /** 激活颜色 (Dash 绿) */
+    private var activeColor: Int = 0xFF12D37C.toInt()
 
     /** 非激活颜色 */
     private var inactiveColor: Int = 0xFF3A3A3A.toInt()
 
-    /** 箭头填充画笔 */
-    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
+    /** 左箭头图标 (Dash 资源) */
+    private var leftBitmap: Bitmap? = null
 
-    /** 箭头描边画笔 */
-    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeWidth = 2f
+    /** 右箭头图标 (Dash 资源) */
+    private var rightBitmap: Bitmap? = null
+
+    /** 箭头画笔 (含颜色滤镜) */
+    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        isFilterBitmap = true
     }
 
     /** 闪烁进度 (0f → 1f) */
@@ -66,6 +69,15 @@ class TurnSignalView @JvmOverloads constructor(
     }
 
     private var state: TurnSignalState = TurnSignalState.NONE
+
+    init {
+        try {
+            leftBitmap = BitmapFactory.decodeResource(resources, R.drawable.ic_left)
+        } catch (_: Exception) { /* 资源缺失时跳过 */ }
+        try {
+            rightBitmap = BitmapFactory.decodeResource(resources, R.drawable.ic_right)
+        } catch (_: Exception) { /* 资源缺失时跳过 */ }
+    }
 
     /**
      * 设置转向灯状态
@@ -112,61 +124,48 @@ class TurnSignalView @JvmOverloads constructor(
 
         val cx = width / 2f
         val cy = height / 2f
-        val arrowSize = minOf(width, height) * 0.35f
+
+        // 图标尺寸 (宽 140 x 高 1624 的长条, 截取上半部分箭头区域)
+        val iconHeight = height * 0.9f
+        val iconWidth = iconHeight * (leftBitmap?.width ?: 140).toFloat() / (leftBitmap?.height ?: 1624).toFloat()
+        val iconHeightAdj = iconWidth * (leftBitmap?.height ?: 1624).toFloat() / (leftBitmap?.width ?: 140).toFloat()
 
         // 绘制左箭头
         val leftActive = state == TurnSignalState.LEFT || state == TurnSignalState.HAZARD
-        drawArrow(canvas, cx - arrowSize * 0.8f, cy, arrowSize, leftActive, isLeft = true)
+        drawIcon(canvas, leftBitmap, cx - iconWidth * 0.8f, cy, iconWidth, iconHeightAdj, leftActive, isLeft = true)
 
         // 绘制右箭头
         val rightActive = state == TurnSignalState.RIGHT || state == TurnSignalState.HAZARD
-        drawArrow(canvas, cx + arrowSize * 0.8f, cy, arrowSize, rightActive, isLeft = false)
+        drawIcon(canvas, rightBitmap, cx + iconWidth * 0.8f, cy, iconWidth, iconHeightAdj, rightActive, isLeft = false)
     }
 
     /**
-     * 绘制单个箭头
+     * 绘制单个箭头图标 (带颜色滤镜与透明度)
      */
-    private fun drawArrow(canvas: Canvas, cx: Float, cy: Float, size: Float, active: Boolean, isLeft: Boolean) {
+    private fun drawIcon(
+        canvas: Canvas,
+        bmp: Bitmap?,
+        cx: Float,
+        cy: Float,
+        w: Float,
+        h: Float,
+        active: Boolean,
+        isLeft: Boolean,
+    ) {
+        if (bmp == null) return
+
         val alpha = if (active) (blinkProgress * 255).toInt().coerceIn(0, 255) else 60
         val color = if (active) activeColor else inactiveColor
 
-        arrowPaint.color = color
+        arrowPaint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
         arrowPaint.alpha = alpha
 
-        val halfW = size * 0.3f
-        val halfH = size * 0.4f
+        val left = cx - w / 2f
+        val top = cy - h / 2f
+        val right = cx + w / 2f
+        val bottom = cy + h / 2f
 
-        val path = Path()
-        if (isLeft) {
-            // 左箭头 ◀
-            path.moveTo(cx - halfW, cy)                    // 尖端
-            path.lineTo(cx, cy - halfH)                    // 上
-            path.lineTo(cx, cy - halfH * 0.4f)             // 上内
-            path.lineTo(cx + halfW, cy - halfH * 0.4f)     // 右上
-            path.lineTo(cx + halfW, cy + halfH * 0.4f)     // 右下
-            path.lineTo(cx, cy + halfH * 0.4f)             // 下内
-            path.lineTo(cx, cy + halfH)                    // 下
-            path.close()
-        } else {
-            // 右箭头 ▶
-            path.moveTo(cx + halfW, cy)                    // 尖端
-            path.lineTo(cx, cy - halfH)                    // 上
-            path.lineTo(cx, cy - halfH * 0.4f)             // 上内
-            path.lineTo(cx - halfW, cy - halfH * 0.4f)     // 左上
-            path.lineTo(cx - halfW, cy + halfH * 0.4f)     // 左下
-            path.lineTo(cx, cy + halfH * 0.4f)             // 下内
-            path.lineTo(cx, cy + halfH)                    // 下
-            path.close()
-        }
-
-        canvas.drawPath(path, arrowPaint)
-
-        // 描边
-        if (active) {
-            strokePaint.color = color
-            strokePaint.alpha = alpha
-            canvas.drawPath(path, strokePaint)
-        }
+        canvas.drawBitmap(bmp, null, android.graphics.RectF(left, top, right, bottom), arrowPaint)
     }
 
     override fun onDetachedFromWindow() {

@@ -25,6 +25,7 @@ import javax.inject.Inject
  * @property themeMode 主题模式:"dark"(深色) / "light"(浅色) / "system"(跟随系统)
  * @property batteryModel 车型代码(如 "model_3_long_range"),空字符串表示未设置
  * @property isPaired BLE 是否已配对
+ * @property dashBackground 仪表背景代码(如 "stealth"/"ocean"),默认 "default"
  * @property isLoaded 是否已从 DataStore 加载真实数据 (initialValue 为 false)
  */
 data class SettingsUiState(
@@ -32,6 +33,7 @@ data class SettingsUiState(
     val themeMode: String = SettingsRepository.DEFAULT_THEME_MODE,
     val batteryModel: String = "",
     val isPaired: Boolean = false,
+    val dashBackground: String = SettingsRepository.DEFAULT_DASH_BACKGROUND,
     val isLoaded: Boolean = false,
 )
 
@@ -85,12 +87,14 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.vinFlow,
         settingsRepository.themeModeFlow,
         settingsRepository.batteryModelFlow,
+        settingsRepository.dashBackgroundFlow,
         _isPaired,
-    ) { vin, themeMode, batteryModel, isPaired ->
+    ) { vin, themeMode, batteryModel, dashBackground, isPaired ->
         SettingsUiState(
             vin = vin,
             themeMode = themeMode,
             batteryModel = batteryModel,
+            dashBackground = dashBackground,
             isPaired = isPaired,
             isLoaded = true,
         )
@@ -169,6 +173,17 @@ class SettingsViewModel @Inject constructor(
     fun saveBatteryModel(batteryModel: String) {
         saveScope.launch {
             settingsRepository.saveBatteryModel(batteryModel)
+        }
+    }
+
+    /**
+     * 保存仪表背景
+     *
+     * @param background 背景代码 ("default"/"stealth"/"ocean"/"nebula"/"crimson"/"wine")
+     */
+    fun saveDashBackground(background: String) {
+        saveScope.launch {
+            settingsRepository.saveDashBackground(background)
         }
     }
 

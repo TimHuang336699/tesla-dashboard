@@ -23,6 +23,7 @@ import com.tesla.dashboard.data.model.VehicleData
 import com.tesla.dashboard.databinding.ActivityDashboardBinding
 import com.tesla.dashboard.ui.history.HistoryActivity
 import com.tesla.dashboard.ui.settings.SettingsActivity
+import com.tesla.dashboard.util.BackgroundManager
 import com.tesla.dashboard.util.ThemeColors
 import com.tesla.dashboard.util.ThemeManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -71,6 +72,10 @@ class DashboardActivity : AppCompatActivity() {
     /** 主题管理器,由 Hilt 自动注入 */
     @Inject
     lateinit var themeManager: ThemeManager
+
+    /** 仪表背景管理器,由 Hilt 自动注入 */
+    @Inject
+    lateinit var backgroundManager: BackgroundManager
 
     /** 当前主题颜色(由 colors 流更新,供 updateUI 在数据变化时复用) */
     private var currentColors: ThemeColors = ThemeColors.Dark
@@ -189,6 +194,13 @@ class DashboardActivity : AppCompatActivity() {
                         applyThemeColors(colors)
                     }
                 }
+
+                // 收集仪表背景 — 实时切换背景图(无需重建 Activity)
+                launch {
+                    backgroundManager.backgroundRes.collect { resId ->
+                        binding.root.setBackgroundResource(resId)
+                    }
+                }
             }
         }
     }
@@ -236,11 +248,14 @@ class DashboardActivity : AppCompatActivity() {
         binding.historyButton.setTextColor(c.accentBlue)
         binding.settingsButton.backgroundTintList = ColorStateList.valueOf(c.textSecondary)
 
-        // ===== 速度数字显示配色 (左列, 原 AP 位置) =====
-        binding.speedDisplay.setThemeColors(
-            text = c.textPrimary,
-            unit = c.textSecondary,
-            ready = c.accentGreen,
+        // ===== 圆形仪表盘配色 (左列, Dash 风格) =====
+        binding.gaugeView.setThemeColors(
+            pointer = c.speedometerProgress,
+            bg = c.speedometerBg,
+            tick = c.speedometerTick,
+            tickText = c.speedometerTickText,
+            speedText = c.speedometerText,
+            unit = c.speedometerUnit,
         )
 
         // ===== 车辆剪影配色 (从主题色派生) =====
@@ -252,6 +267,12 @@ class DashboardActivity : AppCompatActivity() {
         )
         // 门/舱未关时的警告红色
         binding.carSilhouette.setWarningColor(c.accentRed)
+
+        // ===== 转向灯配色 (Dash 绿箭头) — 已隐藏显示, 代码保留 =====
+        binding.turnSignals.setColors(
+            active = c.accentGreen,
+            inactive = c.divider,
+        )
 
         // ===== 竖向仪表配色 =====
         binding.verticalGauge.setTrackColor(c.divider)
@@ -279,9 +300,8 @@ class DashboardActivity : AppCompatActivity() {
         // 档位(P/R/N/D),Tesla BLE 未连接时显示 "--"
         binding.gearText.text = data.gear ?: "--"
 
-        // ===== 中部 - 速度数字显示 (位于左列, 原 AP 状态位置) =====
-        binding.speedDisplay.setSpeed(data.speed)
-        binding.speedDisplay.isReady = data.isTeslaConnected
+        // ===== 中部 - 圆形仪表盘速度 (左列) =====
+        binding.gaugeView.setSpeed(data.speed)
 
         // ===== 中部 - 车辆剪影门/舱状态 =====
         binding.carSilhouette.setClosureState(
