@@ -56,9 +56,6 @@ class SettingsRepository @Inject constructor(
     /** 车型代码,用于查询电池容量(如 "model_3_long_range") */
     private val BATTERY_MODEL = stringPreferencesKey("battery_model")
 
-    /** 仪表背景: "default"(默认氛围) / "stealth"(黑武士) / "ocean"(深蓝) / "nebula"(深紫) / "crimson"(深红) / "wine"(酒红) */
-    private val DASH_BACKGROUND = stringPreferencesKey("dash_background")
-
     // ===== VIN =====
 
     /**
@@ -125,33 +122,8 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    // ===== Dashboard Background =====
-
-    /**
-     * 观察仪表背景设置流
-     *
-     * @return 背景代码 Flow,未设置时发射默认值 "default"
-     */
-    val dashBackgroundFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
-        prefs[DASH_BACKGROUND] ?: DEFAULT_DASH_BACKGROUND
-    }
-
-    /**
-     * 保存仪表背景
-     *
-     * @param background 背景代码 ("default"/"stealth"/"ocean"/"nebula"/"crimson"/"wine")
-     */
-    suspend fun saveDashBackground(background: String) {
-        context.settingsDataStore.edit { prefs ->
-            prefs[DASH_BACKGROUND] = background
-        }
-    }
-
     companion object {
         /** 默认主题模式:跟随系统 */
         const val DEFAULT_THEME_MODE = "system"
-
-        /** 默认仪表背景:默认氛围 */
-        const val DEFAULT_DASH_BACKGROUND = "default"
     }
 }

@@ -32,7 +32,7 @@
     android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_dashboard_atmosphere"
+    android:background="@color/background_dark"
     android:paddingStart="32dp"
     android:paddingEnd="32dp"
     android:paddingTop="16dp"
@@ -127,17 +127,18 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- ================================================================ -->
-    <!-- ===== 左列: Dash 风格圆形仪表盘 (GaugeView) ===== -->
+    <!-- ===== 左列: 大数字码表 (SpeedDisplayView) ===== -->
     <!-- ================================================================ -->
-    <com.tesla.dashboard.ui.dashboard.GaugeView
-        android:id="@+id/gaugeView"
+    <com.tesla.dashboard.ui.dashboard.SpeedDisplayView
+        android:id="@+id/speedDisplay"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
-        app:maxSpeed="240"
-        app:currentSpeed="0"
+        app:sdvMaxSpeed="240"
+        app:sdvSpeed="0"
+        app:sdvUnit="km/h"
         app:layout_constraintTop_toBottomOf="@id/topDivider"
         app:layout_constraintBottom_toTopOf="@id/bottomBar"
         app:layout_constraintStart_toStartOf="parent"

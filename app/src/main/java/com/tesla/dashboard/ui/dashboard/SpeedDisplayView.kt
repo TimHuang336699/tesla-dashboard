@@ -10,22 +10,26 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import com.tesla.dashboard.R
+import kotlin.math.abs
 
 /**
- * 速度数字显示 View — 居中大号数字 + 单位 + READY 状态
+ * 速度数字码表 View — 超大数字 + 单位 + READY 状态
  *
- * 从 [SpeedometerView] 中分离文字绘制职责,专注数字排版和动画。
- * 设计为叠加在 SpeedometerView 弧线中心使用。
- *
- * ## 设计规格
- * - 速度数字: sans-serif-thin, textSize = radius * 0.812
- * - 单位文字: sans-serif, textSize = radius * 0.196
- * - READY 状态: sans-serif-medium, textSize = radius * 0.133
- * - 速度变化动画: 300ms, DecelerateInterpolator
+ * 赛车风格大数字码表:
+ * - 速度数字: Pump 仪表字体 (经典汽车仪表数字), 超大号
+ * - 单位文字: km/h, 数字下方
+ * - READY 状态: 绿色高亮, 数字上方
+ * - 速度变化动画: 300ms, DecelerateInterpolator (数字平滑滚动)
  * - 颜色过渡动画: 300ms, ArgbEvaluator
+ *
+ * ## 排版
+ * READY (顶部, 小)
+ *  88     (中部, 超大数字)
+ * km/h   (底部, 小)
  *
  * @param context 上下文
  * @param attrs XML 属性集
+ * @param defStyleAttr 默认样式
  */
 class SpeedDisplayView @JvmOverloads constructor(
     context: Context,
@@ -33,10 +37,9 @@ class SpeedDisplayView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
 
-    /** 速度数字画笔 (加粗显示) */
+    /** 速度数字画笔 (Pump 仪表字体) */
     private val speedTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
     }
 
     /** 单位画笔 */
@@ -96,6 +99,16 @@ class SpeedDisplayView @JvmOverloads constructor(
             displaySpeed = targetSpeed
             unitText = getString(R.styleable.SpeedDisplayView_sdvUnit) ?: "km/h"
             recycle()
+        }
+        // 速度数字使用 Pump 仪表字体 (回退 sans-serif-medium)
+        speedTextPaint.typeface = loadGaugeTypeface()
+    }
+
+    private fun loadGaugeTypeface(): Typeface {
+        return try {
+            Typeface.createFromAsset(context.assets, "fonts/pump_std_demi_bold.otf")
+        } catch (_: Exception) {
+            Typeface.create("sans-serif-medium", Typeface.BOLD)
         }
     }
 
@@ -165,49 +178,45 @@ class SpeedDisplayView @JvmOverloads constructor(
         super.onDraw(canvas)
 
         val cx = width / 2f
-        // 居中点: 与原 SpeedometerView 保持 cy = height * 0.55 偏移 (半圆弧中心)
-        // 保持该偏移可让从叠加模式迁移到独立 View 时视觉一致 — 数字偏上约 5%
-        val cy = height * 0.55f
+        val cy = height / 2f
 
-        // 半径计算: 高度受限时取高度, 宽度受限时取宽度
-        // 注意: 居中数字 + 单位 + READY 三行, 整体高度 ≈ radius * 0.7
-        // 半径取宽高中较小者的一半再缩 0.9 留出内边距
         val density = resources.displayMetrics.density
-        val maxRadiusByHeight = (cy - 6f * density).coerceAtLeast(40f * density)
-        val maxRadiusByWidth = (width / 2f - 8f * density).coerceAtLeast(40f * density)
-        val radius = minOf(maxRadiusByHeight, maxRadiusByWidth)
 
-        // 速度数字 (加粗, 基于半径而非高度, 确保不会大于圆环)
-        speedTextPaint.color = currentSpeedTextColor
-        speedTextPaint.textSize = radius * SPEED_TEXT_SCALE
-        val speedStr = displaySpeed.toInt().toString()
-
-        // 三位数宽度保护: 数字过宽时按宽度等比缩小字号, 防止裁剪
-        val maxTextWidth = width - 8f * density
-        val measured = speedTextPaint.measureText(speedStr)
-        if (measured > maxTextWidth) {
-            speedTextPaint.textSize *= maxTextWidth / measured
-        }
-        val speedMetrics = speedTextPaint.fontMetrics
-
-        val speedY = cy - (speedMetrics.ascent + speedMetrics.descent) / 2f - radius * 0.05f
-        canvas.drawText(speedStr, cx, speedY, speedTextPaint)
-
-        // 单位 (行距基于 fontMetrics 度量计算, 字号放大后仍不重叠)
-        unitTextPaint.color = currentUnitTextColor
-        unitTextPaint.textSize = radius * UNIT_TEXT_SCALE
-        val unitMetrics = unitTextPaint.fontMetrics
-        val unitY = speedY + (speedMetrics.descent - unitMetrics.ascent) + radius * 0.02f
-        canvas.drawText(unitText, cx, unitY, unitTextPaint)
-
-        // READY 状态
+        // ===== 1. READY 状态 (顶部) =====
         if (isReady) {
             readyTextPaint.color = currentReadyColor
-            readyTextPaint.textSize = radius * READY_TEXT_SCALE
-            val readyMetrics = readyTextPaint.fontMetrics
-            val readyY = unitY + (unitMetrics.descent - readyMetrics.ascent) + radius * 0.015f
+            readyTextPaint.textSize = 16f * density
+            val readyY = cy - 40f * density
             canvas.drawText("READY", cx, readyY, readyTextPaint)
         }
+
+        // ===== 2. 超大速度数字 (中部, 核心) =====
+        speedTextPaint.color = currentSpeedTextColor
+        val speedStr = displaySpeed.toInt().toString()
+
+        // 字号自适应: 高度受限时以高度为基准, 并确保数字撑满宽度
+        val maxHeight = height * 0.62f
+        var textSize = maxHeight
+        speedTextPaint.textSize = textSize
+
+        // 三位数宽度保护: 数字过宽时按宽度等比缩小字号
+        val maxTextWidth = width - 12f * density
+        val measured = speedTextPaint.measureText(speedStr)
+        if (measured > maxTextWidth) {
+            textSize *= maxTextWidth / measured
+            speedTextPaint.textSize = textSize
+        }
+
+        val speedMetrics = speedTextPaint.fontMetrics
+        val textY = cy - (speedMetrics.ascent + speedMetrics.descent) / 2f + 10f * density
+        canvas.drawText(speedStr, cx, textY, speedTextPaint)
+
+        // ===== 3. 单位 (底部) =====
+        unitTextPaint.color = currentUnitTextColor
+        unitTextPaint.textSize = 20f * density
+        val unitMetrics = unitTextPaint.fontMetrics
+        val unitY = textY + (speedMetrics.descent - unitMetrics.ascent) + 24f * density
+        canvas.drawText(unitText, cx, unitY, unitTextPaint)
     }
 
     override fun onDetachedFromWindow() {
@@ -219,14 +228,5 @@ class SpeedDisplayView @JvmOverloads constructor(
     companion object {
         private const val SPEED_ANIM_DURATION = 300L
         private const val COLOR_ANIM_DURATION = 300L
-
-        /** 速度数字字号系数 (× radius) */
-        private const val SPEED_TEXT_SCALE = 0.812f
-
-        /** 单位字号系数 (× radius) */
-        private const val UNIT_TEXT_SCALE = 0.196f
-
-        /** READY 字号系数 (× radius) */
-        private const val READY_TEXT_SCALE = 0.133f
     }
 }

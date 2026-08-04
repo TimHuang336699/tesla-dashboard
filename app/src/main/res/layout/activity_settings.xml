@@ -320,46 +320,6 @@
 
                         </com.google.android.material.textfield.TextInputLayout>
 
-                        <!-- 仪表背景选择标签 -->
-                        <TextView
-                            android:id="@+id/tvBackgroundLabel"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:layout_marginBottom="8dp"
-                            android:fontFamily="sans-serif-medium"
-                            android:letterSpacing="0.05"
-                            android:text="@string/settings_background"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="12sp" />
-
-                        <!-- 仪表背景选择下拉菜单 -->
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/tilBackground"
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="@string/settings_background"
-                            app:boxCornerRadiusBottomEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:boxStrokeColor="@color/accent_cyan"
-                            app:endIconTint="@color/text_secondary">
-
-                            <AutoCompleteTextView
-                                android:id="@+id/actvBackground"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:inputType="none"
-                                android:paddingStart="12dp"
-                                android:paddingEnd="8dp"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                        </com.google.android.material.textfield.TextInputLayout>
-
                     </LinearLayout>
 
                 </com.google.android.material.card.MaterialCardView>
