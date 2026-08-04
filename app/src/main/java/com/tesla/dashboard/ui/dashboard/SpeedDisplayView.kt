@@ -97,7 +97,8 @@ class SpeedDisplayView @JvmOverloads constructor(
             maxSpeed = getInt(R.styleable.SpeedDisplayView_sdvMaxSpeed, 240).toFloat()
             targetSpeed = getFloat(R.styleable.SpeedDisplayView_sdvSpeed, 0f)
             displaySpeed = targetSpeed
-            unitText = getString(R.styleable.SpeedDisplayView_sdvUnit) ?: "km/h"
+            unitText = getString(R.styleable.SpeedDisplayView_sdvUnit)
+                ?: context.getString(R.string.unit_kmh)
             recycle()
         }
         // 速度数字使用 Pump 仪表字体 (回退 sans-serif-medium)
@@ -187,7 +188,7 @@ class SpeedDisplayView @JvmOverloads constructor(
             readyTextPaint.color = currentReadyColor
             readyTextPaint.textSize = 16f * density
             val readyY = cy - 40f * density
-            canvas.drawText("READY", cx, readyY, readyTextPaint)
+            canvas.drawText(context.getString(R.string.ready_label), cx, readyY, readyTextPaint)
         }
 
         // ===== 2. 超大速度数字 (中部, 核心) =====
@@ -195,8 +196,10 @@ class SpeedDisplayView @JvmOverloads constructor(
         val speedStr = displaySpeed.toInt().toString()
 
         // 字号自适应: 高度受限时以高度为基准, 并确保数字撑满宽度
-        val maxHeight = height * 0.62f
-        var textSize = maxHeight
+        // 预留底部单位空间 (单位 + 边距), 防止数字过大挤压单位导致显示不全
+        val unitHeight = 20f * density + 20f * density
+        val maxTextHeight = height - unitHeight - 16f * density
+        var textSize = maxTextHeight * 0.62f
         speedTextPaint.textSize = textSize
 
         // 三位数宽度保护: 数字过宽时按宽度等比缩小字号
@@ -208,14 +211,15 @@ class SpeedDisplayView @JvmOverloads constructor(
         }
 
         val speedMetrics = speedTextPaint.fontMetrics
-        val textY = cy - (speedMetrics.ascent + speedMetrics.descent) / 2f + 10f * density
+        val textY = cy - (speedMetrics.ascent + speedMetrics.descent) / 2f + 4f * density
         canvas.drawText(speedStr, cx, textY, speedTextPaint)
 
-        // ===== 3. 单位 (底部) =====
+        // ===== 3. 单位 (底部, 固定底部对齐, 始终完整显示) =====
         unitTextPaint.color = currentUnitTextColor
         unitTextPaint.textSize = 20f * density
         val unitMetrics = unitTextPaint.fontMetrics
-        val unitY = textY + (speedMetrics.descent - unitMetrics.ascent) + 24f * density
+        // 单位基线: 距离 View 底部固定 12dp, 确保不越界裁剪
+        val unitY = height - 12f * density - (unitMetrics.descent - unitMetrics.ascent) / 2f
         canvas.drawText(unitText, cx, unitY, unitTextPaint)
     }
 

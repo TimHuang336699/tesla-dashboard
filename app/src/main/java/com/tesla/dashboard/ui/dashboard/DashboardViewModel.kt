@@ -2,8 +2,10 @@ package com.tesla.dashboard.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tesla.dashboard.data.local.SettingsRepository
 import com.tesla.dashboard.data.model.VehicleData
 import com.tesla.dashboard.data.repository.VehicleDataRepository
+import com.tesla.dashboard.util.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -11,47 +13,63 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * Dashboard UI 状态数据类
+ *
+ * @property vehicleData 车辆实时数据 (内部统一公制)
+ * @property unitSystem 当前单位系统 (公制/英制, 由设置驱动)
+ */
+data class DashboardUiState(
+    val vehicleData: VehicleData = VehicleData(),
+    val unitSystem: UnitSystem = UnitSystem.METRIC,
+)
+
+/**
  * Dashboard ViewModel
  *
  * 作为 UI 层与数据层之间的桥梁,负责:
- * 1. 暴露车辆实时数据流 [vehicleData] 供 UI 观察更新
+ * 1. 暴露车辆实时数据流 [uiState] 供 UI 观察更新 (合并单位系统)
  * 2. 首次订阅时延迟 200ms 自动启动 Tesla BLE 唯一数据源 (避免与 UI 首帧渲染竞争)
  *
- * ## 依赖注入
- * 通过 Hilt @HiltViewModel + @Inject constructor 自动注入:
- * - [VehicleDataRepository]: 车辆实时数据仓库(BLE 唯一数据源)
- *
- * ## StateFlow 设计
- * [vehicleData]: 将 Repository 的 Flow 转换为 StateFlow,使用 WhileSubscribed(5000)
- * 策略,在 UI 不可见 5 秒后停止上游收集,节省电量。
- *
- * ## 数据来源
- * 所有车辆数据(车速/加速度/海拔/行程里程/瞬时电耗/电池/温度/档位)
- * 均通过 BLE 蓝牙直连从车辆获取，不依赖手机本地 GNSS/传感器。
- *
  * @param vehicleDataRepository 车辆数据仓库
+ * @param settingsRepository 设置持久化仓库 (单位系统)
  */
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val vehicleDataRepository: VehicleDataRepository,
+    settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     /**
-     * 车辆实时数据流
+     * 车辆实时数据 + 单位系统合并流
      *
-     * 从 [VehicleDataRepository.observeVehicleData] 获取合并后的 Flow,
-     * 转换为 StateFlow 供 UI 层安全观察。
-     *
-     * - [SharingStarted.WhileSubscribed(5000)]: 当有订阅者时开始收集,
-     *   最后一个订阅者取消后延迟 5 秒停止,避免配置变更时频繁重启数据流
-     * - [VehicleData()]: 初始值使用默认空数据,UI 首次渲染时显示占位符
+     * 单位切换时 (DataStore 变化) 重新发射, UI 层实时换算刷新, 无需重建 Activity。
      */
-    val vehicleData: StateFlow<VehicleData> = vehicleDataRepository.observeVehicleData()
+    val uiState: StateFlow<DashboardUiState> = combine(
+        vehicleDataRepository.observeVehicleData(),
+        settingsRepository.unitSystemFlow,
+    ) { data, unitCode ->
+        DashboardUiState(
+            vehicleData = data,
+            unitSystem = UnitSystem.fromCode(unitCode),
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000L),
+        initialValue = DashboardUiState(),
+    )
+
+    /**
+     * 车辆实时数据流 (兼容旧接口, 由 [uiState] 派生)
+     */
+    val vehicleData: StateFlow<VehicleData> = uiState
+        .map { it.vehicleData }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),

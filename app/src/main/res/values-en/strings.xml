@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== App ===== -->
+    <string name="app_name">Tesla Dashboard</string>
+
+    <!-- ===== Dashboard Title Bar ===== -->
+    <string name="title_dashboard">TESLA DASHBOARD</string>
+
+    <!-- ===== Labels ===== -->
+    <string name="label_battery">BATTERY</string>
+    <string name="label_range">RANGE</string>
+    <string name="label_temperature">TEMPERATURE</string>
+    <string name="label_trip">TRIP</string>
+    <string name="label_odometer">ODO</string>
+    <string name="label_gforce">G-FORCE</string>
+    <string name="label_latitude">LAT</string>
+    <string name="label_longitude">LON</string>
+    <string name="label_heading">HDG</string>
+
+    <!-- ===== Units ===== -->
+    <string name="unit_kmh">km/h</string>
+    <string name="unit_km">km</string>
+    <string name="unit_degree">°</string>
+    <string name="unit_mph">mph</string>
+    <string name="unit_mi">mi</string>
+    <string name="unit_celsius">°C</string>
+    <string name="unit_fahrenheit">°F</string>
+
+    <!-- ===== Buttons ===== -->
+    <string name="btn_start">START</string>
+    <string name="btn_stop">STOP</string>
+    <string name="btn_history">HISTORY</string>
+
+    <!-- ===== Status Text ===== -->
+    <string name="tesla_connected">Tesla: Connected</string>
+    <string name="tesla_disconnected">Tesla: Disconnected</string>
+    <string name="gps_locked">GPS: Locked</string>
+    <string name="gps_searching">GPS: Searching</string>
+
+    <!-- ===== Default Placeholder ===== -->
+    <string name="default_value">--</string>
+
+    <!-- ===== Common ===== -->
+    <string name="back_arrow">←</string>
+    <string name="dashboard_history_btn">History</string>
+    <string name="ready_label">READY</string>
+
+    <!-- ===== History Page ===== -->
+    <string name="title_history">Trip History</string>
+    <string name="label_date">DATE</string>
+    <string name="label_distance">DISTANCE</string>
+    <string name="label_duration">DURATION</string>
+    <string name="label_avg_speed">AVG SPEED</string>
+    <string name="no_trips">No trips recorded yet</string>
+
+    <!-- ===== Notifications ===== -->
+    <string name="notification_channel_name">Trip Recording</string>
+    <string name="notification_channel_desc">Ongoing notification while recording a trip</string>
+    <string name="notification_title">Tesla Dashboard</string>
+    <string name="notification_text">Recording trip…</string>
+
+    <!-- ===== Settings Page ===== -->
+    <string name="title_settings">Settings</string>
+    <string name="settings_tesla_ble">Tesla Bluetooth</string>
+    <string name="settings_vin">VIN</string>
+    <string name="settings_pair_vehicle">Pair Vehicle</string>
+    <string name="settings_unpair_vehicle">Unpair Vehicle</string>
+    <string name="settings_test_connection">Test Connection</string>
+    <string name="settings_pairing_status">Pairing Status</string>
+    <string name="settings_indicators">Status Indicators</string>
+    <string name="settings_paired">Paired</string>
+    <string name="settings_not_paired">Not paired</string>
+    <string name="settings_pairing_in_progress">Pairing…</string>
+    <string name="settings_vehicle">Vehicle Info</string>
+    <string name="settings_battery_model">Battery Model</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_tesla_blue">Tesla Blue</string>
+    <string name="settings_theme_forest_green">Forest Green</string>
+    <string name="settings_theme_ember_orange">Ember Orange</string>
+    <string name="settings_theme_midnight_purple">Midnight Purple</string>
+    <string name="settings_connection_success">BLE connected</string>
+    <string name="settings_connection_failed">BLE connection failed</string>
+    <string name="settings_pairing_success">Pairing successful</string>
+    <string name="settings_pairing_failed">Pairing failed</string>
+    <string name="settings_pairing_nfc_prompt">Tap your NFC card on the vehicle to confirm pairing</string>
+    <string name="settings_version_format">Tesla Dashboard v%1$s</string>
+    <string name="settings_bluetooth_disabled">Please enable Bluetooth first</string>
+    <string name="settings_ble_permissions_needed">Bluetooth permission is required, please grant it and retry</string>
+    <string name="settings_vin_masked_hint">Paired vehicle (last digits hidden)</string>
+
+    <!-- ===== Settings List / Sub-pages (Android-style) ===== -->
+    <string name="settings_ble_vehicle">Bluetooth &amp; Vehicle</string>
+    <string name="settings_display_appearance">Display &amp; Appearance</string>
+    <string name="settings_unit">Units</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_about">About</string>
+    <string name="settings_unit_system">Unit System</string>
+    <string name="settings_unit_metric">Metric (km/h, km, °C)</string>
+    <string name="settings_unit_imperial">Imperial (mph, mi, °F)</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_language_zh">中文</string>
+    <string name="settings_language_en">English</string>
+    <string name="about_description">Tesla BLE direct-connection dashboard. Securely connects to your vehicle over Bluetooth to display live speed, battery, temperature and trip data.</string>
+
+    <!-- ===== Theme Options (display names, dropdown) ===== -->
+    <string name="theme_option_tesla_blue_dark">Tesla Blue (Dark)</string>
+    <string name="theme_option_tesla_blue_light">Tesla Blue (Light)</string>
+    <string name="theme_option_forest_green_dark">Forest Green (Dark)</string>
+    <string name="theme_option_forest_green_light">Forest Green (Light)</string>
+    <string name="theme_option_ember_orange_dark">Ember Orange (Dark)</string>
+    <string name="theme_option_ember_orange_light">Ember Orange (Light)</string>
+    <string name="theme_option_midnight_purple_dark">Midnight Purple (Dark)</string>
+    <string name="theme_option_midnight_purple_light">Midnight Purple (Light)</string>
+
+    <!-- ===== Battery Model Options (display names, dropdown) ===== -->
+    <string name="battery_model_s_60">Model S 60 kWh (Nosecone)</string>
+    <string name="battery_model_s_75">Model S 75 kWh (Nosecone/Facelift)</string>
+    <string name="battery_model_s_85">Model S 85 kWh (Nosecone)</string>
+    <string name="battery_model_s_90">Model S 90 kWh (Nosecone)</string>
+    <string name="battery_model_s_100">Model S 100 kWh (Facelift/Raven)</string>
+    <string name="battery_model_s_plaid">Model S Plaid (100 kWh Palladium)</string>
+    <string name="battery_model_3_standard">Model 3 Standard (60 kWh LFP)</string>
+    <string name="battery_model_3_standard_nmc">Model 3 Standard (75 kWh NMC)</string>
+    <string name="battery_model_3_long_range">Model 3 Long Range (78 kWh)</string>
+    <string name="battery_model_3_performance">Model 3 Performance (78 kWh Legacy)</string>
+    <string name="battery_model_3_performance_highland">Model 3 Performance (82 kWh Highland)</string>
+    <string name="battery_model_x_75">Model X 75 kWh (Original)</string>
+    <string name="battery_model_x_90">Model X 90 kWh (Original)</string>
+    <string name="battery_model_x_100">Model X 100 kWh (Original/Raven)</string>
+    <string name="battery_model_x_plaid">Model X Plaid (100 kWh Palladium)</string>
+    <string name="battery_model_y_standard">Model Y Standard (60 kWh LFP)</string>
+    <string name="battery_model_y_standard_nmc">Model Y Standard (75 kWh NMC)</string>
+    <string name="battery_model_y_long_range">Model Y Long Range (78 kWh Legacy)</string>
+    <string name="battery_model_y_long_range_juniper">Model Y Long Range (81 kWh Juniper)</string>
+    <string name="battery_model_y_performance">Model Y Performance (78 kWh)</string>
+    <string name="battery_model_cybertruck_dual">Cybertruck Dual Motor (123 kWh)</string>
+    <string name="battery_model_cybertruck_tri">Cybertruck Tri Motor (123 kWh)</string>
+
+    <!-- ===== Pairing Flow ===== -->
+    <string name="pairing_back">Back</string>
+    <string name="pairing_step_format">Step %1$d/%2$d</string>
+    <string name="pairing_vin_title">Enter Vehicle VIN</string>
+    <string name="pairing_vin_subtitle">Enter the 17-character VIN to start pairing</string>
+    <string name="pairing_vin_hint">5YJSA1E47HF000000</string>
+    <string name="pairing_vehicle_info">Vehicle Info</string>
+    <string name="pairing_label_model">Model</string>
+    <string name="pairing_label_generation">Generation</string>
+    <string name="pairing_label_year">Year</string>
+    <string name="pairing_label_battery">Battery</string>
+    <string name="pairing_label_chemistry">Chemistry</string>
+    <string name="pairing_label_drive">Drive</string>
+    <string name="pairing_label_body">Body</string>
+    <string name="pairing_label_factory">Factory</string>
+    <string name="pairing_keygen_title">Generating key...</string>
+    <string name="pairing_keygen_subtitle">Generating ECC key pair and establishing encrypted channel</string>
+    <string name="pairing_nfc_location_desc">NFC tap location</string>
+    <string name="pairing_nfc_card_desc">NFC card</string>
+    <string name="pairing_nfc_title">Tap NFC card to confirm</string>
+    <string name="pairing_success_desc">Pairing successful</string>
+    <string name="pairing_success_subtitle">Vehicle paired successfully. You can now start using the dashboard</string>
+    <string name="pairing_finish">Finish</string>
+    <string name="pairing_prev">Back</string>
+    <string name="pairing_next">Next</string>
+    <string name="pairing_saving_key">Saving key...</string>
+
+    <!-- ===== Pairing Progress (shared by Settings/Pairing pages) ===== -->
+    <string name="pairing_progress_generating">Generating key…</string>
+    <string name="pairing_progress_scanning">Scanning for vehicle…</string>
+    <string name="pairing_progress_connecting">Connecting to vehicle…</string>
+    <string name="pairing_progress_handshaking">Establishing encrypted channel…</string>
+    <string name="pairing_progress_sending">Sending pairing request…</string>
+    <string name="pairing_progress_saving">Saving key…</string>
+    <string name="pairing_progress_failed">Pairing failed: %1$s</string>
+
+    <!-- ===== Errors / Messages ===== -->
+    <string name="error_vin_required">Please enter a VIN</string>
+    <string name="error_vin_length">VIN must be 17 characters</string>
+    <string name="error_vin_invalid">Unable to recognize this VIN. Please verify it is a Tesla vehicle</string>
+    <string name="error_ble_permissions">Bluetooth permission is required, please grant it and retry</string>
+    <string name="success_unpaired">Vehicle unpaired</string>
+
+    <!-- ===== Format Templates ===== -->
+    <string name="format_speed_value">%1$.0f %2$s</string>
+    <string name="format_distance_value">%1$.1f %2$s</string>
+    <string name="format_temperature_value">%1$d°</string>
+    <string name="format_temperature_pair">%1$s / %2$s</string>
+    <string name="format_duration_h_m">%1$dh %2$dm</string>
+    <string name="format_duration_m_s">%1$dm %2$ds</string>
+    <string name="format_duration_s">%1$ds</string>
+
+    <!-- ===== Pairing Step 3 NFC location instructions (by generation) ===== -->
+    <string name="pairing_nfc_instruction_highland">Tap your NFC card above the wireless charging pad on the center console</string>
+    <string name="pairing_nfc_instruction_legacy">Tap your NFC card behind the front center console cup holders</string>
+    <string name="pairing_nfc_instruction_default">Tap your NFC card on the vehicle center console to confirm pairing</string>
+
+</resources>

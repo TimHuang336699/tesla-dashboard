@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    应用支持的语言列表 (Android 13+ 系统设置"应用语言"中可见)
+
+    手动提供 locale config 以配合 resConfigs("zh","en") 裁剪库资源。
+    注意: 系统默认语言 (未指定 locale 的 values/) 始终可用, 无需在此声明。
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="zh" />
+</locale-config>

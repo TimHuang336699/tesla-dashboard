@@ -19,38 +19,38 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * 设置页面 UI 状态数据类
+ * BLE 设置页面 UI 状态数据类
  *
  * @property vin Tesla 车辆识别号,空字符串表示未设置
- * @property themeMode 主题模式:"dark"(深色) / "light"(浅色) / "system"(跟随系统)
  * @property batteryModel 车型代码(如 "model_3_long_range"),空字符串表示未设置
  * @property isPaired BLE 是否已配对
  * @property isLoaded 是否已从 DataStore 加载真实数据 (initialValue 为 false)
  */
-data class SettingsUiState(
+data class BleSettingsUiState(
     val vin: String = "",
-    val themeMode: String = SettingsRepository.DEFAULT_THEME_MODE,
     val batteryModel: String = "",
     val isPaired: Boolean = false,
     val isLoaded: Boolean = false,
 )
 
 /**
- * 设置页面 ViewModel — BLE 蓝牙直连版
+ * BLE 设置页面 ViewModel — 承载蓝牙与车辆设置
  *
- * 作为设置页面 UI 层与数据层之间的桥梁,负责:
- * 1. 暴露 [uiState] StateFlow,合并 VIN/主题/车型/配对状态供 UI 观察并填充表单
- * 2. 提供 save 系列方法,将用户修改持久化到 DataStore
- * 3. 当 VIN 更新时,同步更新 [TeslaBleProvider] 的运行时属性
+ * 从原 [SettingsViewModel] 拆分而来, 负责:
+ * 1. 暴露 [uiState] StateFlow, 合并 VIN/车型/配对状态供 UI 观察并填充表单
+ * 2. 提供 save 系列方法 (VIN/车型) 持久化到 DataStore
+ * 3. 当 VIN 更新时同步更新 [TeslaBleProvider] 的运行时属性
  * 4. 提供 BLE 配对([startPairing])、解绑([unpair])、测试连接([testConnection])方法
  * 5. 暴露 [pairingState] Flow 供 UI 显示配对进度
+ *
+ * 同时被 [com.tesla.dashboard.ui.pairing.PairingActivity] 复用 (配对向导)。
  *
  * @param settingsRepository 设置持久化仓库(DataStore)
  * @param teslaBleProvider Tesla BLE 数据源
  * @param keyManager BLE 密钥管理器
  */
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
+class BleSettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val teslaBleProvider: TeslaBleProvider,
     private val keyManager: TeslaKeyManager,
@@ -62,34 +62,27 @@ class SettingsViewModel @Inject constructor(
     /**
      * 设置保存专用作用域 — 不随 Activity 销毁取消
      *
-     * DataStore 写入通过 [saveVin] / [saveThemeMode] / [saveBatteryModel] 在此作用域执行。
-     * 用户修改设置后可能立即退出设置页, 若用 viewModelScope 则 Activity 销毁时会取消
-     * 正在进行的写入, 导致"退出后设置未保存、再次进入恢复原值"。
-     * 写入任务极短 (<100ms), 独立作用域自然完成后即释放, 无泄漏风险。
+     * DataStore 写入极短 (<100ms), 独立作用域避免"退出后设置未保存"。
      */
     private val saveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
-     * 当前正在运行的配对协程句柄 — 持有此 Job 用于 [cancelPairing] 主动取消,
-     * 防止 PairingActivity 销毁后协程残留导致后续无法再次配对。
+     * 当前正在运行的配对协程句柄 — 持有此 Job 用于 [cancelPairing] 主动取消
      */
-    private var pairingJob: kotlinx.coroutines.Job? = null
+    private var pairingJob: Job? = null
 
     /**
      * 设置页面合并后的 UI 状态流
      *
-     * 合并 VIN/主题/车型/配对状态四个 Flow,
-     * 任一变化时重新发射完整的 [SettingsUiState]。
+     * 合并 VIN/车型/配对状态三个 Flow, 任一变化时重新发射完整的 [BleSettingsUiState]。
      */
-    val uiState: StateFlow<SettingsUiState> = combine(
+    val uiState: StateFlow<BleSettingsUiState> = combine(
         settingsRepository.vinFlow,
-        settingsRepository.themeModeFlow,
         settingsRepository.batteryModelFlow,
         _isPaired,
-    ) { vin, themeMode, batteryModel, isPaired ->
-        SettingsUiState(
+    ) { vin, batteryModel, isPaired ->
+        BleSettingsUiState(
             vin = vin,
-            themeMode = themeMode,
             batteryModel = batteryModel,
             isPaired = isPaired,
             isLoaded = true,
@@ -97,7 +90,7 @@ class SettingsViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000L),
-        initialValue = SettingsUiState(),
+        initialValue = BleSettingsUiState(),
     )
 
     /**
@@ -114,10 +107,6 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * 初始化 — 加载已保存的配对状态并同步 VIN
-     *
-     * - 从 [TeslaKeyManager] 加载已配对 VIN,同步到 [TeslaBleProvider]
-     * - 收集 vinFlow,持续同步 VIN 变更到 [TeslaBleProvider]
-     * - 检查当前配对状态
      */
     init {
         viewModelScope.launch {
@@ -147,17 +136,6 @@ class SettingsViewModel @Inject constructor(
         saveScope.launch {
             settingsRepository.saveVin(vin)
             teslaBleProvider.vin = vin.trim().ifBlank { null }
-        }
-    }
-
-    /**
-     * 保存主题模式
-     *
-     * @param themeMode 主题模式:"dark" / "light" / "system"
-     */
-    fun saveThemeMode(themeMode: String) {
-        saveScope.launch {
-            settingsRepository.saveThemeMode(themeMode)
         }
     }
 
@@ -208,10 +186,6 @@ class SettingsViewModel @Inject constructor(
      * 主动取消当前配对流程
      *
      * 由 PairingActivity.onDestroy() 调用, 解决"配对中途退出会卡死、无法再次进入配对页"问题。
-     *
-     * 流程:
-     * 1. 取消 [pairingJob] (取消 viewModelScope 中正在等待 NFC 响应的协程)
-     * 2. 转发到 [TeslaBleProvider.cancelPairing] (释放 GATT 连接 + 重置状态)
      */
     fun cancelPairing() {
         pairingJob?.takeIf { it.isActive }?.cancel()

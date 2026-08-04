@@ -56,10 +56,18 @@ class SpeedometerView @JvmOverloads constructor(
         }
 
     /** 主刻度间隔 (每 20 km/h 一个数字标签) */
-    private val majorTickInterval: Int = 20
+    var majorTickInterval: Int = 20
+        set(value) {
+            field = value.coerceAtLeast(1)
+            invalidate()
+        }
 
     /** 次刻度间隔 (每 10 km/h 一个小刻度) */
-    private val minorTickInterval: Int = 10
+    var minorTickInterval: Int = 10
+        set(value) {
+            field = value.coerceAtLeast(1)
+            invalidate()
+        }
 
     // ===== 速度状态 =====
 
@@ -487,7 +495,7 @@ class SpeedometerView @JvmOverloads constructor(
         unitTextPaint.textSize = radius * 0.1f
         unitTextPaint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
         val unitY = textY + radius * 0.28f
-        canvas.drawText("km/h", cx, unitY, unitTextPaint)
+        canvas.drawText(context.getString(R.string.unit_kmh), cx, unitY, unitTextPaint)
     }
 
     override fun onDetachedFromWindow() {

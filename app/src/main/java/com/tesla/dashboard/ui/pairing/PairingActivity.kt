@@ -9,32 +9,26 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
-import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.tesla.dashboard.R
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.databinding.ActivityPairingBinding
-import com.tesla.dashboard.ui.settings.SettingsViewModel
+import com.tesla.dashboard.ui.settings.BleSettingsViewModel
+import com.tesla.dashboard.util.BaseImmersiveActivity
 import com.tesla.dashboard.util.NfcLocationType
 import com.tesla.dashboard.util.ThemeColors
-import com.tesla.dashboard.util.ThemeManager
 import com.tesla.dashboard.util.VinDecoder
 import com.tesla.dashboard.util.nfcLocationType
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * BLE 配对向导 Activity — 分步引导用户完成 Tesla 车辆 BLE 配对
@@ -71,7 +65,7 @@ import javax.inject.Inject
  * @see ThemeManager
  */
 @AndroidEntryPoint
-class PairingActivity : AppCompatActivity() {
+class PairingActivity : BaseImmersiveActivity() {
 
     companion object {
         /** Intent extra key: 从 SettingsActivity 传入的车辆 VIN */
@@ -101,11 +95,7 @@ class PairingActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPairingBinding
 
     /** 设置页面 ViewModel,复用其 BLE 配对逻辑 */
-    private val viewModel: SettingsViewModel by viewModels()
-
-    /** 主题管理器,由 Hilt 注入 */
-    @Inject
-    lateinit var themeManager: ThemeManager
+    private val viewModel: BleSettingsViewModel by viewModels()
 
     // ===== 运行时状态 =====
 
@@ -114,11 +104,6 @@ class PairingActivity : AppCompatActivity() {
 
     /** 当前 VIN (用户输入或从 Intent 传入) */
     private var currentVin = ""
-
-    /**
-     * 当前主题颜色快照 (供 updateStepDots 等方法使用)
-     */
-    private var currentColors: ThemeColors = ThemeColors.Dark
 
     /** TextWatcher 递归保护标记 (防止大写转换时无限递归) */
     private var isFormattingVin = false
@@ -146,7 +131,7 @@ class PairingActivity : AppCompatActivity() {
             startPairing()
         } else {
             // 权限被拒绝,提示并回退到 Step 1
-            Toast.makeText(this, "需要蓝牙权限,请授予后重试", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.error_ble_permissions, Toast.LENGTH_SHORT).show()
             goToStep(STEP_VIN_INPUT)
         }
     }
@@ -171,30 +156,27 @@ class PairingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. 全屏沉浸式配置
-        setupImmersiveMode()
-
-        // 2. 初始化 ViewBinding
+        // 1. 初始化 ViewBinding (沉浸式由基类配置)
         binding = ActivityPairingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 3. 设置点击监听
+        // 2. 设置点击监听
         setupClickListeners()
 
-        // 4. 设置 VIN 输入监听 (自动解码)
+        // 3. 设置 VIN 输入监听 (自动解码)
         setupVinInput()
 
-        // 5. 预填充 VIN (从 SettingsActivity 传入)
+        // 4. 预填充 VIN (从 SettingsActivity 传入)
         prefillVinFromIntent()
 
-        // 6. 观察 ViewModel
+        // 5. 观察 ViewModel
         observeViewModel()
 
-        // 7. 应用初始主题颜色
+        // 6. 应用初始主题颜色
         currentColors = themeManager.colors.value
-        applyTheme(currentColors)
+        applyThemeColors(currentColors)
 
-        // 8. 进入 Step 1
+        // 7. 进入 Step 1
         goToStep(STEP_VIN_INPUT)
     }
 
@@ -228,30 +210,6 @@ class PairingActivity : AppCompatActivity() {
         viewModel.cancelPairing()
         // 兜底: 即使协程因异常未捕获没走 cancelPairing 路径, 也停掉涟漪
         binding.nfcRipple.stopRipple()
-    }
-
-    // ================================================================
-    //  沉浸式模式
-    // ================================================================
-
-    /**
-     * 配置全屏沉浸式模式
-     *
-     * 与 DashboardActivity 一同:
-     * - 内容延伸到系统栏区域
-     * - 屏幕常亮
-     * - 隐藏状态栏和导航栏
-     * - 滑动边缘时短暂显示系统栏后自动隐藏
-     */
-    private fun setupImmersiveMode() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
     }
 
     // ================================================================
@@ -303,7 +261,7 @@ class PairingActivity : AppCompatActivity() {
                 // 校验 VIN
                 val vin = binding.etVinInput.text.toString().trim().uppercase()
                 if (vin.length != 17) {
-                    Toast.makeText(this, "VIN 应为 17 位", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, R.string.error_vin_length, Toast.LENGTH_SHORT).show()
                     return
                 }
                 currentVin = vin
@@ -411,7 +369,7 @@ class PairingActivity : AppCompatActivity() {
         } else {
             // 解码失败 — 显示错误提示
             binding.layoutVinInfo.visibility = View.GONE
-            binding.tvVinError.text = "无法识别该 VIN,请确认是否为 Tesla 车辆"
+            binding.tvVinError.text = getString(R.string.error_vin_invalid)
             binding.tvVinError.visibility = View.VISIBLE
             binding.btnNext.isEnabled = false
             // 重置 NFC 位置信息,使用默认插图
@@ -440,15 +398,8 @@ class PairingActivity : AppCompatActivity() {
             }
         }
 
-        // 观察主题颜色 — 实时应用主题
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                themeManager.colors.collect { colors ->
-                    currentColors = colors
-                    applyTheme(colors)
-                }
-            }
-        }
+        // 观察主题颜色 — 实时应用主题 (基类提供)
+        observeThemeColors()
     }
 
     /**
@@ -492,7 +443,7 @@ class PairingActivity : AppCompatActivity() {
                 if (currentStep == STEP_GENERATE_KEY || currentStep == STEP_NFC_CONFIRM) {
                     Toast.makeText(
                         this,
-                        "配对失败: ${state.message}",
+                        getString(R.string.pairing_progress_failed, state.message),
                         Toast.LENGTH_LONG
                     ).show()
                     goToStep(STEP_VIN_INPUT)
@@ -502,7 +453,7 @@ class PairingActivity : AppCompatActivity() {
             is TeslaBleProvider.PairingState.SavingKey -> {
                 // 正在保存密钥 — 如果在 NFC 确认页,更新提示文字
                 if (currentStep == STEP_NFC_CONFIRM) {
-                    binding.tvNfcInstruction.text = "正在保存密钥..."
+                    binding.tvNfcInstruction.text = getString(R.string.pairing_saving_key)
                 }
             }
 
@@ -525,12 +476,17 @@ class PairingActivity : AppCompatActivity() {
      */
     private fun updateKeyGenText(state: TeslaBleProvider.PairingState) {
         val text = when (state) {
-            is TeslaBleProvider.PairingState.GeneratingKey -> "正在生成密钥..."
-            is TeslaBleProvider.PairingState.Scanning -> "正在扫描车辆..."
-            is TeslaBleProvider.PairingState.Connecting -> "正在连接车辆..."
-            is TeslaBleProvider.PairingState.Handshaking -> "正在建立加密通道..."
-            is TeslaBleProvider.PairingState.SendingPairRequest -> "正在发送配对请求..."
-            else -> "正在生成密钥..."
+            is TeslaBleProvider.PairingState.GeneratingKey ->
+                getString(R.string.pairing_progress_generating)
+            is TeslaBleProvider.PairingState.Scanning ->
+                getString(R.string.pairing_progress_scanning)
+            is TeslaBleProvider.PairingState.Connecting ->
+                getString(R.string.pairing_progress_connecting)
+            is TeslaBleProvider.PairingState.Handshaking ->
+                getString(R.string.pairing_progress_handshaking)
+            is TeslaBleProvider.PairingState.SendingPairRequest ->
+                getString(R.string.pairing_progress_sending)
+            else -> getString(R.string.pairing_progress_generating)
         }
         binding.tvKeyGenText.text = text
     }
@@ -632,7 +588,8 @@ class PairingActivity : AppCompatActivity() {
      * 显示格式: "Step 1/4" … "Step 4/4"
      */
     private fun updateStepIndicator() {
-        binding.tvStepIndicator.text = "Step ${currentStep + 1}/$TOTAL_STEPS"
+        binding.tvStepIndicator.text =
+            getString(R.string.pairing_step_format, currentStep + 1, TOTAL_STEPS)
     }
 
     /**
@@ -763,12 +720,13 @@ class PairingActivity : AppCompatActivity() {
     /**
      * 将主题颜色应用到所有视图
      *
-     * 收集 [ThemeManager.colors] 变化时调用,实现无 Activity 重建的实时主题切换。
+     * 收集 [com.tesla.dashboard.util.ThemeManager.colors] 变化时调用,实现无 Activity 重建的实时主题切换。
      * 遍历布局中所有需要着色的视图,逐一设置背景色、文字色、强调色等。
      *
      * @param colors 当前主题颜色集合
      */
-    private fun applyTheme(colors: ThemeColors) {
+    override fun applyThemeColors(colors: ThemeColors) {
+        currentColors = colors
         val density = resources.displayMetrics.density
 
         // --- 根布局背景 ---

@@ -138,7 +138,7 @@
         android:layout_marginEnd="8dp"
         app:sdvMaxSpeed="240"
         app:sdvSpeed="0"
-        app:sdvUnit="km/h"
+        app:sdvUnit="@string/unit_kmh"
         app:layout_constraintTop_toBottomOf="@id/topDivider"
         app:layout_constraintBottom_toTopOf="@id/bottomBar"
         app:layout_constraintStart_toStartOf="parent"
@@ -300,7 +300,7 @@
                 android:minWidth="0dp"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
-                android:text="历史"
+                android:text="@string/dashboard_history_btn"
                 android:textColor="@color/accent_blue"
                 android:textSize="15sp"
                 app:cornerRadius="8dp" />

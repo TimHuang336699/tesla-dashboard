@@ -13,10 +13,13 @@ android {
         applicationId = "com.tesla.dashboard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.2.3"
+        versionCode = 8
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 应用支持的语言(用于 LocaleConfig 生成与库资源裁剪)
+        resConfigs("zh", "en")
     }
 
     buildTypes {

@@ -56,6 +56,12 @@ class SettingsRepository @Inject constructor(
     /** 车型代码,用于查询电池容量(如 "model_3_long_range") */
     private val BATTERY_MODEL = stringPreferencesKey("battery_model")
 
+    /** 应用语言: "system"(跟随系统) / "zh"(中文) / "en"(English) */
+    private val APP_LANGUAGE = stringPreferencesKey("app_language")
+
+    /** 单位系统: "metric"(公制) / "imperial"(英制) */
+    private val UNIT_SYSTEM = stringPreferencesKey("unit_system")
+
     // ===== VIN =====
 
     /**
@@ -100,6 +106,50 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    // ===== App Language =====
+
+    /**
+     * 观察应用语言设置流
+     *
+     * @return 语言代码 Flow("system"/"zh"/"en"),未设置时发射默认值 "system"
+     */
+    val appLanguageFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
+        prefs[APP_LANGUAGE] ?: DEFAULT_LANGUAGE
+    }
+
+    /**
+     * 保存应用语言
+     *
+     * @param language 语言代码:"system"(跟随系统) / "zh"(中文) / "en"(English)
+     */
+    suspend fun saveAppLanguage(language: String) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[APP_LANGUAGE] = language
+        }
+    }
+
+    // ===== Unit System =====
+
+    /**
+     * 观察单位系统设置流
+     *
+     * @return 单位系统代码 Flow("metric"/"imperial"),未设置时发射默认值 "metric"
+     */
+    val unitSystemFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
+        prefs[UNIT_SYSTEM] ?: DEFAULT_UNIT_SYSTEM
+    }
+
+    /**
+     * 保存单位系统
+     *
+     * @param unitSystem 单位系统代码:"metric"(公制) / "imperial"(英制)
+     */
+    suspend fun saveUnitSystem(unitSystem: String) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[UNIT_SYSTEM] = unitSystem
+        }
+    }
+
     // ===== Battery Model =====
 
     /**
@@ -125,5 +175,11 @@ class SettingsRepository @Inject constructor(
     companion object {
         /** 默认主题模式:跟随系统 */
         const val DEFAULT_THEME_MODE = "system"
+
+        /** 默认应用语言:跟随系统 */
+        const val DEFAULT_LANGUAGE = "system"
+
+        /** 默认单位系统:公制 */
+        const val DEFAULT_UNIT_SYSTEM = "metric"
     }
 }

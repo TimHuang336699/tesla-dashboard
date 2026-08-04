@@ -8,13 +8,8 @@ import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -23,11 +18,12 @@ import com.tesla.dashboard.data.model.VehicleData
 import com.tesla.dashboard.databinding.ActivityDashboardBinding
 import com.tesla.dashboard.ui.history.HistoryActivity
 import com.tesla.dashboard.ui.settings.SettingsActivity
+import com.tesla.dashboard.util.BaseImmersiveActivity
 import com.tesla.dashboard.util.ThemeColors
-import com.tesla.dashboard.util.ThemeManager
+import com.tesla.dashboard.util.UnitFormatter
+import com.tesla.dashboard.util.UnitSystem
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Dashboard 主界面 Activity
@@ -60,7 +56,7 @@ import javax.inject.Inject
  * 避免 Activity 不可见时浪费资源。
  */
 @AndroidEntryPoint
-class DashboardActivity : AppCompatActivity() {
+class DashboardActivity : BaseImmersiveActivity() {
 
     /** ViewBinding 实例,在 onCreate 中初始化 */
     private lateinit var binding: ActivityDashboardBinding
@@ -68,15 +64,11 @@ class DashboardActivity : AppCompatActivity() {
     /** Dashboard ViewModel,由 Hilt 自动提供 */
     private val viewModel: DashboardViewModel by viewModels()
 
-    /** 主题管理器,由 Hilt 自动注入 */
-    @Inject
-    lateinit var themeManager: ThemeManager
-
-    /** 当前主题颜色(由 colors 流更新,供 updateUI 在数据变化时复用) */
-    private var currentColors: ThemeColors = ThemeColors.Dark
-
     /** 最近一次 Tesla 连接状态(由 vehicleData 流更新,供主题应用时复用) */
     private var isTeslaConnected: Boolean = false
+
+    /** 当前单位系统(由 uiState 流更新, 供 updateUI 换算) */
+    private var currentUnitSystem: UnitSystem = UnitSystem.METRIC
 
     /** 详情区(detailSection)是否已展开 */
     private var detailExpanded = false
@@ -85,23 +77,19 @@ class DashboardActivity : AppCompatActivity() {
      * Activity 创建入口
      *
      * 执行顺序:
-     * 1. 配置全屏沉浸式窗口
-     * 2. 初始化 ViewBinding
-     * 3. 设置按钮点击/长按监听
-     * 4. 立即应用当前主题颜色(避免初始 XML 回退色闪现)
-     * 5. 开始观察 ViewModel 数据
+     * 1. 初始化 ViewBinding (沉浸式由基类配置)
+     * 2. 设置按钮点击/长按监听
+     * 3. 立即应用当前主题颜色(避免初始 XML 回退色闪现)
+     * 4. 开始观察 ViewModel 数据
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. 全屏沉浸式配置
-        setupImmersiveMode()
-
-        // 2. 初始化 ViewBinding
+        // 1. 初始化 ViewBinding
         binding = ActivityDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 3. 设置按钮
+        // 2. 设置按钮
         setupButtons()
 
         // 4. 立即应用当前主题颜色(StateFlow 当前值),避免初始回退色闪现
@@ -109,35 +97,6 @@ class DashboardActivity : AppCompatActivity() {
 
         // 5. 观察数据
         observeViewModel()
-    }
-
-    /**
-     * 配置全屏沉浸式模式
-     *
-     * - [WindowCompat.setDecorFitsSystemWindows](false): 内容延伸到系统栏区域
-     * - [WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON]: 屏幕常亮(仪表盘场景必需)
-     * - [WindowInsetsControllerCompat.hide]: 隐藏状态栏和导航栏
-     * - [BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE]: 滑动边缘时短暂显示系统栏后自动隐藏
-     * - Layout 在 [android:resizeableActivity]=true + 全面 configChanges 下,
-     *   窗口尺寸变化 (分屏/折叠屏/动态分辨率) 由 ConstraintLayout 自动重排,
-     *   Activity 不会重建, 保持当前车速/主题/连接状态不丢失
-     */
-    private fun setupImmersiveMode() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        // 允许内容延伸到刘海/挖孔区域 (Android P+)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            window.attributes = window.attributes.apply {
-                layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
-        }
-
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
     }
 
     /**
@@ -169,28 +128,25 @@ class DashboardActivity : AppCompatActivity() {
      * 使用 [repeatOnLifecycle] 在 Activity STARTED 时开始收集,
      * 在 STOPPED 时自动取消,避免后台浪费资源。
      *
-     * 仅收集两个流:
-     * - [DashboardViewModel.vehicleData]: 车辆实时数据,更新 UI
-     * - [ThemeManager.colors]: 主题颜色集合,实时刷新全部配色
+     * 收集:
+     * - [DashboardViewModel.uiState]: 车辆数据 + 单位系统,更新仪表盘数值
+     * - 主题颜色 (基类 [BaseImmersiveActivity.observeThemeColors])
      */
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // 收集车辆数据 — 更新仪表盘数值
+                // 收集车辆数据 + 单位系统 — 更新仪表盘数值 (实时换算)
                 launch {
-                    viewModel.vehicleData.collect { data ->
-                        updateUI(data)
-                    }
-                }
-
-                // 收集主题颜色 — 实时应用配色(无需重建 Activity)
-                launch {
-                    themeManager.colors.collect { colors ->
-                        applyThemeColors(colors)
+                    viewModel.uiState.collect { state ->
+                        currentUnitSystem = state.unitSystem
+                        updateUI(state.vehicleData)
                     }
                 }
             }
         }
+
+        // 收集主题颜色 — 实时应用配色(无需重建 Activity, 由基类提供)
+        observeThemeColors()
     }
 
     /**
@@ -207,7 +163,7 @@ class DashboardActivity : AppCompatActivity() {
      *
      * @param c 当前主题颜色集合
      */
-    private fun applyThemeColors(c: ThemeColors) {
+    override fun applyThemeColors(c: ThemeColors) {
         // 缓存当前主题,供 updateUI 在数据变化时复用
         currentColors = c
 
@@ -283,10 +239,14 @@ class DashboardActivity : AppCompatActivity() {
         // ===== 顶部栏 =====
 
         // 档位(P/R/N/D),Tesla BLE 未连接时显示 "--"
-        binding.gearText.text = data.gear ?: "--"
+        binding.gearText.text = data.gear ?: getString(R.string.default_value)
 
-        // ===== 大数字码表速度 (左列) =====
-        binding.speedDisplay.setSpeed(data.speed)
+        // ===== 大数字码表速度 (左列, 按单位系统换算) =====
+        binding.speedDisplay.maxSpeed = UnitFormatter.maxSpeed(currentUnitSystem)
+        binding.speedDisplay.unitText = UnitFormatter.speedUnit(this, currentUnitSystem)
+        binding.speedDisplay.setSpeed(
+            UnitFormatter.speedValue(data.speed, currentUnitSystem),
+        )
         binding.speedDisplay.isReady = data.isTeslaConnected
 
         // ===== 中部 - 车辆剪影门/舱状态 =====
@@ -302,25 +262,43 @@ class DashboardActivity : AppCompatActivity() {
         // ===== 中部右侧 - 竖向电量仪表 =====
         val soc = data.batterySOC ?: 0
         binding.verticalGauge.setValue(soc.toFloat())
-        binding.verticalGauge.setValueText(data.batterySOC?.let { "$it%" } ?: "--")
+        binding.verticalGauge.setValueText(
+            data.batterySOC?.let { "$it%" } ?: getString(R.string.default_value)
+        )
         binding.verticalGauge.setFillColor(getBatteryColor(soc, currentColors))
 
         // ===== 顶部右侧 - 电量/续航 =====
-        binding.socText.text = data.batterySOC?.let { "$it%" } ?: "--"
+        binding.socText.text = data.batterySOC?.let { "$it%" } ?: getString(R.string.default_value)
         binding.batteryBar.progress = data.batterySOC ?: 0
-        binding.rangeText.text = data.batteryRange?.let { "${it.toInt()} km" } ?: "--"
+        binding.rangeText.text = data.batteryRange?.let {
+            getString(
+                R.string.format_speed_value,
+                UnitFormatter.distanceValue(it, currentUnitSystem),
+                UnitFormatter.distanceUnit(this, currentUnitSystem),
+            )
+        } ?: getString(R.string.default_value)
 
         // ===== 详情区 - 温度/总里程(默认隐藏,展开后显示) =====
         binding.tempText.text = formatTemperature(
             data.insideTemp,
             data.outsideTemp,
         )
-        binding.odoText.text = data.odometer?.let { "${it.toInt()} km" } ?: "--"
+        binding.odoText.text = data.odometer?.let {
+            getString(
+                R.string.format_speed_value,
+                UnitFormatter.distanceValue(it, currentUnitSystem),
+                UnitFormatter.distanceUnit(this, currentUnitSystem),
+            )
+        } ?: getString(R.string.default_value)
 
         // ===== 底部 - 里程/G力/位置 =====
 
-        // 本次行程里程
-        binding.tripDistText.text = String.format("%.1f km", data.tripDistance)
+        // 本次行程里程 (按单位系统换算)
+        binding.tripDistText.text = getString(
+            R.string.format_distance_value,
+            UnitFormatter.distanceValue(data.tripDistance, currentUnitSystem),
+            UnitFormatter.distanceUnit(this, currentUnitSystem),
+        )
 
         // G 力值
         binding.gForceText.text = String.format("%.2f G", data.gForce)
@@ -329,19 +307,19 @@ class DashboardActivity : AppCompatActivity() {
         binding.latText.text = if (data.isTeslaConnected) {
             String.format("%.5f", data.latitude)
         } else {
-            "--"
+            getString(R.string.default_value)
         }
         binding.lonText.text = if (data.isTeslaConnected) {
             String.format("%.5f", data.longitude)
         } else {
-            "--"
+            getString(R.string.default_value)
         }
 
         // 航向角
         binding.headingText.text = if (data.isTeslaConnected) {
-            "${data.heading.toInt()}°"
+            getString(R.string.format_temperature_value, data.heading.toInt())
         } else {
-            "--"
+            getString(R.string.default_value)
         }
 
         // ===== Tesla BLE 连接状态 =====
@@ -369,14 +347,25 @@ class DashboardActivity : AppCompatActivity() {
      * @return 格式化后的温度字符串
      */
     private fun formatTemperature(inside: Float?, outside: Float?): String {
-        val insideStr = inside?.let { "${it.toInt()}°" }
-        val outsideStr = outside?.let { "${it.toInt()}°" }
+        val insideStr = inside?.let {
+            getString(
+                R.string.format_temperature_value,
+                UnitFormatter.temperatureValue(it, currentUnitSystem),
+            )
+        }
+        val outsideStr = outside?.let {
+            getString(
+                R.string.format_temperature_value,
+                UnitFormatter.temperatureValue(it, currentUnitSystem),
+            )
+        }
 
         return when {
-            insideStr != null && outsideStr != null -> "$insideStr / $outsideStr"
+            insideStr != null && outsideStr != null ->
+                getString(R.string.format_temperature_pair, insideStr, outsideStr)
             insideStr != null -> insideStr
             outsideStr != null -> outsideStr
-            else -> "--"
+            else -> getString(R.string.default_value)
         }
     }
 

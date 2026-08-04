@@ -45,7 +45,7 @@
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="返回"
+            android:contentDescription="@string/pairing_back"
             android:src="@drawable/ic_arrow_back"
             app:tint="@color/accent_cyan" />
 
@@ -58,7 +58,7 @@
             android:layout_weight="1"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.05"
-            android:text="Step 1/4"
+            android:text=""
             android:textColor="@color/text_primary"
             android:textSize="16sp" />
 
@@ -151,7 +151,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="4dp"
                 android:fontFamily="sans-serif-medium"
-                android:text="输入车辆 VIN"
+                android:text="@string/pairing_vin_title"
                 android:textColor="@color/text_primary"
                 android:textSize="20sp" />
 
@@ -162,7 +162,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:fontFamily="sans-serif-medium"
-                android:text="请输入 17 位车辆识别号以开始配对"
+                android:text="@string/pairing_vin_subtitle"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
@@ -174,7 +174,7 @@
                 android:background="@drawable/bg_vin_input"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:hint="5YJSA1E47HF000000"
+                android:hint="@string/pairing_vin_hint"
                 android:inputType="textCapCharacters"
                 android:maxLength="17"
                 android:paddingStart="16dp"
@@ -214,7 +214,7 @@
                     android:layout_marginBottom="8dp"
                     android:fontFamily="sans-serif-medium"
                     android:letterSpacing="0.1"
-                    android:text="车辆信息"
+                    android:text="@string/pairing_vehicle_info"
                     android:textColor="@color/accent_cyan"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -231,7 +231,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="车型"
+                        android:text="@string/pairing_label_model"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -257,7 +257,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="代际"
+                        android:text="@string/pairing_label_generation"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -283,7 +283,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="年份"
+                        android:text="@string/pairing_label_year"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -309,7 +309,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="电池"
+                        android:text="@string/pairing_label_battery"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -335,7 +335,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="电池化学"
+                        android:text="@string/pairing_label_chemistry"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -361,7 +361,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="驱动"
+                        android:text="@string/pairing_label_drive"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -387,7 +387,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="车身"
+                        android:text="@string/pairing_label_body"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -412,7 +412,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sans-serif-medium"
-                        android:text="工厂"
+                        android:text="@string/pairing_label_factory"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -455,7 +455,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
-                android:text="正在生成密钥..."
+                android:text="@string/pairing_keygen_title"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp" />
 
@@ -466,7 +466,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:fontFamily="sans-serif-medium"
-                android:text="正在生成 ECC 密钥对并建立加密通道"
+                android:text="@string/pairing_keygen_subtitle"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
@@ -490,7 +490,7 @@
                 android:layout_height="160dp"
                 android:layout_marginBottom="8dp"
                 android:adjustViewBounds="true"
-                android:contentDescription="NFC 刷卡位置"
+                android:contentDescription="@string/pairing_nfc_location_desc"
                 android:scaleType="fitCenter"
                 android:src="@drawable/nfc_location_highland" />
 
@@ -515,7 +515,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:layout_gravity="center"
-                    android:contentDescription="NFC 卡片"
+                    android:contentDescription="@string/pairing_nfc_card_desc"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_nfc_card" />
 
@@ -528,7 +528,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="6dp"
                 android:fontFamily="sans-serif-medium"
-                android:text="刷 NFC 卡片确认"
+                android:text="@string/pairing_nfc_title"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp" />
 
@@ -539,7 +539,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:text="请在车辆中控台刷 NFC 卡片确认配对"
+                android:text="@string/pairing_nfc_instruction_default"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
@@ -573,7 +573,7 @@
                 android:layout_width="80dp"
                 android:layout_height="80dp"
                 android:layout_marginBottom="20dp"
-                android:contentDescription="配对成功"
+                android:contentDescription="@string/pairing_success_desc"
                 android:src="@drawable/ic_checkmark_circle" />
 
             <!-- 成功标题 -->
@@ -583,7 +583,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="6dp"
                 android:fontFamily="sans-serif-medium"
-                android:text="配对成功"
+                android:text="@string/pairing_success_desc"
                 android:textColor="@color/text_primary"
                 android:textSize="24sp" />
 
@@ -595,7 +595,7 @@
                 android:layout_marginBottom="24dp"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:text="车辆已成功配对,现在可以开始使用仪表盘了"
+                android:text="@string/pairing_success_subtitle"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
@@ -607,7 +607,7 @@
                 android:layout_height="44dp"
                 android:fontFamily="sans-serif-medium"
                 android:letterSpacing="0.05"
-                android:text="完成"
+                android:text="@string/pairing_finish"
                 android:textColor="@android:color/white"
                 android:textSize="15sp"
                 android:textStyle="bold"
@@ -641,7 +641,7 @@
             android:layout_marginEnd="8dp"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.05"
-            android:text="上一步"
+            android:text="@string/pairing_prev"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
             app:backgroundTint="@android:color/transparent"
@@ -660,7 +660,7 @@
             android:enabled="false"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.05"
-            android:text="下一步"
+            android:text="@string/pairing_next"
             android:textColor="@android:color/white"
             android:textSize="14sp"
             android:textStyle="bold"
