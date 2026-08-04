@@ -1,7 +1,6 @@
 package com.tesla.dashboard.util
 
 import android.content.Context
-import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.tesla.dashboard.data.local.SettingsRepository
@@ -21,11 +20,13 @@ import javax.inject.Singleton
  * ## 双保险机制
  * 1. **静态语言缓存 + Activity 级应用**: [currentLanguage] 为静态字段,
  *    每个 Activity 在 [android.app.Activity.attachBaseContext] 中直接读取
- *    并通过 [createConfigurationContext] 强制应用 —— 不依赖 Hilt 注入时机,
- *    任何情况下都可读。
+ *    并通过 [createConfigurationContext] 强制应用 —— 不依赖 Hilt 注入时机。
  * 2. **系统级联动**: 调用 [AppCompatDelegate.setApplicationLocales] 让
  *    Android 13+ 系统设置中的应用语言与进程级 locale 同步
  *    (异常被吞掉, 不影响主链路)。
+ *
+ * 所有关键步骤写入 [AppLog] (logcat + 内存缓冲),
+ * 用户在设置-关于页可一键导出日志排查问题。
  *
  * ## 语言代码
  * - "system": 跟随系统 (默认)
@@ -60,9 +61,10 @@ class LanguageManager @Inject constructor(
         runCatching {
             runBlocking { settingsRepository.appLanguageFlow.first() }
         }.onSuccess { language ->
+            AppLog.d(TAG, "applyStoredLanguageSync read=$language")
             applyLanguage(language)
         }.onFailure { e ->
-            Log.w(TAG, "applyStoredLanguageSync failed: ${e.message}")
+            AppLog.e(TAG, "applyStoredLanguageSync FAILED: ${e.message}", e)
         }
     }
 
@@ -77,7 +79,7 @@ class LanguageManager @Inject constructor(
     fun observeLanguage() {
         scope.launch {
             settingsRepository.appLanguageFlow.collect { language ->
-                Log.d(TAG, "collect language=$language")
+                AppLog.d(TAG, "collect language=$language")
                 applyLanguage(language)
             }
         }
@@ -93,8 +95,9 @@ class LanguageManager @Inject constructor(
      * @param language 语言代码 ("system"/"zh"/"en")
      */
     suspend fun setLanguage(language: String) {
-        Log.d(TAG, "setLanguage=$language")
+        AppLog.d(TAG, "setLanguage called=$language")
         settingsRepository.saveAppLanguage(language)
+        AppLog.d(TAG, "setLanguage saved to DataStore=$language")
         applyLanguage(language)
     }
 
@@ -108,6 +111,7 @@ class LanguageManager @Inject constructor(
      */
     private fun applyLanguage(language: String) {
         currentLanguage = language
+        AppLog.d(TAG, "applyLanguage cache updated=$language")
         runCatching {
             val locales = when (language) {
                 "zh" -> LocaleListCompat.forLanguageTags("zh")
@@ -115,9 +119,9 @@ class LanguageManager @Inject constructor(
                 else -> LocaleListCompat.getEmptyLocaleList() // 跟随系统
             }
             AppCompatDelegate.setApplicationLocales(locales)
-            Log.d(TAG, "setApplicationLocales applied=$language")
+            AppLog.d(TAG, "setApplicationLocales applied=$language locales=${locales.toLanguageTags()}")
         }.onFailure { e ->
-            Log.w(TAG, "setApplicationLocales failed: ${e.message}")
+            AppLog.e(TAG, "setApplicationLocales FAILED: ${e.message}", e)
         }
     }
 

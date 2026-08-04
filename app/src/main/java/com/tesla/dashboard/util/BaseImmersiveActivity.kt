@@ -55,6 +55,7 @@ abstract class BaseImmersiveActivity : AppCompatActivity() {
      */
     override fun attachBaseContext(newBase: Context) {
         val language = LanguageManager.currentLanguage
+        AppLog.d("AttachBase", "${javaClass.simpleName} attachBaseContext language=$language")
         val base = if (language != LanguageManager.DEFAULT_LANGUAGE) {
             val config = Configuration(newBase.resources.configuration)
             config.setLocale(Locale.forLanguageTag(language))

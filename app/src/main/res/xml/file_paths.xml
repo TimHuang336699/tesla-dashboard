@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FileProvider 路径配置 — 分享诊断日志用
+    仅暴露应用 cacheDir/logs/ 下的日志文件
+-->
+<paths>
+    <cache-path
+        name="logs"
+        path="logs/" />
+</paths>

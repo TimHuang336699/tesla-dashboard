@@ -103,6 +103,22 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ===== 导出诊断日志按钮 ===== -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExportLogs"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"
+            android:text="@string/settings_export_logs"
+            android:textColor="@android:color/white"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/accent_cyan"
+            app:cornerRadius="12dp" />
+
     </LinearLayout>
 
 </ScrollView>

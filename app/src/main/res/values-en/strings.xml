@@ -107,6 +107,10 @@
     <string name="settings_language_en">English</string>
     <string name="settings_language_switch_failed">Language switch failed, please retry</string>
     <string name="about_description">Tesla BLE direct-connection dashboard. Securely connects to your vehicle over Bluetooth to display live speed, battery, temperature and trip data.</string>
+    <string name="settings_export_logs">Export diagnostic logs</string>
+    <string name="settings_logs_share_subject">Tesla Dashboard diagnostic log</string>
+    <string name="settings_logs_empty">No logs recorded yet</string>
+    <string name="settings_logs_export_failed">Log export failed: %1$s</string>
 
     <!-- ===== Theme Options (display names, dropdown) ===== -->
     <string name="theme_option_tesla_blue_dark">Tesla Blue (Dark)</string>

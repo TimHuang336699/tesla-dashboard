@@ -1,6 +1,8 @@
 package com.tesla.dashboard.app
 
 import android.app.Application
+import com.tesla.dashboard.BuildConfig
+import com.tesla.dashboard.util.AppLog
 import com.tesla.dashboard.util.LanguageManager
 import com.tesla.dashboard.util.ThemeManager
 import dagger.hilt.android.HiltAndroidApp
@@ -28,6 +30,14 @@ class DashboardApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // 记录启动环境 (诊断日志开头)
+        AppLog.d(
+            "AppStart",
+            "version=${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE}) " +
+                "systemLocale=${resources.configuration.locales[0]} " +
+                "sdk=${android.os.Build.VERSION.SDK_INT} model=${android.os.Build.MODEL}",
+        )
 
         // 启动主题监听，自动应用保存的主题模式
         themeManager.observeTheme()

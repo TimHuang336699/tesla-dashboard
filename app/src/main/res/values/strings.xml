@@ -107,6 +107,10 @@
     <string name="settings_language_en">English</string>
     <string name="settings_language_switch_failed">语言切换失败，请重试</string>
     <string name="about_description">Tesla BLE 直连仪表盘应用。通过蓝牙安全连接车辆，实时显示车速、电量、温度与行程数据。</string>
+    <string name="settings_export_logs">导出诊断日志</string>
+    <string name="settings_logs_share_subject">Tesla Dashboard 诊断日志</string>
+    <string name="settings_logs_empty">暂无日志记录</string>
+    <string name="settings_logs_export_failed">日志导出失败：%1$s</string>
 
     <!-- ===== 主题选项 (显示名, 下拉菜单) ===== -->
     <string name="theme_option_tesla_blue_dark">特斯拉蓝（深色）</string>
