@@ -21,7 +21,7 @@
     设计要点:
     - 深色氛围背景 (bg_dashboard_atmosphere)
     - 左列: SpeedDisplayView (大号速度数字 + km/h 单位 + READY 状态)
-    - 中列: TurnSignalView + CarSilhouetteView (速度环已删除)
+    - 中列: CarSilhouetteView (车辆剪影, 转向灯 UI 已隐藏)
     - 右列: VerticalGaugeView (竖向电量仪表)
     - 底部: 连接状态 + 行程数据 + 指示灯条 + 按钮
     - 主题颜色由 ThemeManager 在代码中实时应用
@@ -77,7 +77,7 @@
             android:textStyle="bold"
             android:text="@string/default_value"
             android:textColor="@color/accent_blue"
-            android:textSize="28sp" />
+            android:textSize="36sp" />
 
         <!-- 弹性间隔 -->
         <Space
@@ -101,7 +101,7 @@
                 android:fontFamily="sans-serif-thin"
                 android:text="@string/default_value"
                 android:textColor="@color/text_primary"
-                android:textSize="28sp" />
+                android:textSize="36sp" />
 
             <!-- 续航里程 (小号) -->
             <TextView
@@ -111,7 +111,7 @@
                 android:fontFamily="sans-serif-thin"
                 android:text="@string/default_value"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="15sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -145,39 +145,16 @@
         app:layout_constraintEnd_toStartOf="@id/centerGuide" />
 
     <!-- ================================================================ -->
-    <!-- ===== 中列: 转向灯 + 车辆剪影 (速度环已删除) ===== -->
+    <!-- ===== 中列: 车辆剪影 (转向灯 UI 已隐藏, 代码保留) ===== -->
     <!-- ================================================================ -->
-
-    <!-- 转向灯 (居中, 顶部) -->
-    <com.tesla.dashboard.ui.dashboard.TurnSignalView
-        android:id="@+id/turnSignals"
-        android:layout_width="0dp"
-        android:layout_height="24dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp"
-        app:layout_constraintTop_toBottomOf="@id/topDivider"
-        app:layout_constraintStart_toStartOf="@id/centerGuide"
-        app:layout_constraintEnd_toStartOf="@id/rightGuide" />
-
-    <!-- 锁定状态图标 (屏幕正中间上方, 车辆剪影正上方) -->
-    <ImageView
-        android:id="@+id/ivLockStatus"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        android:layout_marginTop="8dp"
-        android:contentDescription="Lock status"
-        android:src="@drawable/ic_lock_status"
-        app:layout_constraintTop_toBottomOf="@id/turnSignals"
-        app:layout_constraintStart_toStartOf="@id/centerGuide"
-        app:layout_constraintEnd_toStartOf="@id/rightGuide" />
 
     <!-- 车辆俯视剪影 (中列居中, 放大尺寸) -->
     <com.tesla.dashboard.ui.dashboard.CarSilhouetteView
         android:id="@+id/carSilhouette"
-        android:layout_width="220dp"
-        android:layout_height="140dp"
-        android:layout_marginTop="4dp"
-        app:layout_constraintTop_toBottomOf="@id/ivLockStatus"
+        android:layout_width="260dp"
+        android:layout_height="170dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/topDivider"
         app:layout_constraintBottom_toTopOf="@id/bottomBar"
         app:layout_constraintStart_toStartOf="@id/centerGuide"
         app:layout_constraintEnd_toStartOf="@id/rightGuide"
@@ -223,19 +200,19 @@
 
             <View
                 android:id="@+id/teslaDot"
-                android:layout_width="6dp"
-                android:layout_height="6dp"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
                 android:background="@drawable/dot_orange" />
 
             <TextView
                 android:id="@+id/teslaStatusText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="8dp"
                 android:fontFamily="sans-serif-medium"
                 android:text="@string/tesla_disconnected"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="15sp" />
         </LinearLayout>
 
         <!-- 中间: 行程数据 (弹性居中) -->
@@ -250,51 +227,51 @@
                 android:id="@+id/tripDistText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="20dp"
                 android:fontFamily="sans-serif-thin"
                 android:text="@string/default_value"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/gForceText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="20dp"
                 android:fontFamily="sans-serif-thin"
                 android:text="@string/default_value"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/latText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="20dp"
                 android:fontFamily="sans-serif-thin"
                 android:text="@string/default_value"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/lonText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="20dp"
                 android:fontFamily="sans-serif-thin"
                 android:text="@string/default_value"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/headingText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="20dp"
                 android:fontFamily="sans-serif-thin"
                 android:text="@string/default_value"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:textSize="14sp" />
         </LinearLayout>
 
         <!-- 中右: 指示灯条 (BLE/GPS/罗盘) -->
@@ -302,9 +279,9 @@
             android:id="@+id/indicatorStrip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
-            app:isvIndicatorSize="16dp"
-            app:isvIndicatorSpacing="12dp" />
+            android:layout_marginEnd="16dp"
+            app:isvIndicatorSize="24dp"
+            app:isvIndicatorSpacing="16dp" />
 
         <!-- 右侧: 历史 + 设置按钮 -->
         <LinearLayout
@@ -317,20 +294,20 @@
                 android:id="@+id/historyButton"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="48dp"
                 android:minWidth="0dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:text="历史"
                 android:textColor="@color/accent_blue"
-                android:textSize="12sp"
+                android:textSize="15sp"
                 app:cornerRadius="8dp" />
 
             <ImageButton
                 android:id="@+id/settingsButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="12dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Settings"
                 android:src="@android:drawable/ic_menu_preferences"
@@ -359,7 +336,7 @@
             android:fontFamily="sans-serif-medium"
             android:text="@string/label_temperature"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/tempText"
@@ -369,7 +346,7 @@
             android:fontFamily="sans-serif-thin"
             android:text="@string/default_value"
             android:textColor="@color/text_primary"
-            android:textSize="24sp" />
+            android:textSize="28sp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -378,7 +355,7 @@
             android:fontFamily="sans-serif-medium"
             android:text="@string/label_odometer"
             android:textColor="@color/text_secondary"
-            android:textSize="11sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/odoText"
@@ -388,13 +365,13 @@
             android:fontFamily="sans-serif-thin"
             android:text="@string/default_value"
             android:textColor="@color/text_primary"
-            android:textSize="20sp" />
+            android:textSize="24sp" />
 
         <ProgressBar
             android:id="@+id/batteryBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="4dp"
+            android:layout_height="6dp"
             android:layout_marginTop="12dp"
             android:max="100"
             android:progress="0"

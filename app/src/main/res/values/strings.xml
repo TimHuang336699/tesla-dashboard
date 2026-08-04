@@ -69,8 +69,6 @@
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_light">浅色</string>
     <string name="settings_theme_system">跟随系统</string>
-    <string name="settings_save">保存</string>
-    <string name="settings_saved">设置已保存</string>
     <string name="settings_connection_success">BLE 连接成功</string>
     <string name="settings_connection_failed">BLE 连接失败</string>
     <string name="settings_pairing_success">配对成功</string>

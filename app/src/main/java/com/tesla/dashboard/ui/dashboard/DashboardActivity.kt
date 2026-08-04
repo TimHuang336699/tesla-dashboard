@@ -258,12 +258,6 @@ class DashboardActivity : AppCompatActivity() {
         // 门/舱未关时的警告红色
         binding.carSilhouette.setWarningColor(c.accentRed)
 
-        // ===== 转向灯配色 =====
-        binding.turnSignals.setColors(
-            active = c.accentGreen,
-            inactive = c.divider,
-        )
-
         // ===== 竖向仪表配色 =====
         binding.verticalGauge.setTrackColor(c.divider)
         binding.verticalGauge.setLabelColor(c.textSecondary)
@@ -307,9 +301,6 @@ class DashboardActivity : AppCompatActivity() {
             pf = data.pf,
             pr = data.pr,
         )
-
-        // ===== 中部上方 - 锁定状态图标 =====
-        updateLockIcon(data.isLocked)
 
         // ===== 中部右侧 - 竖向电量仪表 =====
         val soc = data.batterySOC ?: 0
@@ -375,34 +366,6 @@ class DashboardActivity : AppCompatActivity() {
         binding.teslaStatusText.setTextColor(
             if (data.isTeslaConnected) currentColors.accentGreen else currentColors.accentOrange,
         )
-    }
-
-    /**
-     * 更新锁定状态图标
-     *
-     * 根据车辆锁定状态切换图标和颜色:
-     * - 已锁定 (true): 闭合锁图标, 绿色
-     * - 未锁定 (false): 打开锁图标, 红色
-     * - 未知 (null): 闭合锁图标, 灰色 (BLE 未连接或数据未到)
-     *
-     * @param isLocked 车辆锁定状态, null = 未知
-     */
-    private fun updateLockIcon(isLocked: Boolean?) {
-        val c = currentColors
-        when (isLocked) {
-            true -> {
-                binding.ivLockStatus.setImageResource(R.drawable.ic_lock_status)
-                binding.ivLockStatus.imageTintList = ColorStateList.valueOf(c.accentGreen)
-            }
-            false -> {
-                binding.ivLockStatus.setImageResource(R.drawable.ic_lock_open)
-                binding.ivLockStatus.imageTintList = ColorStateList.valueOf(c.accentRed)
-            }
-            null -> {
-                binding.ivLockStatus.setImageResource(R.drawable.ic_lock_status)
-                binding.ivLockStatus.imageTintList = ColorStateList.valueOf(c.textSecondary)
-            }
-        }
     }
 
     /**

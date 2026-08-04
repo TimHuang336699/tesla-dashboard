@@ -5,6 +5,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.view.WindowManager
 import android.widget.ArrayAdapter
@@ -75,6 +79,15 @@ class SettingsActivity : AppCompatActivity() {
     /** 当前选中的车型代码 */
     private var selectedBatteryModel: String = ""
 
+    /** 最近一次已保存的 VIN (避免重复写入 DataStore) */
+    private var lastSavedVin: String = ""
+
+    /** VIN 自动保存 debounce 处理器 (主线程) */
+    private val vinDebounceHandler = Handler(Looper.getMainLooper())
+
+    /** 待执行的 VIN 保存任务 */
+    private var vinSaveRunnable: Runnable? = null
+
     /** 待执行的 BLE 操作 (权限授予后执行) */
     private var pendingBleAction: BleAction? = null
 
@@ -143,7 +156,10 @@ class SettingsActivity : AppCompatActivity() {
         // 4. 设置按钮监听
         setupClickListeners()
 
-        // 5. 观察数据
+        // 5. 设置即时自动保存
+        setupAutoSave()
+
+        // 6. 观察数据
         observeViewModel()
     }
 
@@ -175,6 +191,10 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.actvBatteryModel.setOnItemClickListener { _, _, position, _ ->
             selectedBatteryModel = batteryModelOptions[position].code
+            // 车型选择后即时自动保存
+            if (isFormPopulated) {
+                viewModel.saveBatteryModel(selectedBatteryModel)
+            }
         }
     }
 
@@ -185,11 +205,6 @@ class SettingsActivity : AppCompatActivity() {
         // 返回按钮
         binding.btnBack.setOnClickListener {
             finish()
-        }
-
-        // 保存按钮
-        binding.btnSave.setOnClickListener {
-            saveSettings()
         }
 
         // 配对车辆按钮 — 启动配对向导 Activity
@@ -486,25 +501,46 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    // ===== 设置保存 =====
+    // ===== 即时自动保存 =====
 
     /**
-     * 保存所有设置
+     * 设置即时自动保存
      *
-     * 从表单读取 VIN、主题、车型,通过 ViewModel 持久化。
-     * 保存完成后显示 Toast 提示并关闭页面。
+     * 所有设置项修改后立即持久化到 DataStore,无需点击保存按钮:
+     * - VIN: TextWatcher + 500ms debounce,防止每次按键都写磁盘
+     * - 主题: RadioGroup 变化时立即保存
+     * - 车型: 下拉选择时立即保存 (在 [setupBatteryModelDropdown] 中注册)
+     *
+     * 注意: 通过 [isFormPopulated] 守卫, 避免 [populateForm] 回填表单时触发误保存。
+     * 自动保存使 DataStore 写入发生在页面存活期间, 解决原"保存后立即 finish()
+     * 导致写入协程被取消、再次进入时设置清空"的问题。
      */
-    private fun saveSettings() {
-        val vin = binding.etVin.text.toString()
-        val themeMode = getSelectedThemeMode()
-        val batteryModel = selectedBatteryModel
+    private fun setupAutoSave() {
+        // VIN 即时保存 (带 debounce)
+        binding.etVin.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                // 表单回填也会触发此回调, 必须跳过
+                if (!isFormPopulated) return
+                vinSaveRunnable?.let { vinDebounceHandler.removeCallbacks(it) }
+                val value = s?.toString()?.trim().orEmpty()
+                vinSaveRunnable = Runnable {
+                    if (value != lastSavedVin) {
+                        lastSavedVin = value
+                        viewModel.saveVin(value)
+                    }
+                }
+                vinDebounceHandler.postDelayed(vinSaveRunnable!!, VIN_DEBOUNCE_MS)
+            }
+        })
 
-        viewModel.saveVin(vin)
-        viewModel.saveThemeMode(themeMode)
-        viewModel.saveBatteryModel(batteryModel)
-
-        Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
-        finish()
+        // 主题即时保存
+        binding.rgTheme.setOnCheckedChangeListener { _, _ ->
+            if (isFormPopulated) {
+                viewModel.saveThemeMode(getSelectedThemeMode())
+            }
+        }
     }
 
     /**
@@ -517,6 +553,19 @@ class SettingsActivity : AppCompatActivity() {
         R.id.rbThemeLight -> "light"
         R.id.rbThemeSystem -> "system"
         else -> "system"
+    }
+
+    /**
+     * 销毁时清理待执行的 VIN 保存任务
+     */
+    override fun onDestroy() {
+        super.onDestroy()
+        vinDebounceHandler.removeCallbacksAndMessages(null)
+    }
+
+    companion object {
+        /** VIN 自动保存 debounce 延迟 (毫秒) */
+        private const val VIN_DEBOUNCE_MS = 500L
     }
 
     // ===== 内部类 =====

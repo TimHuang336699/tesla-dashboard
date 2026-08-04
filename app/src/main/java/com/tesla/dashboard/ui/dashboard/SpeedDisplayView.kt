@@ -18,9 +18,9 @@ import com.tesla.dashboard.R
  * 设计为叠加在 SpeedometerView 弧线中心使用。
  *
  * ## 设计规格
- * - 速度数字: sans-serif-thin, textSize = height * 0.55
- * - 单位文字: sans-serif, textSize = height * 0.13
- * - READY 状态: sans-serif-medium, textSize = height * 0.06
+ * - 速度数字: sans-serif-thin, textSize = radius * 0.812
+ * - 单位文字: sans-serif, textSize = radius * 0.196
+ * - READY 状态: sans-serif-medium, textSize = radius * 0.133
  * - 速度变化动画: 300ms, DecelerateInterpolator
  * - 颜色过渡动画: 300ms, ArgbEvaluator
  *
@@ -179,22 +179,33 @@ class SpeedDisplayView @JvmOverloads constructor(
 
         // 速度数字 (加粗, 基于半径而非高度, 确保不会大于圆环)
         speedTextPaint.color = currentSpeedTextColor
-        speedTextPaint.textSize = radius * 0.42f
+        speedTextPaint.textSize = radius * SPEED_TEXT_SCALE
         val speedStr = displaySpeed.toInt().toString()
-        val speedY = cy - (speedTextPaint.descent() + speedTextPaint.ascent()) / 2f - radius * 0.05f
+
+        // 三位数宽度保护: 数字过宽时按宽度等比缩小字号, 防止裁剪
+        val maxTextWidth = width - 8f * density
+        val measured = speedTextPaint.measureText(speedStr)
+        if (measured > maxTextWidth) {
+            speedTextPaint.textSize *= maxTextWidth / measured
+        }
+        val speedMetrics = speedTextPaint.fontMetrics
+
+        val speedY = cy - (speedMetrics.ascent + speedMetrics.descent) / 2f - radius * 0.05f
         canvas.drawText(speedStr, cx, speedY, speedTextPaint)
 
-        // 单位
+        // 单位 (行距基于 fontMetrics 度量计算, 字号放大后仍不重叠)
         unitTextPaint.color = currentUnitTextColor
-        unitTextPaint.textSize = radius * 0.1f
-        val unitY = speedY + radius * 0.28f
+        unitTextPaint.textSize = radius * UNIT_TEXT_SCALE
+        val unitMetrics = unitTextPaint.fontMetrics
+        val unitY = speedY + (speedMetrics.descent - unitMetrics.ascent) + radius * 0.02f
         canvas.drawText(unitText, cx, unitY, unitTextPaint)
 
         // READY 状态
         if (isReady) {
             readyTextPaint.color = currentReadyColor
-            readyTextPaint.textSize = radius * 0.07f
-            val readyY = unitY + radius * 0.12f
+            readyTextPaint.textSize = radius * READY_TEXT_SCALE
+            val readyMetrics = readyTextPaint.fontMetrics
+            val readyY = unitY + (unitMetrics.descent - readyMetrics.ascent) + radius * 0.015f
             canvas.drawText("READY", cx, readyY, readyTextPaint)
         }
     }
@@ -208,5 +219,14 @@ class SpeedDisplayView @JvmOverloads constructor(
     companion object {
         private const val SPEED_ANIM_DURATION = 300L
         private const val COLOR_ANIM_DURATION = 300L
+
+        /** 速度数字字号系数 (× radius) */
+        private const val SPEED_TEXT_SCALE = 0.812f
+
+        /** 单位字号系数 (× radius) */
+        private const val UNIT_TEXT_SCALE = 0.196f
+
+        /** READY 字号系数 (× radius) */
+        private const val READY_TEXT_SCALE = 0.133f
     }
 }
