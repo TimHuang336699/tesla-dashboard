@@ -1,5 +1,7 @@
 package com.tesla.dashboard.util
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
@@ -9,8 +11,10 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.tesla.dashboard.app.DashboardApplication
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -38,6 +42,34 @@ abstract class BaseImmersiveActivity : AppCompatActivity() {
 
     /** 当前主题颜色 (由主题流更新, 供 UI 在数据变化时复用) */
     protected var currentColors: ThemeColors = ThemeColors.Dark
+
+    /**
+     * 应用当前语言到 Activity 上下文
+     *
+     * 在系统注入布局资源之前强制应用 [LanguageManager.currentLanguage]:
+     * - "system" → 保持系统语言
+     * - "zh"/"en" → 通过 [createConfigurationContext] 生成带指定语言的环境,
+     *   后续 getString / 资源查找全部走该环境
+     *
+     * 注意: attachBaseContext 早于 Hilt 字段注入, 无法使用注入的
+     * LanguageManager, 故通过 Application 实例访问。
+     *
+     * @param newBase 原始上下文
+     */
+    override fun attachBaseContext(newBase: Context) {
+        val application = newBase.applicationContext
+        val language = (application as? DashboardApplication)
+            ?.languageManager
+            ?.currentLanguage
+        val base = if (language != null && language != LanguageManager.DEFAULT_LANGUAGE) {
+            val config = Configuration(newBase.resources.configuration)
+            config.setLocale(Locale.forLanguageTag(language))
+            newBase.createConfigurationContext(config)
+        } else {
+            newBase
+        }
+        super.attachBaseContext(base)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -7,21 +7,27 @@ import androidx.lifecycle.lifecycleScope
 import com.tesla.dashboard.R
 import com.tesla.dashboard.databinding.ActivityLanguageSettingsBinding
 import com.tesla.dashboard.util.BaseImmersiveActivity
+import com.tesla.dashboard.util.LanguageManager
 import com.tesla.dashboard.util.ThemeColors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * 语言设置二级页 — 单选列表
  *
- * 选择后即时保存到 DataStore, [com.tesla.dashboard.util.LanguageManager]
- * 自动调用 setApplicationLocales 应用语言 (Activity 重建, 文案即时切换)。
+ * 选择后调用 [LanguageManager.setLanguage] 同步完成"保存 + 应用 + 更新缓存",
+ * 随后 [recreate] 重建页面立即生效 (新 Activity 的 attachBaseContext 读到新缓存)。
  */
 @AndroidEntryPoint
 class LanguageSettingsActivity : BaseImmersiveActivity() {
 
     /** ViewBinding 实例 */
     private lateinit var binding: ActivityLanguageSettingsBinding
+
+    /** 语言管理器, 由 Hilt 注入 (切换语言唯一入口) */
+    @Inject
+    lateinit var languageManager: LanguageManager
 
     /** 轻量设置 ViewModel (语言流) */
     private val viewModel: SettingsLightViewModel by viewModels()
@@ -48,7 +54,10 @@ class LanguageSettingsActivity : BaseImmersiveActivity() {
     }
 
     /**
-     * 设置语言单选监听 — 选中即保存
+     * 设置语言单选监听 — 选中即保存并重建
+     *
+     * 时序: setLanguage 同步完成 (DataStore 写入 + 缓存更新 + 系统联动),
+     * 之后 recreate 触发本页重建, attachBaseContext 读到新缓存即新语言。
      */
     private fun setupRadioListener() {
         binding.rgLanguage.setOnCheckedChangeListener { _, checkedId ->
@@ -58,7 +67,10 @@ class LanguageSettingsActivity : BaseImmersiveActivity() {
                 R.id.rbLanguageEn -> "en"
                 else -> "system"
             }
-            viewModel.saveAppLanguage(code)
+            lifecycleScope.launch {
+                languageManager.setLanguage(code)
+                recreate()
+            }
         }
     }
 
