@@ -5,17 +5,21 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
 import androidx.core.animation.doOnEnd
+import androidx.core.content.ContextCompat
+import com.tesla.dashboard.R
 
 /**
  * 转向灯指示视图 2.0 (v0.5.0)
  *
- * 实心方块箭头样式 (矩形柄 + 三角形头):
+ * 使用 VectorDrawable 资源绘制方块箭头:
  * - OFF: 左右箭头均为灰色
  * - LEFT: 左箭头绿色, 右箭头灰色
  * - RIGHT: 左箭头灰色, 右箭头绿色
@@ -35,10 +39,6 @@ class TurnSignalView @JvmOverloads constructor(
         HAZARD,
     }
 
-    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-
     private var activeColor: Int = Color.parseColor("#30D158")
     private var idleColor: Int = Color.parseColor("#8E8E93")
 
@@ -47,17 +47,28 @@ class TurnSignalView @JvmOverloads constructor(
     private var sweepAnimator: ValueAnimator? = null
     private val pulseWidth = 0.35f
 
-    /** 左箭头完整 Path */
-    private val leftArrowPath = Path()
+    /** 左箭头 Drawable */
+    private var leftArrowDrawable: Drawable? = null
 
-    /** 右箭头完整 Path */
-    private val rightArrowPath = Path()
+    /** 右箭头 Drawable */
+    private var rightArrowDrawable: Drawable? = null
 
-    /** 左箭头 3 个分段裁剪区域 */
+    /** 左箭头绘制区域 */
+    private val leftBounds = RectF()
+
+    /** 右箭头绘制区域 */
+    private val rightBounds = RectF()
+
+    /** 左箭头 3 段裁剪区域 */
     private val leftClipRects = arrayOf(RectF(), RectF(), RectF())
 
-    /** 右箭头 3 个分段裁剪区域 */
+    /** 右箭头 3 段裁剪区域 */
     private val rightClipRects = arrayOf(RectF(), RectF(), RectF())
+
+    /** 裁剪用画笔 */
+    private val clipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
 
     fun setState(state: State) {
         if (this.state == state) return
@@ -75,12 +86,14 @@ class TurnSignalView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0) {
-            buildArrowPaths(w, h)
+            calculateLayout(w, h)
         }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        leftArrowDrawable = ContextCompat.getDrawable(context, R.drawable.ic_turn_signal_left)
+        rightArrowDrawable = ContextCompat.getDrawable(context, R.drawable.ic_turn_signal_right)
         updateAnimation()
     }
 
@@ -88,6 +101,8 @@ class TurnSignalView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         sweepAnimator?.cancel()
         sweepAnimator = null
+        leftArrowDrawable = null
+        rightArrowDrawable = null
     }
 
     private fun updateAnimation() {
@@ -113,9 +128,65 @@ class TurnSignalView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * 计算箭头布局位置和裁剪区域
+     */
+    private fun calculateLayout(w: Int, h: Int) {
+        val gap = w * 0.06f
+        val arrowW = (w / 2f - gap / 2f) * 0.92f
+        val arrowH = h * 0.85f
+
+        val arrowSize = minOf(arrowW, arrowH)
+
+        // 左箭头区域 (居中在左半区)
+        val leftCx = w / 4f
+        val leftCy = h / 2f
+        leftBounds.set(
+            leftCx - arrowSize / 2f,
+            leftCy - arrowSize / 2f,
+            leftCx + arrowSize / 2f,
+            leftCy + arrowSize / 2f,
+        )
+
+        // 右箭头区域 (居中在右半区)
+        val rightCx = w * 3f / 4f
+        rightBounds.set(
+            rightCx - arrowSize / 2f,
+            leftCy - arrowSize / 2f,
+            rightCx + arrowSize / 2f,
+            leftCy + arrowSize / 2f,
+        )
+
+        // 计算 3 段裁剪区域
+        val segW = arrowSize / 3f
+
+        // 左箭头: 从右到左 (柄尾 → 尖端) = 从上到下裁剪
+        for (i in 0 until 3) {
+            leftClipRects[i] = RectF(
+                leftBounds.left + segW * i,
+                leftBounds.top,
+                leftBounds.left + segW * (i + 1),
+                leftBounds.bottom,
+            )
+        }
+
+        // 右箭头: 从左到右 (柄尾 → 尖端)
+        for (i in 0 until 3) {
+            rightClipRects[i] = RectF(
+                rightBounds.left + segW * i,
+                rightBounds.top,
+                rightBounds.left + segW * (i + 1),
+                rightBounds.bottom,
+            )
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
+
+        val leftDrawable = leftArrowDrawable ?: return
+        val rightDrawable = rightArrowDrawable ?: return
 
         // 确定每个箭头的颜色
         val leftColor: Int
@@ -127,84 +198,20 @@ class TurnSignalView @JvmOverloads constructor(
             State.HAZARD -> { leftColor = activeColor; rightColor = activeColor }
         }
 
-        // 绘制左箭头 (3 段扫描)
-        drawSegmentedArrow(canvas, leftArrowPath, leftClipRects, leftColor)
+        // 绘制左箭头 (带扫描效果)
+        drawDrawableWithSegments(canvas, leftDrawable, leftBounds, leftClipRects, leftColor)
 
-        // 绘制右箭头 (3 段扫描)
-        drawSegmentedArrow(canvas, rightArrowPath, rightClipRects, rightColor)
+        // 绘制右箭头 (带扫描效果)
+        drawDrawableWithSegments(canvas, rightDrawable, rightBounds, rightClipRects, rightColor)
     }
 
     /**
-     * 构建方块箭头 Path
-     *
-     * 左箭头: ◄───  (三角头在左, 矩形柄在右)
-     * 右箭头: ───►  (三角头在右, 矩形柄在左)
+     * 绘制带扫描效果的 Drawable
      */
-    private fun buildArrowPaths(w: Int, h: Int) {
-        val centerY = h / 2f
-        val gap = w * 0.06f
-
-        // 箭头尺寸
-        val arrowW = (w / 2f - gap / 2f) * 0.88f
-        val stemH = h * 0.48f    // 柄高度
-        val headW = arrowW * 0.42f  // 三角头宽度
-        val stemW = arrowW - headW  // 柄宽度
-
-        // === 左箭头 ===
-        val leftStemRight = w / 2f - gap / 2f
-        val leftStemLeft = leftStemRight - stemW
-        val leftTip = leftStemLeft - headW
-
-        leftArrowPath.reset()
-        leftArrowPath.moveTo(leftTip, centerY)
-        leftArrowPath.lineTo(leftStemLeft, centerY - stemH / 2)
-        leftArrowPath.lineTo(leftStemRight, centerY - stemH / 2)
-        leftArrowPath.lineTo(leftStemRight, centerY + stemH / 2)
-        leftArrowPath.lineTo(leftStemLeft, centerY + stemH / 2)
-        leftArrowPath.close()
-
-        // 左箭头 3 段裁剪区 (从柄尾到尖端)
-        val leftSegW = arrowW / 3f
-        for (i in 0 until 3) {
-            leftClipRects[i] = RectF(
-                leftTip + leftSegW * i,
-                centerY - stemH / 2 - 1f,
-                leftTip + leftSegW * (i + 1),
-                centerY + stemH / 2 + 1f,
-            )
-        }
-
-        // === 右箭头 (水平镜像) ===
-        val rightStemLeft = w / 2f + gap / 2f
-        val rightStemRight = rightStemLeft + stemW
-        val rightTip = rightStemRight + headW
-
-        rightArrowPath.reset()
-        rightArrowPath.moveTo(rightTip, centerY)
-        rightArrowPath.lineTo(rightStemRight, centerY - stemH / 2)
-        rightArrowPath.lineTo(rightStemLeft, centerY - stemH / 2)
-        rightArrowPath.lineTo(rightStemLeft, centerY + stemH / 2)
-        rightArrowPath.lineTo(rightStemRight, centerY + stemH / 2)
-        rightArrowPath.close()
-
-        // 右箭头 3 段裁剪区 (从柄尾到尖端)
-        val rightSegW = arrowW / 3f
-        for (i in 0 until 3) {
-            rightClipRects[i] = RectF(
-                rightStemLeft + rightSegW * i,
-                centerY - stemH / 2 - 1f,
-                rightStemLeft + rightSegW * (i + 1),
-                centerY + stemH / 2 + 1f,
-            )
-        }
-    }
-
-    /**
-     * 绘制带扫描效果的方块箭头
-     */
-    private fun drawSegmentedArrow(
+    private fun drawDrawableWithSegments(
         canvas: Canvas,
-        arrowPath: Path,
+        drawable: Drawable,
+        bounds: RectF,
         clipRects: Array<RectF>,
         baseColor: Int,
     ) {
@@ -218,11 +225,18 @@ class TurnSignalView @JvmOverloads constructor(
                 lit = t % 1f < pulseWidth
             }
 
-            fillPaint.color = if (lit) brightColor(baseColor) else baseColor
+            val color = if (lit) brightColor(baseColor) else baseColor
 
             canvas.save()
             canvas.clipRect(clipRects[i])
-            canvas.drawPath(arrowPath, fillPaint)
+            drawable.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
+            drawable.setBounds(
+                bounds.left.toInt(),
+                bounds.top.toInt(),
+                bounds.right.toInt(),
+                bounds.bottom.toInt(),
+            )
+            drawable.draw(canvas)
             canvas.restore()
         }
     }
