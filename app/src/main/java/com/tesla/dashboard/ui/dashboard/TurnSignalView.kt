@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
@@ -20,10 +21,6 @@ import androidx.core.animation.doOnEnd
  *   亮起脉冲从箭头根部向尖端依次流动 (与真实转向灯一致)
  * - **双闪模式**: 左右箭头同步扫描
  * - **主题色联动**: 通过 [setColors] 设置激活色/熄灭色, 随主题切换
- *
- * 三角形形状参考 Material Design Icons (menu-left / menu-right):
- * - 左三角: 等腰三角形, 尖端在左, 根部在右
- * - 右三角: 左三角的水平镜像
  *
  * 说明: Tesla BLE 协议不暴露转向灯真实状态, 本视图为装饰性显示
  * (常显静态箭头), 状态接口 [setState] 保留, 供未来接入真实信号数据。
@@ -159,20 +156,20 @@ class TurnSignalView @JvmOverloads constructor(
 
         when (state) {
             State.OFF -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f, pointingLeft = true)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f, pointingLeft = false)
             }
             State.LEFT -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase, pointingLeft = true)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f, pointingLeft = false)
             }
             State.RIGHT -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f, pointingLeft = true)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase, pointingLeft = false)
             }
             State.HAZARD -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase, pointingLeft = true)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase, pointingLeft = false)
             }
         }
     }
@@ -180,58 +177,53 @@ class TurnSignalView @JvmOverloads constructor(
     /**
      * 构建左右箭头的 Path (Material Design 实心三角形)
      *
-     * 左三角: 尖端在左, 根部在右 (M tipX,centerY L baseX,top L baseX,bottom Z)
-     * 右三角: 尖端在右, 根部在左 (左三角的水平镜像)
+     * 左三角: 尖端在左, 根部在右
+     * 右三角: 尖端在右, 根部在左
      *
-     * 参考 Material Design Icons:
-     * - menu-left:  M14,7 L9,12 L14,17 V7Z
-     * - menu-right: M10,17 L15,12 L10,7 V17Z
+     * 两者互为水平镜像, 保证完全对称。
      */
     private fun buildArrowPaths(w: Int, h: Int) {
         val centerY = h / 2f
-        val arrowW = w * 0.32f    // 三角形宽度 (水平)
-        val arrowH = h * 0.72f    // 三角形高度 (垂直, 根部跨度)
+        val arrowW = w * 0.30f    // 三角形宽度 (水平)
+        val arrowH = h * 0.70f    // 三角形高度 (垂直)
 
-        // 左三角: 尖端在左, 根部在右
-        val leftTipX = w * 0.1f
+        // === 左三角: 尖端在左 (x 小), 根部在右 (x 大) ===
+        val leftTipX = w * 0.08f
         val leftBaseX = leftTipX + arrowW
-        val leftTop = centerY - arrowH / 2f
-        val leftBottom = centerY + arrowH / 2f
 
         leftArrowPath.reset()
-        leftArrowPath.moveTo(leftTipX, centerY)       // 尖端
-        leftArrowPath.lineTo(leftBaseX, leftTop)      // 根部上
-        leftArrowPath.lineTo(leftBaseX, leftBottom)   // 根部下
+        leftArrowPath.moveTo(leftTipX, centerY)              // 尖端 (左侧)
+        leftArrowPath.lineTo(leftBaseX, centerY - arrowH / 2) // 根部上
+        leftArrowPath.lineTo(leftBaseX, centerY + arrowH / 2) // 根部下
         leftArrowPath.close()
 
-        // 右三角: 尖端在右, 根部在左 (水平镜像)
-        val rightTipX = w - w * 0.1f
-        val rightBaseX = rightTipX - arrowW
-        val rightTop = centerY - arrowH / 2f
-        val rightBottom = centerY + arrowH / 2f
+        // === 右三角: 尖端在右 (x 大), 根部在左 (x 小) ===
+        val rightBaseX = w - leftBaseX
+        val rightTipX = w - leftTipX
 
         rightArrowPath.reset()
-        rightArrowPath.moveTo(rightTipX, centerY)       // 尖端
-        rightArrowPath.lineTo(rightBaseX, rightTop)     // 根部上
-        rightArrowPath.lineTo(rightBaseX, rightBottom)  // 根部下
+        rightArrowPath.moveTo(rightTipX, centerY)               // 尖端 (右侧)
+        rightArrowPath.lineTo(rightBaseX, centerY - arrowH / 2) // 根部上
+        rightArrowPath.lineTo(rightBaseX, centerY + arrowH / 2) // 根部下
         rightArrowPath.close()
     }
 
     /**
      * 绘制箭头的 3 段扫描效果
      *
-     * 将箭头 Path 按水平方向切为 3 段, 根据 sweepPhase 依次点亮。
-     * 使用 clipPath 实现分段裁剪, 保证三角形轮廓完整。
+     * @param pointingLeft true=左箭头(根部在右), false=右箭头(根部在左)
      */
-    private fun drawArrowSegments(canvas: Canvas, arrowPath: Path, sweepPhase: Float) {
-        val bounds = android.graphics.RectF()
+    private fun drawArrowSegments(
+        canvas: Canvas,
+        arrowPath: Path,
+        sweepPhase: Float,
+        pointingLeft: Boolean,
+    ) {
+        val bounds = RectF()
         arrowPath.computeBounds(bounds, true)
 
         val segmentCount = 3
         val segW = bounds.width() / segmentCount
-
-        // 判断箭头指向方向 (尖端 x 位置)
-        val pointingLeft = bounds.left < bounds.centerX()
 
         for (i in 0 until segmentCount) {
             // 段 i 的 x 范围: 根部(i=0) → 尖端(i=2)
