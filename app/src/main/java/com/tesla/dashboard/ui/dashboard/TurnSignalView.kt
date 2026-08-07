@@ -10,7 +10,6 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
 import androidx.core.animation.doOnEnd
-import kotlin.math.abs
 
 /**
  * 转向灯指示视图 2.0 (v0.5.0)
@@ -74,6 +73,12 @@ class TurnSignalView @JvmOverloads constructor(
     /** 扫描脉冲在箭头上的宽度比例 (根→尖为一个完整脉冲) */
     private val pulseWidth = 0.38f
 
+    /** 左箭头 Path (预计算, onSizeChanged 时更新) */
+    private val leftArrowPath = Path()
+
+    /** 右箭头 Path (预计算, onSizeChanged 时更新) */
+    private val rightArrowPath = Path()
+
     /**
      * 设置转向灯状态
      *
@@ -96,6 +101,13 @@ class TurnSignalView @JvmOverloads constructor(
         activeColor = active
         idleColor = idle
         invalidate()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w > 0 && h > 0) {
+            buildArrowPaths(w, h)
+        }
     }
 
     override fun onAttachedToWindow() {
@@ -133,7 +145,6 @@ class TurnSignalView @JvmOverloads constructor(
                 postInvalidateOnAnimation()
             }
             doOnEnd {
-                // 动画被主动取消时重置进度 (doOnEnd 在 cancel 时也会触发)
                 sweepPhase = 0f
             }
             start()
@@ -144,105 +155,108 @@ class TurnSignalView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
 
-        // 左箭头: 左半区; 右箭头: 右半区 (各占 42%, 居中留空)
-        val arrowWidth = width * 0.42f
-        val centerY = height / 2f
-        val baseHalf = height * 0.32f
-        val arrowSpan = arrowWidth * 0.9f
-
         when (state) {
             State.OFF -> {
-                drawArrow(canvas, sweepPhase = -1f, cx = width * 0.27f, pointingLeft = true,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
-                drawArrow(canvas, sweepPhase = -1f, cx = width * 0.73f, pointingLeft = false,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f)
             }
             State.LEFT -> {
-                drawArrow(canvas, sweepPhase, cx = width * 0.27f, pointingLeft = true,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
-                drawArrow(canvas, sweepPhase = -1f, cx = width * 0.73f, pointingLeft = false,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f)
             }
             State.RIGHT -> {
-                drawArrow(canvas, sweepPhase = -1f, cx = width * 0.27f, pointingLeft = true,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
-                drawArrow(canvas, sweepPhase, cx = width * 0.73f, pointingLeft = false,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase)
             }
             State.HAZARD -> {
-                drawArrow(canvas, sweepPhase, cx = width * 0.27f, pointingLeft = true,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
-                drawArrow(canvas, sweepPhase, cx = width * 0.73f, pointingLeft = false,
-                    arrowWidth = arrowWidth, arrowSpan = arrowSpan, baseHalf = baseHalf, centerY = centerY)
+                drawArrowSegments(canvas, leftArrowPath, sweepPhase)
+                drawArrowSegments(canvas, rightArrowPath, sweepPhase)
             }
         }
     }
 
     /**
-     * 绘制一个转向灯箭头 (3 段式)
+     * 构建左右箭头的 Path (对称三角形)
      *
-     * @param canvas 画布
-     * @param sweepPhase 扫描进度 0..1; -1 表示静态熄灭 (全部用熄灭色)
-     * @param cx 箭头中心 x
-     * @param pointingLeft true=指向左, false=指向右
-     * @param arrowWidth 箭头可用宽度
-     * @param arrowSpan 箭头实际跨度 (尖端到根部的距离)
-     * @param baseHalf 根部半高
-     * @param centerY 垂直中心
+     * 左箭头: 等腰三角形, 尖端指向左, 根部在右
+     * 右箭头: 等腰三角形, 尖端指向右, 根部在左
+     * 两者互为水平镜像, 保证完全对称
      */
-    private fun drawArrow(
-        canvas: Canvas,
-        sweepPhase: Float,
-        cx: Float,
-        pointingLeft: Boolean,
-        arrowWidth: Float,
-        arrowSpan: Float,
-        baseHalf: Float,
-        centerY: Float,
-    ) {
-        // 箭头几何: 根部 x 位于内侧 (靠近中心), 尖端 x 位于外侧
-        val direction = if (pointingLeft) -1f else 1f
-        val tipX = cx + direction * arrowSpan / 2f
-        val baseX = cx - direction * arrowSpan / 2f
+    private fun buildArrowPaths(w: Int, h: Int) {
+        val centerY = h / 2f
+        val arrowLen = w * 0.38f        // 箭头长度 (水平)
+        val arrowHalfH = h * 0.38f      // 箭头根部半高 (垂直)
+
+        // 左箭头: 尖端在左 (x = padding), 根部在右
+        val leftTipX = w * 0.06f
+        val leftBaseX = leftTipX + arrowLen
+        leftArrowPath.reset()
+        leftArrowPath.moveTo(leftTipX, centerY)               // 尖端
+        leftArrowPath.lineTo(leftBaseX, centerY - arrowHalfH) // 根部上
+        leftArrowPath.lineTo(leftBaseX, centerY + arrowHalfH) // 根部下
+        leftArrowPath.close()
+
+        // 右箭头: 尖端在右, 根部在左 (左箭头的水平镜像)
+        val rightTipX = w - w * 0.06f
+        val rightBaseX = rightTipX - arrowLen
+        rightArrowPath.reset()
+        rightArrowPath.moveTo(rightTipX, centerY)                 // 尖端
+        rightArrowPath.lineTo(rightBaseX, centerY - arrowHalfH)   // 根部上
+        rightArrowPath.lineTo(rightBaseX, centerY + arrowHalfH)   // 根部下
+        rightArrowPath.close()
+    }
+
+    /**
+     * 绘制箭头的 3 段扫描效果
+     *
+     * 将箭头 Path 按水平方向切为 3 段, 根据 sweepPhase 依次点亮。
+     * 使用 clipPath 实现分段裁剪, 保证三角形轮廓完整。
+     */
+    private fun drawArrowSegments(canvas: Canvas, arrowPath: Path, sweepPhase: Float) {
+        val bounds = android.graphics.RectF()
+        arrowPath.computeBounds(bounds, true)
 
         val segmentCount = 3
+        val segW = bounds.width() / segmentCount
+
+        // 判断箭头指向方向 (尖端 x 位置)
+        val pointingLeft = bounds.left < bounds.centerX()
+
         for (i in 0 until segmentCount) {
-            // 段 i 的 x 区间: 根部(i=0) → 尖端(i=2)
-            val xInner = baseX + (tipX - baseX) * (i / segmentCount.toFloat())
-            val xOuter = baseX + (tipX - baseX) * ((i + 1) / segmentCount.toFloat())
+            // 段 i 的 x 范围: 根部(i=0) → 尖端(i=2)
+            // 左箭头: 根部在右 (bounds.right), 尖端在左 (bounds.left)
+            // 右箭头: 根部在左 (bounds.left), 尖端在右 (bounds.right)
+            val segLeft: Float
+            val segRight: Float
+            if (pointingLeft) {
+                // 左箭头: 根部在右, 尖端在左
+                segRight = bounds.right - segW * i
+                segLeft = bounds.right - segW * (i + 1)
+            } else {
+                // 右箭头: 根部在左, 尖端在右
+                segLeft = bounds.left + segW * i
+                segRight = bounds.left + segW * (i + 1)
+            }
 
             // 判断该段是否被扫描脉冲点亮
             var lit = false
             if (sweepPhase >= 0f) {
-                // 脉冲从根部(i=0)向尖端(i=2)流动: 段起点相位 = i/segmentCount
+                // 脉冲从根部(i=0)向尖端(i=2)流动
                 val segmentStart = i / segmentCount.toFloat()
-                // 扫描时刻 t 点亮 [t - pulseWidth, t] 区间内的段
                 val t = sweepPhase + segmentStart
                 lit = t % 1f < pulseWidth
             }
 
             arrowPaint.color = if (lit) activeColor else idleColor
 
-            val path = Path()
-            // 段边界处的半高 (尖端处收拢为 0)
-            val halfInner = halfExtent(xInner, baseX, tipX, baseHalf)
-            val halfOuter = halfExtent(xOuter, baseX, tipX, baseHalf)
-
-            path.moveTo(xInner, centerY - halfInner)
-            path.lineTo(xOuter, centerY - halfOuter)
-            path.lineTo(xOuter, centerY + halfOuter)
-            path.lineTo(xInner, centerY + halfInner)
-            path.close()
-            canvas.drawPath(path, arrowPaint)
+            // 用 clipPath 裁剪当前段, 再绘制完整箭头
+            canvas.save()
+            val clipPath = Path()
+            clipPath.addRect(segLeft, bounds.top - 1f, segRight, bounds.bottom + 1f, Path.Direction.CW)
+            canvas.clipPath(clipPath)
+            canvas.drawPath(arrowPath, arrowPaint)
+            canvas.restore()
         }
-    }
-
-    /**
-     * 计算箭头在给定 x 位置处的半高 (从根部 baseHalf 线性收拢到尖端 0)
-     */
-    private fun halfExtent(x: Float, baseX: Float, tipX: Float, baseHalf: Float): Float {
-        val t = abs(x - baseX) / (tipX - baseX).coerceAtLeast(0.0001f)
-        return baseHalf * (1f - t).coerceIn(0f, 1f)
     }
 
     companion object {
