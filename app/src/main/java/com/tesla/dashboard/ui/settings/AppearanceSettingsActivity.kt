@@ -61,6 +61,7 @@ class AppearanceSettingsActivity : BaseImmersiveActivity() {
         binding.btnBack.setOnClickListener { finish() }
 
         setupThemeDropdown()
+        setupTurnSignalsSwitch()
 
         // 观察主题流 — 实时应用配色
         observeThemeColors()
@@ -90,6 +91,25 @@ class AppearanceSettingsActivity : BaseImmersiveActivity() {
                 viewModel.saveThemeMode(mode)
                 themeManager.setThemeMode(mode)
             }
+        }
+    }
+
+    /**
+     * 设置转向灯显示开关 (v0.5.0)
+     *
+     * - 观察已保存的开关状态填充 Switch
+     * - 用户切换时即时保存
+     */
+    private fun setupTurnSignalsSwitch() {
+        lifecycleScope.launch {
+            viewModel.showTurnSignalsFlow.collect { show ->
+                if (binding.switchTurnSignals.isChecked != show) {
+                    binding.switchTurnSignals.isChecked = show
+                }
+            }
+        }
+        binding.switchTurnSignals.setOnCheckedChangeListener { _, checked ->
+            viewModel.saveShowTurnSignals(checked)
         }
     }
 
@@ -133,5 +153,9 @@ class AppearanceSettingsActivity : BaseImmersiveActivity() {
         binding.tvThemeLabel.setTextColor(c.textSecondary)
         binding.tilTheme.boxStrokeColor = c.accentCyan
         binding.actvTheme.setTextColor(c.textPrimary)
+        // v0.5.0: 转向灯开关
+        binding.tvTurnSignalsLabel.setTextColor(c.textPrimary)
+        binding.tvTurnSignalsSummary.setTextColor(c.textSecondary)
+        binding.switchTurnSignals.buttonTintList = ColorStateList.valueOf(c.accentCyan)
     }
 }

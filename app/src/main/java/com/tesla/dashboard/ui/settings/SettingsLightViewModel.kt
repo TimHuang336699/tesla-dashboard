@@ -39,6 +39,9 @@ class SettingsLightViewModel @Inject constructor(
     /** 单位系统流 */
     val unitSystemFlow: Flow<String> = settingsRepository.unitSystemFlow
 
+    /** 转向灯显示开关流 (v0.5.0) */
+    val showTurnSignalsFlow: Flow<Boolean> = settingsRepository.showTurnSignalsFlow
+
     /** 保存主题模式 */
     fun saveThemeMode(themeMode: String) {
         saveScope.launch {
@@ -57,6 +60,13 @@ class SettingsLightViewModel @Inject constructor(
     fun saveUnitSystem(unitSystem: String) {
         saveScope.launch {
             settingsRepository.saveUnitSystem(unitSystem)
+        }
+    }
+
+    /** 保存转向灯显示开关 (v0.5.0) */
+    fun saveShowTurnSignals(show: Boolean) {
+        saveScope.launch {
+            settingsRepository.saveShowTurnSignals(show)
         }
     }
 }

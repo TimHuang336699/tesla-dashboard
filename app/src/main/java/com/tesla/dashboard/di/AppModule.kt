@@ -5,6 +5,7 @@ import com.tesla.dashboard.data.local.AppDatabase
 import com.tesla.dashboard.data.local.dao.TripDao
 import com.tesla.dashboard.data.source.VehicleDataSource
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
+import com.tesla.dashboard.data.source.gnss.PhoneGnssProvider
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -17,8 +18,8 @@ import javax.inject.Singleton
 /**
  * Hilt 依赖注入模块
  *
- * - DataSourceModule: 将 TeslaBleProvider 绑定到 VehicleDataSource 接口
- *   (GNSS/Sensor 已移除，BLE 为唯一数据源)
+ * - DataSourceModule: 将 TeslaBleProvider 绑定到 VehicleDataSource 接口 (@Named("tesla") 主数据源),
+ *   PhoneGnssProvider 绑定为降级数据源 (@Named("gnss"), v0.5.0 BLE 失效时降级)
  * - DatabaseModule:   提供 Room 数据库和 DAO
  */
 
@@ -32,6 +33,11 @@ abstract class DataSourceModule {
     @Named("tesla")
     @Singleton
     abstract fun bindTeslaBleProvider(impl: TeslaBleProvider): VehicleDataSource
+
+    @Binds
+    @Named("gnss")
+    @Singleton
+    abstract fun bindPhoneGnssProvider(impl: PhoneGnssProvider): VehicleDataSource
 }
 
 // ===== Room 数据库 =====

@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.security.PrivateKey
 import java.security.PublicKey
@@ -81,6 +83,15 @@ class TeslaBleProvider @Inject constructor(
     /** 当前 BLE 会话 */
     @Volatile
     private var session: BleSession? = null
+
+    /**
+     * BLE 会话互斥锁 (v0.5.0)
+     *
+     * 轮询与车辆控制命令都依赖"连接→握手→收发→断开"整段会话流程,
+     * 若不串行化, 轮询结束时的 disconnectSession() 可能打断
+     * 控制命令正在进行的收发, 反之亦然。
+     */
+    private val sessionMutex = Mutex()
 
     /** 是否正在轮询 */
     @Volatile
@@ -613,13 +624,13 @@ class TeslaBleProvider @Inject constructor(
      * @param vin 车辆识别号
      * @return 车辆数据，失败返回 null
      */
-    private suspend fun pollVehicleState(vin: String): VehicleData? {
+    private suspend fun pollVehicleState(vin: String): VehicleData? = sessionMutex.withLock {
         // 加载密钥
         val privateKey = keyManager.loadPrivateKey() ?: run {
             AppLog.w(TAG, "Poll skipped: private key not available")
-            return null
+            return@withLock null
         }
-        val publicKeyRaw = keyManager.loadPublicKeyRaw() ?: return null
+        val publicKeyRaw = keyManager.loadPublicKeyRaw() ?: return@withLock null
 
         try {
             // 1. 优先使用缓存的设备地址直接连接 (v0.4 优化, 免扫描),
@@ -630,7 +641,7 @@ class TeslaBleProvider @Inject constructor(
                     bleManager.scanForVehicle(vin, timeoutMs = 10000L)
                 } ?: run {
                     AppLog.w(TAG, "Scan fallback failed: vehicle not found (within 10s)")
-                    return null
+                    return@withLock null
                 }
                 bleManager.connect(device, timeoutMs = 15000L)
             }
@@ -643,7 +654,7 @@ class TeslaBleProvider @Inject constructor(
                 !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
             ) {
                 AppLog.e(TAG, "Vehicle public key MISMATCH vs pinned - aborting (possible relay/MITM)")
-                return null
+                return@withLock null
             }
             session = vcsecSession
 
@@ -670,7 +681,7 @@ class TeslaBleProvider @Inject constructor(
             if (responseBytes == null) {
                 AppLog.w(TAG, "Infotainment response timeout after retries")
                 Log.w(TAG, "Infotainment response timeout after retries")
-                return VehicleData(isTeslaConnected = true)
+                return@withLock VehicleData(isTeslaConnected = true)
             }
 
             // 6. 解析 RoutableMessage 并解密
@@ -680,7 +691,7 @@ class TeslaBleProvider @Inject constructor(
             if (plaintext == null) {
                 AppLog.w(TAG, "Failed to decrypt Infotainment response")
                 Log.w(TAG, "Failed to decrypt Infotainment response")
-                return VehicleData(isTeslaConnected = true)
+                return@withLock VehicleData(isTeslaConnected = true)
             }
 
             // 7. 解析 VehicleState
@@ -689,7 +700,7 @@ class TeslaBleProvider @Inject constructor(
                     "gear=${stateData.gear}, odometer=${stateData.odometer}, insideTemp=${stateData.insideTemp}")
 
             // 8. 单位换算 + 导出数据计算
-            return buildEnrichedVehicleData(stateData)
+            return@withLock buildEnrichedVehicleData(stateData)
 
         } finally {
             disconnectSession()
@@ -931,6 +942,116 @@ class TeslaBleProvider @Inject constructor(
     private fun disconnectSession() {
         bleManager.disconnect()
         session = null
+    }
+
+    // ===== 车辆控制命令 (v0.5.0) =====
+
+    /**
+     * 车辆控制命令类型
+     */
+    sealed class VehicleCommand {
+        /** 解锁车辆 */
+        object Unlock : VehicleCommand()
+        /** 锁定车辆 */
+        object Lock : VehicleCommand()
+        /** 打开前备箱 */
+        object OpenFrunk : VehicleCommand()
+        /** 打开后备箱 */
+        object OpenTrunk : VehicleCommand()
+    }
+
+    /**
+     * 发送车辆控制命令 (解锁/闭锁/前后备箱) (v0.5.0)
+     *
+     * 流程:
+     * 1. 优先缓存地址直连, 失败回退全量扫描
+     * 2. VCSEC 域 ECDH 握手 + 车辆公钥固定校验
+     * 3. 发送唤醒命令 (WakeVehicle)
+     * 4. 发送控制命令 (RKEAction / ClosureMoveRequest) 并等待响应
+     * 5. 解密响应, 解析 CommandStatus.operation_status
+     *
+     * @param command 控制命令
+     * @return true=车辆确认执行成功 (operation_status == SUCCESS);
+     *         响应无法解密/未收到时按"已发送"返回 true (兼容性宽松);
+     *         false=连接/握手/公钥校验失败
+     */
+    suspend fun sendVehicleCommand(command: VehicleCommand): Boolean = sessionMutex.withLock {
+        val currentVin = vin
+        if (currentVin.isNullOrBlank()) return@withLock false
+        val privateKey = keyManager.loadPrivateKey() ?: return@withLock false
+        val publicKeyRaw = keyManager.loadPublicKeyRaw() ?: return@withLock false
+
+        try {
+            // 1. 连接 (优先缓存直连, 失败回退扫描)
+            val connected = bleManager.tryConnectCached(timeoutMs = 15000L)
+            if (!connected) {
+                val device = withTimeoutOrNull(10000L) {
+                    bleManager.scanForVehicle(currentVin, timeoutMs = 10000L)
+                } ?: run {
+                    AppLog.w(TAG, "Command $command failed: vehicle not found")
+                    return@withLock false
+                }
+                bleManager.connect(device, timeoutMs = 15000L)
+            }
+
+            // 2. VCSEC 域握手 + 公钥固定校验
+            val vcsecSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            val pinnedVehicleKey = keyManager.loadVehiclePublicKeyRaw()
+            if (pinnedVehicleKey != null &&
+                !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
+            ) {
+                AppLog.e(TAG, "Command $command aborted: vehicle public key MISMATCH vs pinned")
+                return@withLock false
+            }
+            session = vcsecSession
+
+            // 3. 唤醒车辆 (RKE 唤醒命令, 车辆深睡时也能唤醒; 等待唤醒稳定)
+            sendSignedCommand(
+                vcsecSession,
+                TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_WAKE_VEHICLE),
+                TeslaBleConstants.DOMAIN_VEHICLE_SECURITY,
+            )
+            delay(500)
+
+            // 4. 构建并发送控制命令
+            val payload = when (command) {
+                VehicleCommand.Unlock -> TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_UNLOCK)
+                VehicleCommand.Lock -> TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_LOCK)
+                VehicleCommand.OpenFrunk -> TeslaBleMessages.encodeClosureMoveRequest(
+                    TeslaBleConstants.CLOSURE_FRUNK,
+                    TeslaBleConstants.CLOSURE_ACTION_OPEN,
+                )
+                VehicleCommand.OpenTrunk -> TeslaBleMessages.encodeClosureMoveRequest(
+                    TeslaBleConstants.CLOSURE_TRUNK,
+                    TeslaBleConstants.CLOSURE_ACTION_OPEN,
+                )
+            }
+            val response = sendSignedCommandAndWait(
+                vcsecSession,
+                payload,
+                TeslaBleConstants.DOMAIN_VEHICLE_SECURITY,
+                retries = COMMAND_RETRY_COUNT,
+            ) ?: run {
+                AppLog.w(TAG, "Command $command: no response (may still have executed)")
+                return@withLock true
+            }
+
+            // 5. 解密并解析 CommandStatus
+            val responseMsg = TeslaBleMessages.parseRoutableMessage(response)
+            val plaintext = decryptResponse(responseMsg, vcsecSession, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            val status = plaintext?.let { TeslaBleMessages.parseCommandStatus(it) }
+            AppLog.d(TAG, "Command $command status=$status")
+            // SUCCESS 或无法解析时均视为成功 (未收到失败确认)
+            status == null || status == TeslaBleConstants.OP_STATUS_SUCCESS
+
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Command $command failed: ${e.message}")
+            false
+        } finally {
+            disconnectSession()
+        }
     }
 
     /**

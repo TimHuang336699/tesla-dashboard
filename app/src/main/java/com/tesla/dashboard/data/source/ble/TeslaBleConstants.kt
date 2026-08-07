@@ -121,6 +121,26 @@ object TeslaBleConstants {
     const val ROLE_CHARGING_MANAGER = 6
     const val ROLE_GUEST = 8
 
+    // ===== ClosureMoveRequest (vcsec.proto, v0.5.0 前后备箱控制) =====
+
+    /** ClosureMoveRequest.closure — 舱门类型 */
+    const val CLOSURE_NONE = 0
+    const val CLOSURE_FRUNK = 1
+    const val CLOSURE_TRUNK = 2
+
+    /** ClosureMoveRequest.action — 舱门动作 */
+    const val CLOSURE_ACTION_NONE = 0
+    const val CLOSURE_ACTION_MOVE = 1
+    const val CLOSURE_ACTION_OPEN = 2
+    const val CLOSURE_ACTION_CLOSE = 3
+
+    // ===== CommandStatus (vcsec.proto, v0.5.0 命令执行状态) =====
+
+    /** CommandStatus.operation_status — 命令执行结果 */
+    const val OP_STATUS_PENDING = 1
+    const val OP_STATUS_SUCCESS = 2
+    const val OP_STATUS_FAILED = 3
+
     // ===== RoutableMessage Flag =====
 
     /** 请求车辆加密响应 */
@@ -187,8 +207,16 @@ object TeslaBleConstants {
     // UnsignedMessage (vcsec.proto)
     const val FIELD_UM_INFORMATION_REQUEST = 1
     const val FIELD_UM_RKE_ACTION = 2
+    const val FIELD_UM_COMMAND_STATUS = 3
     const val FIELD_UM_CLOSURE_MOVE_REQUEST = 4
     const val FIELD_UM_WHITELIST_OPERATION = 16
+
+    // ClosureMoveRequest (vcsec.proto)
+    const val FIELD_CM_CLOSURE = 1
+    const val FIELD_CM_ACTION = 2
+
+    // CommandStatus (vcsec.proto)
+    const val FIELD_CS_OPERATION_STATUS = 1
 
     // WhitelistOperation (vcsec.proto)
     const val FIELD_WO_ADD_KEY_AND_PERMISSIONS = 5

@@ -79,6 +79,17 @@
             android:textColor="@color/accent_blue"
             android:textSize="36sp" />
 
+        <!-- 温度 (v0.5.0 常驻: 车内/车外) -->
+        <TextView
+            android:id="@+id/tempTopText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="28dp"
+            android:fontFamily="sans-serif-thin"
+            android:text="@string/default_value"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp" />
+
         <!-- 弹性间隔 -->
         <Space
             android:layout_width="0dp"
@@ -145,6 +156,18 @@
         app:layout_constraintEnd_toStartOf="@id/centerGuide" />
 
     <!-- ================================================================ -->
+    <!-- ===== 转向灯指示 (v0.5.0, 矢量箭头, 中列顶部) ===== -->
+    <!-- ================================================================ -->
+    <com.tesla.dashboard.ui.dashboard.TurnSignalView
+        android:id="@+id/turnSignalView"
+        android:layout_width="0dp"
+        android:layout_height="26dp"
+        app:layout_constraintTop_toBottomOf="@id/topDivider"
+        app:layout_constraintBottom_toTopOf="@id/carSilhouette"
+        app:layout_constraintStart_toStartOf="@id/centerGuide"
+        app:layout_constraintEnd_toEndOf="@id/rightGuide" />
+
+    <!-- ================================================================ -->
     <!-- ===== 中列: 车辆剪影 ===== -->
     <!-- ================================================================ -->
 
@@ -159,6 +182,20 @@
         app:layout_constraintStart_toStartOf="@id/centerGuide"
         app:layout_constraintEnd_toStartOf="@id/rightGuide"
         app:layout_constraintVertical_bias="0.5" />
+
+    <!-- 瞬时功率 (v0.5.0 常驻, 剪影下方, 正=驱动/负=动能回收) -->
+    <TextView
+        android:id="@+id/powerTopText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:fontFamily="sans-serif-thin"
+        android:text="@string/default_value"
+        android:textColor="@color/accent_green"
+        android:textSize="18sp"
+        app:layout_constraintTop_toBottomOf="@id/carSilhouette"
+        app:layout_constraintStart_toStartOf="@id/carSilhouette"
+        app:layout_constraintEnd_toEndOf="@id/carSilhouette" />
 
     <!-- ================================================================ -->
     <!-- ===== 右列: 竖向电量仪表 (VerticalGaugeView) ===== -->
@@ -274,12 +311,22 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
-        <!-- 右侧: 历史 + 设置按钮 -->
+        <!-- 右侧: 车辆控制 + 历史 + 设置按钮 -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <!-- 车辆控制 (v0.5.0: 解锁/闭锁/前后备箱) -->
+            <ImageButton
+                android:id="@+id/controlButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/control_panel_title"
+                android:src="@android:drawable/ic_lock_idle_lock"
+                android:tint="@color/text_secondary" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/historyButton"

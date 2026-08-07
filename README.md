@@ -161,6 +161,9 @@ app/src/main/java/com/tesla/dashboard/
 
 ## Changelog
 
+- **v0.5.0** — GNSS fallback on BLE outage (speed/position/heading, uninterrupted trip distance); vehicle control panel (unlock/lock/frunk/trunk via BLE); turn signal indicators 2.0 (vector arrows, Tesla-style sweep animation, theme colors, settings toggle); persistent temperature/power display; data source status (GNSS fallback badge)
+- **v0.4.2** — Stale data protection (keep values + dim on failure); adaptive polling 2.5s while driving; exponential backoff on repeated failures; instant power display
+- **v0.4.1** — Scan robustness; GATT race fix; vehicle public key pinning (anti-relay/MITM)
 - **v0.4.0** — Phone-style grouped settings (Vehicle/Display/General/About), direct log export from settings, instant consumption display (kWh/100km), BLE private key moved to Android Keystore (AES-256-GCM), BLE polling 10s→5s + cached device direct-connect, dead code & background resource cleanup, README rewrite
 - **v0.3.5** — Fox logo redesign + 1s splash animation
 - **v0.3.0** — Multi-language, multi-unit, hierarchical settings, VIN masking

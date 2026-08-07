@@ -1,20 +1,30 @@
 package com.tesla.dashboard.data.model
 
 /**
- * 统一车辆数据模型 — 以 Tesla BLE 蓝牙直连为唯一数据源
+ * 车辆数据来源
  *
- * 所有车辆数据均通过 BLE 加密通道从车辆获取，10s 轮询。
- * 不再依赖手机本地 GNSS/传感器获取车辆数据。
+ * - [BLE]: Tesla 车辆蓝牙直连 (主数据源, 全部字段)
+ * - [GNSS]: 手机 GNSS 定位 (BLE 断开/失败时的降级数据源, 仅运动学字段)
+ */
+enum class DataSource { BLE, GNSS }
+
+/**
+ * 统一车辆数据模型 — Tesla BLE 蓝牙直连为主数据源, 手机 GNSS 为降级数据源
+ *
+ * 车辆数据优先通过 BLE 加密通道从车辆获取 (5s 轮询, 行驶中 2.5s)。
+ * 当 BLE 轮询失败/断开时 (数据失效保护触发), 由手机 GNSS 提供
+ * 车速/位置/航向/海拔等运动学字段作为降级, 行程里程连续累加不中断。
  *
  * ## 数据来源说明
- * - **车速**: 车辆 CAN 总线实时车速，比 GNSS 测速更精确
- * - **加速度**: 由车速变化率计算，或从车辆惯性传感器获取
- * - **海拔**: 车辆 GPS 模块提供
- * - **行程里程**: 由总里程表(odometer)差值计算
+ * - **车速**: 车辆 CAN 总线实时车速 (BLE), 降级时手机 GNSS 测速
+ * - **加速度**: 由车速变化率计算
+ * - **海拔**: 车辆 GPS 模块提供 (BLE), 降级时手机 GNSS
+ * - **行程里程**: BLE 时段由总里程表(odometer)差值计算, GNSS 时段由定位距离差累加
  * - **瞬时电耗**: 由电池 SOC 变化 + 里程表差值计算
- * - **位置**: 车辆 GPS 模块提供(经纬度/航向)
+ * - **位置**: 车辆 GPS 模块提供(经纬度/航向), 降级时手机 GNSS
  *
  * @see com.tesla.dashboard.data.source.ble.TeslaBleProvider
+ * @see com.tesla.dashboard.data.source.gnss.PhoneGnssProvider
  */
 data class VehicleData(
 
@@ -95,6 +105,12 @@ data class VehicleData(
 
     // ===== 状态标志 =====
 
+    /** 数据来源 (v0.5.0): BLE = 车辆蓝牙数据 / GNSS = 手机定位降级 */
+    val dataSource: DataSource = DataSource.BLE,
+
+    /** 手机 GNSS 是否已获得定位 (v0.5.0 GNSS 降级用) */
+    val isGnssActive: Boolean = false,
+
     /** Tesla BLE 是否已连接 */
     val isTeslaConnected: Boolean = false,
 
@@ -115,6 +131,12 @@ data class VehicleData(
     /** 上一次轮询的时间戳 ms(内部用于加速度/电耗计算) */
     val prevTimestamp: Long = 0L,
 ) {
+    /**
+     * 是否拥有可用的位置/运动学数据 (BLE 车辆 GPS 或 GNSS 降级)
+     */
+    val hasPosition: Boolean
+        get() = isTeslaConnected || dataSource == DataSource.GNSS
+
     /**
      * 计算瞬时电耗 kWh/100km
      *

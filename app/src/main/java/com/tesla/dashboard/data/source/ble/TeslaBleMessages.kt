@@ -234,6 +234,24 @@ object TeslaBleMessages {
     }
 
     /**
+     * 编码 ClosureMoveRequest (打开/关闭前后备箱) (v0.5.0)
+     *
+     * @param closure 舱门类型 (如 CLOSURE_FRUNK / CLOSURE_TRUNK)
+     * @param action 动作 (如 CLOSURE_ACTION_OPEN)
+     * @return UnsignedMessage protobuf 编码
+     */
+    fun encodeClosureMoveRequest(closure: Int, action: Int): ByteArray {
+        // ClosureMoveRequest { closure, action }
+        val moveBuf = ByteArrayOutputStream()
+        TeslaProtobuf.writeUint32(moveBuf, TeslaBleConstants.FIELD_CM_CLOSURE, closure)
+        TeslaProtobuf.writeUint32(moveBuf, TeslaBleConstants.FIELD_CM_ACTION, action)
+        // UnsignedMessage { ClosureMoveRequest }
+        val unsignedBuf = ByteArrayOutputStream()
+        TeslaProtobuf.writeMessage(unsignedBuf, TeslaBleConstants.FIELD_UM_CLOSURE_MOVE_REQUEST, moveBuf.toByteArray())
+        return unsignedBuf.toByteArray()
+    }
+
+    /**
      * 编码 WhitelistOperation — 添加钥匙请求 (add-key-request)
      *
      * 构造 PermissionChange 消息，包含新公钥和角色，
@@ -278,6 +296,29 @@ object TeslaBleMessages {
     }
 
     // ===== 响应解析 =====
+
+    /**
+     * 解析 VCSEC CommandStatus (v0.5.0)
+     *
+     * 从解密的 VCSEC 响应中提取命令执行状态。
+     *
+     * 解析层次:
+     * ```
+     * UnsignedMessage
+     *   └── command_status (field 3)
+     *         └── operation_status (field 1) → OP_STATUS_*
+     * ```
+     *
+     * @param plaintext 解密后的 UnsignedMessage protobuf
+     * @return operation_status 值 (OP_STATUS_SUCCESS=2 等), 无 CommandStatus 时返回 null
+     */
+    fun parseCommandStatus(plaintext: ByteArray): Int? {
+        val unsignedFields = TeslaProtobuf.parseAllFields(plaintext)
+        val csBytes = TeslaProtobuf.getBytes(unsignedFields, TeslaBleConstants.FIELD_UM_COMMAND_STATUS)
+            ?: return null
+        val csFields = TeslaProtobuf.parseAllFields(csBytes)
+        return TeslaProtobuf.getUint32(csFields, TeslaBleConstants.FIELD_CS_OPERATION_STATUS)
+    }
 
     // ===== carserver (Infotainment 域) 消息 =====
 

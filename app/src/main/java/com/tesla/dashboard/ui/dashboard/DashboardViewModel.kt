@@ -5,19 +5,36 @@ import androidx.lifecycle.viewModelScope
 import com.tesla.dashboard.data.local.SettingsRepository
 import com.tesla.dashboard.data.model.VehicleData
 import com.tesla.dashboard.data.repository.VehicleDataRepository
+import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.util.UnitSystem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/**
+ * 车辆控制命令 UI 状态 (v0.5.0)
+ */
+sealed class ControlUiState {
+    /** 空闲 */
+    object Idle : ControlUiState()
+
+    /** 正在发送命令 */
+    object Sending : ControlUiState()
+
+    /** 命令发送完成 */
+    data class Done(val success: Boolean) : ControlUiState()
+}
 
 /**
  * Dashboard UI 状态数据类
@@ -88,6 +105,44 @@ class DashboardViewModel @Inject constructor(
      * 上一帧车辆数据缓存 (电耗计算用, 与数据流收集同步更新)
      */
     private var lastData: VehicleData? = null
+
+    // ===== v0.5.0: 转向灯显示开关 =====
+
+    /**
+     * 是否显示转向灯指示 (设置驱动)
+     */
+    val showTurnSignals: StateFlow<Boolean> = settingsRepository.showTurnSignalsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = true,
+        )
+
+    // ===== v0.5.0: 车辆控制命令 =====
+
+    /**
+     * 车辆控制命令执行状态 (供 UI 提示)
+     */
+    private val _controlState = MutableStateFlow<ControlUiState>(ControlUiState.Idle)
+    val controlState: StateFlow<ControlUiState> = _controlState.asStateFlow()
+
+    /**
+     * 发送车辆控制命令 (解锁/闭锁/前后备箱)
+     *
+     * @param command 控制命令
+     */
+    fun sendVehicleCommand(command: TeslaBleProvider.VehicleCommand) {
+        if (_controlState.value is ControlUiState.Sending) return
+        _controlState.value = ControlUiState.Sending
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = try {
+                vehicleDataRepository.sendVehicleCommand(command)
+            } catch (e: Exception) {
+                false
+            }
+            _controlState.value = ControlUiState.Done(success)
+        }
+    }
 
     /**
      * 计算瞬时电耗 kWh/100km

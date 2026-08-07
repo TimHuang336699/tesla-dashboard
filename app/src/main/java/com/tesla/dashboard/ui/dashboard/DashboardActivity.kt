@@ -3,18 +3,22 @@ package com.tesla.dashboard.ui.dashboard
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.tesla.dashboard.R
+import com.tesla.dashboard.data.model.DataSource
 import com.tesla.dashboard.data.model.VehicleData
+import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.databinding.ActivityDashboardBinding
 import com.tesla.dashboard.ui.history.HistoryActivity
 import com.tesla.dashboard.ui.settings.SettingsActivity
@@ -103,12 +107,18 @@ class DashboardActivity : BaseImmersiveActivity() {
      * 设置按钮点击与长按监听
      *
      * - historyButton:跳转到历史行程页面
+     * - controlButton (v0.5.0):呼出车辆控制面板 (解锁/闭锁/前后备箱)
      * - settingsButton(点击):跳转到设置页面
      * - settingsButton(长按):切换详情区展开/收起,带高度动画
      */
     private fun setupButtons() {
         binding.historyButton.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
+        }
+
+        // v0.5.0: 车辆控制面板
+        binding.controlButton.setOnClickListener {
+            showControlPanel()
         }
 
         binding.settingsButton.setOnClickListener {
@@ -120,6 +130,34 @@ class DashboardActivity : BaseImmersiveActivity() {
             toggleDetailSection()
             true
         }
+    }
+
+    /**
+     * 呼出车辆控制面板 (v0.5.0)
+     *
+     * 提供 解锁/闭锁/打开前备箱/打开后备箱 四个控制命令。
+     * 通过 VCSEC 域 BLE 加密通道发送, 结果以 Toast 提示。
+     */
+    private fun showControlPanel() {
+        val options = arrayOf(
+            getString(R.string.control_unlock),
+            getString(R.string.control_lock),
+            getString(R.string.control_frunk),
+            getString(R.string.control_trunk),
+        )
+        val commands = arrayOf(
+            TeslaBleProvider.VehicleCommand.Unlock,
+            TeslaBleProvider.VehicleCommand.Lock,
+            TeslaBleProvider.VehicleCommand.OpenFrunk,
+            TeslaBleProvider.VehicleCommand.OpenTrunk,
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.control_panel_title)
+            .setItems(options) { _, which ->
+                viewModel.sendVehicleCommand(commands[which])
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     /**
@@ -140,6 +178,36 @@ class DashboardActivity : BaseImmersiveActivity() {
                     viewModel.uiState.collect { state ->
                         currentUnitSystem = state.unitSystem
                         updateUI(state)
+                    }
+                }
+
+                // v0.5.0: 转向灯显示开关
+                launch {
+                    viewModel.showTurnSignals.collect { show ->
+                        binding.turnSignalView.visibility =
+                            if (show) View.VISIBLE else View.GONE
+                    }
+                }
+
+                // v0.5.0: 车辆控制命令结果提示
+                launch {
+                    viewModel.controlState.collect { controlState ->
+                        when (controlState) {
+                            ControlUiState.Idle -> Unit
+                            ControlUiState.Sending ->
+                                Toast.makeText(
+                                    this@DashboardActivity,
+                                    R.string.control_sending,
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            is ControlUiState.Done ->
+                                Toast.makeText(
+                                    this@DashboardActivity,
+                                    if (controlState.success) R.string.control_success
+                                    else R.string.control_failed,
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                        }
                     }
                 }
             }
@@ -172,9 +240,16 @@ class DashboardActivity : BaseImmersiveActivity() {
 
         // ===== 顶部栏 =====
         binding.gearText.setTextColor(c.accentBlue)
+        binding.tempTopText.setTextColor(c.textSecondary)
         binding.socText.setTextColor(c.textPrimary)
         binding.rangeText.setTextColor(c.textSecondary)
         binding.topDivider.setBackgroundColor(c.divider)
+
+        // ===== 中列: 常驻功率 (v0.5.0) =====
+        binding.powerTopText.setTextColor(c.accentGreen)
+
+        // ===== 转向灯指示 (v0.5.0, 主题色联动) =====
+        binding.turnSignalView.setColors(active = c.accentGreen, idle = c.divider)
 
         // ===== 底部数据 =====
         binding.tripDistText.setTextColor(c.accentBlue)
@@ -190,6 +265,7 @@ class DashboardActivity : BaseImmersiveActivity() {
 
         // ===== 按钮 =====
         binding.historyButton.setTextColor(c.accentBlue)
+        binding.controlButton.imageTintList = ColorStateList.valueOf(c.textSecondary)
         binding.settingsButton.backgroundTintList = ColorStateList.valueOf(c.textSecondary)
 
         // ===== 大数字码表配色 (左列) =====
@@ -238,7 +314,8 @@ class DashboardActivity : BaseImmersiveActivity() {
         isTeslaConnected = data.isTeslaConnected
 
         // v0.4.2 数据失效保护: 过期帧保留数值展示, 核心视图降低透明度提示状态
-        val stale = data.isDataStale
+        // v0.5.0: GNSS 降级帧的运动学字段是新鲜的, 不参与降透明度
+        val stale = data.isDataStale && data.dataSource == DataSource.BLE
         binding.speedDisplay.alpha = if (stale) 0.55f else 1f
         binding.verticalGauge.alpha = if (stale) 0.55f else 1f
         binding.carSilhouette.alpha = if (stale) 0.55f else 1f
@@ -247,6 +324,12 @@ class DashboardActivity : BaseImmersiveActivity() {
 
         // 档位(P/R/N/D),Tesla BLE 未连接时显示 "--"
         binding.gearText.text = data.gear ?: getString(R.string.default_value)
+
+        // v0.5.0: 温度常驻顶部 (车内/车外)
+        binding.tempTopText.text = formatTemperature(
+            data.insideTemp,
+            data.outsideTemp,
+        )
 
         // ===== 大数字码表速度 (左列, 按单位系统换算) =====
         binding.speedDisplay.maxSpeed = UnitFormatter.maxSpeed(currentUnitSystem)
@@ -314,6 +397,15 @@ class DashboardActivity : BaseImmersiveActivity() {
             getString(R.string.format_speed_value, value, getString(unit))
         } ?: getString(R.string.default_value)
 
+        // ===== 中列 - 常驻功率 (v0.5.0) =====
+        // 瞬时功率 kW, 英制单位下换算为 hp (1 kW = 1.34102 hp)
+        binding.powerTopText.text = data.powerKw?.let { kw ->
+            val imperial = currentUnitSystem == UnitSystem.IMPERIAL
+            val value = if (imperial) kw * 1.34102f else kw
+            val unit = if (imperial) R.string.unit_hp else R.string.unit_kw
+            getString(R.string.format_speed_value, value, getString(unit))
+        } ?: getString(R.string.default_value)
+
         // ===== 底部 - 里程/G力/位置 =====
 
         // 本次行程里程 (按单位系统换算)
@@ -326,20 +418,21 @@ class DashboardActivity : BaseImmersiveActivity() {
         // G 力值
         binding.gForceText.text = String.format("%.2f G", data.gForce)
 
-        // 经纬度(BLE 未连接时显示 "--")
-        binding.latText.text = if (data.isTeslaConnected) {
+        // 经纬度(BLE/GNSS 均无数据时显示 "--") (v0.5.0: GNSS 降级也可用)
+        val hasPosition = data.hasPosition
+        binding.latText.text = if (hasPosition) {
             String.format("%.5f", data.latitude)
         } else {
             getString(R.string.default_value)
         }
-        binding.lonText.text = if (data.isTeslaConnected) {
+        binding.lonText.text = if (hasPosition) {
             String.format("%.5f", data.longitude)
         } else {
             getString(R.string.default_value)
         }
 
         // 航向角
-        binding.headingText.text = if (data.isTeslaConnected) {
+        binding.headingText.text = if (hasPosition) {
             getString(R.string.format_temperature_value, data.heading.toInt())
         } else {
             getString(R.string.default_value)
@@ -347,12 +440,14 @@ class DashboardActivity : BaseImmersiveActivity() {
 
         // ===== Tesla BLE 连接状态 =====
         // v0.4.2: 过期数据单独提示 (数值保留但标记过期)
+        // v0.5.0: GNSS 降级时提示 "手机定位"
         binding.teslaStatusText.text = when {
             data.isTeslaConnected -> getString(R.string.tesla_connected)
+            data.dataSource == DataSource.GNSS -> getString(R.string.tesla_gnss_fallback)
             stale -> getString(R.string.tesla_stale)
             else -> getString(R.string.tesla_disconnected)
         }
-        // 连接状态颜色使用当前主题的绿/橙强调色
+        // 连接状态颜色: 已连接=绿, GNSS 降级/过期/未连接=橙
         binding.teslaStatusText.setTextColor(
             if (data.isTeslaConnected) currentColors.accentGreen else currentColors.accentOrange,
         )

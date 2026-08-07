@@ -1,6 +1,7 @@
 package com.tesla.dashboard.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -61,6 +62,9 @@ class SettingsRepository @Inject constructor(
 
     /** 单位系统: "metric"(公制) / "imperial"(英制) */
     private val UNIT_SYSTEM = stringPreferencesKey("unit_system")
+
+    /** 是否显示转向灯指示 (v0.5.0, 默认开启) */
+    private val SHOW_TURN_SIGNALS = booleanPreferencesKey("show_turn_signals")
 
     // ===== VIN =====
 
@@ -150,6 +154,28 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    // ===== Turn Signals (v0.5.0) =====
+
+    /**
+     * 观察转向灯显示开关流
+     *
+     * @return 是否显示转向灯指示, 未设置时默认 true
+     */
+    val showTurnSignalsFlow: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[SHOW_TURN_SIGNALS] ?: DEFAULT_SHOW_TURN_SIGNALS
+    }
+
+    /**
+     * 保存转向灯显示开关
+     *
+     * @param show true=显示转向灯指示
+     */
+    suspend fun saveShowTurnSignals(show: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[SHOW_TURN_SIGNALS] = show
+        }
+    }
+
     // ===== Battery Model =====
 
     /**
@@ -181,5 +207,8 @@ class SettingsRepository @Inject constructor(
 
         /** 默认单位系统:公制 */
         const val DEFAULT_UNIT_SYSTEM = "metric"
+
+        /** 默认显示转向灯指示 */
+        const val DEFAULT_SHOW_TURN_SIGNALS = true
     }
 }
