@@ -184,11 +184,11 @@ class TurnSignalView @JvmOverloads constructor(
      */
     private fun buildArrowPaths(w: Int, h: Int) {
         val centerY = h / 2f
-        val arrowLen = w * 0.38f        // 箭头长度 (水平)
-        val arrowHalfH = h * 0.38f      // 箭头根部半高 (垂直)
+        val arrowLen = w * 0.28f        // 箭头长度 (水平)
+        val arrowHalfH = h * 0.35f      // 箭头根部半高 (垂直)
 
         // 左箭头: 尖端在左 (x = padding), 根部在右
-        val leftTipX = w * 0.06f
+        val leftTipX = w * 0.1f
         val leftBaseX = leftTipX + arrowLen
         leftArrowPath.reset()
         leftArrowPath.moveTo(leftTipX, centerY)               // 尖端
@@ -197,7 +197,7 @@ class TurnSignalView @JvmOverloads constructor(
         leftArrowPath.close()
 
         // 右箭头: 尖端在右, 根部在左 (左箭头的水平镜像)
-        val rightTipX = w - w * 0.06f
+        val rightTipX = w - w * 0.1f
         val rightBaseX = rightTipX - arrowLen
         rightArrowPath.reset()
         rightArrowPath.moveTo(rightTipX, centerY)                 // 尖端
