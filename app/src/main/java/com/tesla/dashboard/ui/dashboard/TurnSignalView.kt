@@ -15,88 +15,56 @@ import androidx.core.animation.doOnEnd
 /**
  * 转向灯指示视图 2.0 (v0.5.0)
  *
- * 基于 Tesla 真实转向灯样式的 V 形箭头:
- * - **矢量绘制**: 纯 Canvas V 形箭头 (chevron), 不依赖位图资源
- * - **Tesla 风格顺序扫描动画**: 每个 V 形分 3 段,
- *   亮起脉冲从外侧向内侧依次流动 (与真实转向灯一致)
- * - **双闪模式**: 左右箭头同步扫描
- * - **主题色联动**: 通过 [setColors] 设置激活色/熄灭色, 随主题切换
+ * 实心方块箭头样式 (矩形柄 + 三角形头):
+ * - OFF: 左右箭头均为灰色
+ * - LEFT: 左箭头绿色, 右箭头灰色
+ * - RIGHT: 左箭头灰色, 右箭头绿色
+ * - HAZARD: 左右箭头均为绿色
  *
- * 说明: Tesla BLE 协议不暴露转向灯真实状态, 本视图为装饰性显示
- * (常显静态箭头), 状态接口 [setState] 保留, 供未来接入真实信号数据。
- *
- * ## 状态
- * - [State.OFF]: 静态熄灭 (不启动动画, 省电)
- * - [State.LEFT] / [State.RIGHT]: 单侧扫描动画
- * - [State.HAZARD]: 双侧同步扫描
+ * 扫描动画: 从柄尾向尖端依次点亮 (3 段)
  */
 class TurnSignalView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
 
-    /**
-     * 转向灯状态
-     */
     enum class State {
-        /** 熄灭 (静态) */
         OFF,
-
-        /** 左转 */
         LEFT,
-
-        /** 右转 */
         RIGHT,
-
-        /** 双闪 */
         HAZARD,
     }
 
-    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
     }
 
-    /** 激活色 (扫描亮起时的颜色, 默认主题绿) */
     private var activeColor: Int = Color.parseColor("#30D158")
+    private var idleColor: Int = Color.parseColor("#8E8E93")
 
-    /** 熄灭色 (静态箭头颜色, 深灰) */
-    private var idleColor: Int = Color.parseColor("#3A3F47")
-
-    /** 当前状态 */
     private var state: State = State.OFF
-
-    /** 扫描动画进度 0..1 (重复循环) */
     private var sweepPhase: Float = 0f
-
-    /** 扫描动画 */
     private var sweepAnimator: ValueAnimator? = null
-
-    /** 扫描脉冲在箭头上的宽度比例 */
     private val pulseWidth = 0.35f
 
-    /** 左箭头 V 形 Path (预计算) */
+    /** 左箭头完整 Path */
     private val leftArrowPath = Path()
 
-    /** 右箭头 V 形 Path (预计算) */
+    /** 右箭头完整 Path */
     private val rightArrowPath = Path()
 
-    /** 描边宽度 */
-    private var strokePx: Float = 0f
+    /** 左箭头 3 个分段裁剪区域 */
+    private val leftClipRects = arrayOf(RectF(), RectF(), RectF())
 
-    /**
-     * 设置转向灯状态
-     */
+    /** 右箭头 3 个分段裁剪区域 */
+    private val rightClipRects = arrayOf(RectF(), RectF(), RectF())
+
     fun setState(state: State) {
         if (this.state == state) return
         this.state = state
         updateAnimation()
     }
 
-    /**
-     * 设置主题色
-     */
     fun setColors(active: Int, idle: Int) {
         if (activeColor == active && idleColor == idle) return
         activeColor = active
@@ -107,8 +75,6 @@ class TurnSignalView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0) {
-            strokePx = h * 0.12f
-            arrowPaint.strokeWidth = strokePx
             buildArrowPaths(w, h)
         }
     }
@@ -151,100 +117,129 @@ class TurnSignalView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
 
+        // 确定每个箭头的颜色
+        val leftColor: Int
+        val rightColor: Int
         when (state) {
-            State.OFF -> {
-                drawChevron(canvas, leftArrowPath, sweepPhase = -1f)
-                drawChevron(canvas, rightArrowPath, sweepPhase = -1f)
-            }
-            State.LEFT -> {
-                drawChevron(canvas, leftArrowPath, sweepPhase)
-                drawChevron(canvas, rightArrowPath, sweepPhase = -1f)
-            }
-            State.RIGHT -> {
-                drawChevron(canvas, leftArrowPath, sweepPhase = -1f)
-                drawChevron(canvas, rightArrowPath, sweepPhase)
-            }
-            State.HAZARD -> {
-                drawChevron(canvas, leftArrowPath, sweepPhase)
-                drawChevron(canvas, rightArrowPath, sweepPhase)
-            }
+            State.OFF -> { leftColor = idleColor; rightColor = idleColor }
+            State.LEFT -> { leftColor = activeColor; rightColor = idleColor }
+            State.RIGHT -> { leftColor = idleColor; rightColor = activeColor }
+            State.HAZARD -> { leftColor = activeColor; rightColor = activeColor }
+        }
+
+        // 绘制左箭头 (3 段扫描)
+        drawSegmentedArrow(canvas, leftArrowPath, leftClipRects, leftColor)
+
+        // 绘制右箭头 (3 段扫描)
+        drawSegmentedArrow(canvas, rightArrowPath, rightClipRects, rightColor)
+    }
+
+    /**
+     * 构建方块箭头 Path
+     *
+     * 左箭头: ◄───  (三角头在左, 矩形柄在右)
+     * 右箭头: ───►  (三角头在右, 矩形柄在左)
+     */
+    private fun buildArrowPaths(w: Int, h: Int) {
+        val centerY = h / 2f
+        val gap = w * 0.06f
+
+        // 箭头尺寸
+        val arrowW = (w / 2f - gap / 2f) * 0.88f
+        val stemH = h * 0.48f    // 柄高度
+        val headW = arrowW * 0.42f  // 三角头宽度
+        val stemW = arrowW - headW  // 柄宽度
+
+        // === 左箭头 ===
+        val leftStemRight = w / 2f - gap / 2f
+        val leftStemLeft = leftStemRight - stemW
+        val leftTip = leftStemLeft - headW
+
+        leftArrowPath.reset()
+        leftArrowPath.moveTo(leftTip, centerY)
+        leftArrowPath.lineTo(leftStemLeft, centerY - stemH / 2)
+        leftArrowPath.lineTo(leftStemRight, centerY - stemH / 2)
+        leftArrowPath.lineTo(leftStemRight, centerY + stemH / 2)
+        leftArrowPath.lineTo(leftStemLeft, centerY + stemH / 2)
+        leftArrowPath.close()
+
+        // 左箭头 3 段裁剪区 (从柄尾到尖端)
+        val leftSegW = arrowW / 3f
+        for (i in 0 until 3) {
+            leftClipRects[i] = RectF(
+                leftTip + leftSegW * i,
+                centerY - stemH / 2 - 1f,
+                leftTip + leftSegW * (i + 1),
+                centerY + stemH / 2 + 1f,
+            )
+        }
+
+        // === 右箭头 (水平镜像) ===
+        val rightStemLeft = w / 2f + gap / 2f
+        val rightStemRight = rightStemLeft + stemW
+        val rightTip = rightStemRight + headW
+
+        rightArrowPath.reset()
+        rightArrowPath.moveTo(rightTip, centerY)
+        rightArrowPath.lineTo(rightStemRight, centerY - stemH / 2)
+        rightArrowPath.lineTo(rightStemLeft, centerY - stemH / 2)
+        rightArrowPath.lineTo(rightStemLeft, centerY + stemH / 2)
+        rightArrowPath.lineTo(rightStemRight, centerY + stemH / 2)
+        rightArrowPath.close()
+
+        // 右箭头 3 段裁剪区 (从柄尾到尖端)
+        val rightSegW = arrowW / 3f
+        for (i in 0 until 3) {
+            rightClipRects[i] = RectF(
+                rightStemLeft + rightSegW * i,
+                centerY - stemH / 2 - 1f,
+                rightStemLeft + rightSegW * (i + 1),
+                centerY + stemH / 2 + 1f,
+            )
         }
     }
 
     /**
-     * 构建 V 形 (chevron) 箭头 Path
-     *
-     * 左 V:  <<  (尖端在左, 开口在右)
-     * 右 V:  >>  (尖端在右, 开口在左)
-     *
-     * 每个 V 由两段线段组成, 形成一个锐角。
+     * 绘制带扫描效果的方块箭头
      */
-    private fun buildArrowPaths(w: Int, h: Int) {
-        val centerY = h / 2f
-        val vWidth = w * 0.22f     // V 的水平宽度
-        val vHeight = h * 0.42f    // V 的垂直半高 (从中心到上下端点)
+    private fun drawSegmentedArrow(
+        canvas: Canvas,
+        arrowPath: Path,
+        clipRects: Array<RectF>,
+        baseColor: Int,
+    ) {
+        val isAnimated = baseColor == activeColor
 
-        // === 左 V: << ===
-        // 尖端 (顶点) 在左, 两个端点在右
-        val leftTipX = w * 0.12f
-        val leftOpenX = leftTipX + vWidth
-
-        leftArrowPath.reset()
-        leftArrowPath.moveTo(leftOpenX, centerY - vHeight)  // 右上端点
-        leftArrowPath.lineTo(leftTipX, centerY)              // 尖端 (左侧)
-        leftArrowPath.lineTo(leftOpenX, centerY + vHeight)  // 右下端点
-        leftArrowPath.close()
-
-        // === 右 V: >> (水平镜像) ===
-        val rightTipX = w - leftTipX
-        val rightOpenX = w - leftOpenX
-
-        rightArrowPath.reset()
-        rightArrowPath.moveTo(rightOpenX, centerY - vHeight)  // 左上端点
-        rightArrowPath.lineTo(rightTipX, centerY)              // 尖端 (右侧)
-        rightArrowPath.lineTo(rightOpenX, centerY + vHeight)  // 左下端点
-        rightArrowPath.close()
-    }
-
-    /**
-     * 绘制 V 形箭头的扫描效果
-     *
-     * 将 V 形分为 3 段 (上臂、尖端、下臂), 根据 sweepPhase 依次点亮。
-     */
-    private fun drawChevron(canvas: Canvas, chevronPath: Path, sweepPhase: Float) {
-        val bounds = RectF()
-        chevronPath.computeBounds(bounds, true)
-
-        val segmentCount = 3
-        val segH = bounds.height() / segmentCount
-
-        for (i in 0 until segmentCount) {
-            // 段 i 的 y 范围: 从上到下
-            val segTop = bounds.top + segH * i
-            val segBottom = bounds.top + segH * (i + 1)
-
-            // 判断该段是否被扫描脉冲点亮
+        for (i in 0 until 3) {
             var lit = false
-            if (sweepPhase >= 0f) {
-                val segmentStart = i / segmentCount.toFloat()
+            if (isAnimated && sweepPhase >= 0f) {
+                val segmentStart = i / 3f
                 val t = sweepPhase + segmentStart
                 lit = t % 1f < pulseWidth
             }
 
-            arrowPaint.color = if (lit) activeColor else idleColor
+            fillPaint.color = if (lit) brightColor(baseColor) else baseColor
 
-            // 用 clipPath 裁剪当前段, 再绘制完整 V 形
             canvas.save()
-            val clipPath = Path()
-            clipPath.addRect(bounds.left - 1f, segTop, bounds.right + 1f, segBottom, Path.Direction.CW)
-            canvas.clipPath(clipPath)
-            canvas.drawPath(chevronPath, arrowPaint)
+            canvas.clipRect(clipRects[i])
+            canvas.drawPath(arrowPath, fillPaint)
             canvas.restore()
         }
     }
 
+    private fun brightColor(color: Int): Int {
+        val r = Color.red(color)
+        val g = Color.green(color)
+        val b = Color.blue(color)
+        val factor = 1.3f
+        return Color.rgb(
+            (r * factor).toInt().coerceIn(0, 255),
+            (g * factor).toInt().coerceIn(0, 255),
+            (b * factor).toInt().coerceIn(0, 255),
+        )
+    }
+
     companion object {
-        /** 完整扫描周期 (ms) — 与真实转向灯频率 (~80 次/分钟) 一致 */
         private const val SWEEP_CYCLE_MS = 750L
     }
 }
