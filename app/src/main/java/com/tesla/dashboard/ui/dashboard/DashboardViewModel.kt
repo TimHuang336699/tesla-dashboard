@@ -100,6 +100,8 @@ class DashboardViewModel @Inject constructor(
      * @return 瞬时电耗, 数据不足时返回 null
      */
     private fun computeConsumption(data: VehicleData, modelCode: String): Float? {
+        // v0.4.2 数据失效保护: 过期帧不参与计算, 也不覆盖上一帧缓存
+        if (data.isDataStale) return null
         val prev = lastData
         lastData = data
         if (prev == null) return null

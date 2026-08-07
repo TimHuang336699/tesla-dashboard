@@ -9,7 +9,8 @@
     <!-- ===== Labels ===== -->
             <string name="label_temperature">TEMPERATURE</string>
         <string name="label_odometer">ODO</string>
-                
+                <string name="label_power">POWER</string>
+
     <!-- ===== Units ===== -->
     <string name="unit_kmh">km/h</string>
     <string name="unit_km">km</string>
@@ -20,6 +21,8 @@
     <string name="unit_fahrenheit">°F</string>
     <string name="unit_kwh_100km">kWh/100km</string>
     <string name="unit_kwh_100mi">kWh/100mi</string>
+    <string name="unit_kw">kW</string>
+    <string name="unit_hp">hp</string>
     <string name="label_consumption">CONSUMPTION</string>
 
     <!-- ===== Buttons ===== -->
@@ -28,6 +31,7 @@
     <!-- ===== Status Text ===== -->
     <string name="tesla_connected">Tesla: Connected</string>
     <string name="tesla_disconnected">Tesla: Disconnected</string>
+    <string name="tesla_stale">Tesla: Stale data</string>
         
     <!-- ===== Default Placeholder ===== -->
     <string name="default_value">--</string>

@@ -15,6 +15,7 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
@@ -118,6 +119,30 @@ class TeslaBleProvider @Inject constructor(
     @Volatile
     private var tripStarted: Boolean = false
 
+    // ===== v0.4.2: 行驶状态追踪 (自适应轮询间隔) =====
+
+    /** 最近一次档位 (用于判断行驶状态) */
+    @Volatile
+    private var lastGear: String? = null
+
+    /** 最近一次车速 km/h */
+    @Volatile
+    private var lastSpeedKmh: Float = 0f
+
+    /** 最近一次瞬时功率 kW (null=未知) */
+    @Volatile
+    private var lastPowerKw: Float? = null
+
+    // ===== v0.4.2: 数据失效保护 + 退避重连 =====
+
+    /** 最近一次成功轮询的完整数据 (失败时保留展示) */
+    @Volatile
+    private var lastGoodData: VehicleData? = null
+
+    /** 连续轮询失败次数 (用于指数退避) */
+    @Volatile
+    private var consecutiveFailures: Int = 0
+
     // ===== VehicleDataSource 实现 =====
 
     /**
@@ -153,24 +178,68 @@ class TeslaBleProvider @Inject constructor(
             try {
                 val vehicleData = pollVehicleState(currentVin)
                 if (vehicleData != null) {
+                    consecutiveFailures = 0
+                    lastGoodData = vehicleData
                     _isAvailable.value = true
                     emit(vehicleData)
                 } else {
-                    _isAvailable.value = false
-                    emit(VehicleData(isTeslaConnected = false))
+                    emit(buildPollFailureData())
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 AppLog.w(TAG, "Poll error: ${e.message}")
                 Log.w(TAG, "Poll error: ${e.message}")
-                _isAvailable.value = false
-                emit(VehicleData(isTeslaConnected = false))
+                emit(buildPollFailureData())
             }
 
-            delay(POLL_INTERVAL_MS)
+            // v0.4.2: 自适应间隔 — 行驶中加快轮询 (2.5s), 静止 5s;
+            // 连续失败时指数退避 (10s→20s→30s 封顶), 避免无效空转耗电
+            delay(nextPollDelayMs())
         }
     }
+
+    /**
+     * 轮询失败时的数据 (v0.4.2 数据失效保护)
+     *
+     * 保留上次成功值继续展示并标记 [VehicleData.isDataStale],
+     * 避免失败时 UI 数值清空归零闪烁。
+     */
+    private fun buildPollFailureData(): VehicleData {
+        consecutiveFailures++
+        _isAvailable.value = false
+        return lastGoodData?.copy(
+            isTeslaConnected = false,
+            isDataStale = true,
+        ) ?: VehicleData(isTeslaConnected = false)
+    }
+
+    /**
+     * 计算下一次轮询延迟 (v0.4.2)
+     *
+     * - 最近一次轮询成功: 行驶中 [POLL_INTERVAL_DRIVING_MS], 静止 [POLL_INTERVAL_MS]
+     * - 连续失败: 指数退避, 封顶 [MAX_BACKOFF_MS]
+     */
+    private fun nextPollDelayMs(): Long {
+        if (consecutiveFailures == 0) {
+            return if (isDriving()) POLL_INTERVAL_DRIVING_MS else POLL_INTERVAL_MS
+        }
+        val shift = (consecutiveFailures - 1).coerceAtMost(MAX_BACKOFF_SHIFT)
+        return (POLL_INTERVAL_MS shl shift).coerceAtMost(MAX_BACKOFF_MS)
+    }
+
+    /**
+     * 判断车辆是否处于行驶状态 (v0.4.2)
+     *
+     * 任一条件满足即视为行驶中:
+     * 1. 车速 > [DRIVING_SPEED_THRESHOLD_KMH]
+     * 2. 档位为 D/R
+     * 3. 功率绝对值 > [DRIVING_POWER_THRESHOLD_KW] (驱动/回收扭矩)
+     */
+    private fun isDriving(): Boolean =
+        lastSpeedKmh > DRIVING_SPEED_THRESHOLD_KMH ||
+            lastGear == "D" || lastGear == "R" ||
+            (lastPowerKw != null && abs(lastPowerKw!!) > DRIVING_POWER_THRESHOLD_KW)
 
     override suspend fun start() {
         // 性能优化: 仅在内存中检查 vin,文件 IO (loadPairedVin/hasKeyPair) 改为后台执行
@@ -398,8 +467,8 @@ class TeslaBleProvider @Inject constructor(
             domain = domain,
         )
 
-        // 发送并等待响应
-        val responseBytes = bleManager.sendAndWait(handshakeMsg)
+        // 发送并等待响应 (v0.4.2: 超时重发 1 次 — SessionInfoRequest 无状态, 重发安全)
+        val responseBytes = bleManager.sendAndWait(handshakeMsg, retries = HANDSHAKE_RETRY_COUNT)
 
         // 解析响应
         val response = TeslaBleMessages.parseRoutableMessage(responseBytes)
@@ -495,6 +564,39 @@ class TeslaBleProvider @Inject constructor(
     }
 
     /**
+     * 发送已签名命令并等待响应 (v0.4.2 支持超时重发)
+     *
+     * 超时后重发同一命令 — 每次重发都会递增 counter 并重新签名,
+     * 车辆按单调递增校验 counter, 因此无论首包是否到达, 重发均安全。
+     *
+     * @param session 当前 BLE 会话
+     * @param payload 命令 payload (protobuf 编码)
+     * @param domain 目标 Domain
+     * @param timeoutMs 单次响应超时
+     * @param retries 超时后的重发次数
+     * @return 响应消息, 全部尝试超时返回 null
+     */
+    private suspend fun sendSignedCommandAndWait(
+        session: BleSession,
+        payload: ByteArray,
+        domain: Int,
+        timeoutMs: Long = TeslaBleConstants.COMMAND_TIMEOUT_MS,
+        retries: Int = 0,
+    ): ByteArray? {
+        var attempt = 0
+        while (true) {
+            sendSignedCommand(session, payload, domain)
+            val response = withTimeoutOrNull(timeoutMs) {
+                bleManager.receiveMessage(timeoutMs)
+            }
+            if (response != null) return response
+            if (attempt >= retries) return null
+            attempt++
+            AppLog.w(TAG, "Signed command response timeout (attempt ${attempt + 1}/$retries), resending")
+        }
+    }
+
+    /**
      * 轮询车辆状态
      *
      * 完整流程:
@@ -556,16 +658,18 @@ class TeslaBleProvider @Inject constructor(
             val infotainmentSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_INFOTAINMENT)
             Log.d(TAG, "Infotainment handshake completed, counter=${infotainmentSession.counter}")
 
-            // 4. 发送 GetVehicleState 请求
+            // 4. 发送 GetVehicleState 请求并等待响应 (v0.4.2: 超时重发 1 次,
+            //    每次重发使用新递增 counter, 车辆按单调递增校验, 重发安全)
             val getStatePayload = TeslaBleMessages.encodeGetVehicleState()
-            sendSignedCommand(infotainmentSession, getStatePayload, TeslaBleConstants.DOMAIN_INFOTAINMENT)
-
-            // 5. 接收 Infotainment 响应
-            val responseBytes = withTimeoutOrNull(TeslaBleConstants.COMMAND_TIMEOUT_MS) {
-                bleManager.receiveMessage()
-            } ?: run {
-                AppLog.w(TAG, "Infotainment response timeout")
-                Log.w(TAG, "Infotainment response timeout")
+            val responseBytes = sendSignedCommandAndWait(
+                infotainmentSession,
+                getStatePayload,
+                TeslaBleConstants.DOMAIN_INFOTAINMENT,
+                retries = COMMAND_RETRY_COUNT,
+            )
+            if (responseBytes == null) {
+                AppLog.w(TAG, "Infotainment response timeout after retries")
+                Log.w(TAG, "Infotainment response timeout after retries")
                 return VehicleData(isTeslaConnected = true)
             }
 
@@ -682,6 +786,11 @@ class TeslaBleProvider @Inject constructor(
         if (heading != null) prevHeading = heading
         prevTimestampMs = now
 
+        // v0.4.2: 行驶状态追踪 (自适应轮询间隔用)
+        lastGear = stateData.gear
+        lastSpeedKmh = speedKmh
+        lastPowerKw = stateData.powerKw
+
         return VehicleData(
             // BLE 实时数据
             speed = speedKmh,
@@ -699,6 +808,7 @@ class TeslaBleProvider @Inject constructor(
             insideTemp = stateData.insideTemp,
             outsideTemp = stateData.outsideTemp,
             gear = stateData.gear,
+            powerKw = stateData.powerKw,
             odometer = odometerKm,
             // 门/舱/锁状态
             isLocked = stateData.isLocked,
@@ -906,6 +1016,27 @@ class TeslaBleProvider @Inject constructor(
     companion object {
         /** BLE 轮询间隔 (毫秒) — v0.4: 10s → 5s, 配合缓存直连提升仪表响应 */
         private const val POLL_INTERVAL_MS = 5_000L
+
+        /** 行驶中轮询间隔 (毫秒) — v0.4.2: 行驶状态数据更密集 */
+        private const val POLL_INTERVAL_DRIVING_MS = 2_500L
+
+        /** 连续失败退避封顶 (毫秒) — v0.4.2: 避免无效空转耗电 */
+        private const val MAX_BACKOFF_MS = 30_000L
+
+        /** 退避最大移位次数 (5s → 10s → 20s → 30s 封顶) */
+        private const val MAX_BACKOFF_SHIFT = 2
+
+        /** 判定"行驶中"的车速阈值 km/h */
+        private const val DRIVING_SPEED_THRESHOLD_KMH = 1f
+
+        /** 判定"行驶中"的功率阈值 kW (排除空调等静态负载) */
+        private const val DRIVING_POWER_THRESHOLD_KW = 2f
+
+        /** 握手超时重发次数 */
+        private const val HANDSHAKE_RETRY_COUNT = 1
+
+        /** GetVehicleState 超时重发次数 */
+        private const val COMMAND_RETRY_COUNT = 1
 
         /** 重力加速度 m/s² (用于 G 力计算) */
         private const val GRAVITY_MS2 = 9.81f

@@ -334,10 +334,13 @@ object TeslaBleMessages {
         var heading: Float? = null
         var gear: String? = null
         var altitude: Double? = null
+        var powerKw: Float? = null
 
         TeslaProtobuf.getBytes(vsFields, TeslaBleConstants.FIELD_VS_DRIVE_STATE)?.let { driveBytes ->
             val dsFields = TeslaProtobuf.parseAllFields(driveBytes)
             speedMph = TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_SPEED)
+            // 瞬时功率 kW (int32, 正=驱动/负=动能回收)
+            powerKw = TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_POWER)?.toFloat()
             // 优先使用原生高精度坐标 (double)，否则降级使用 float 坐标
             latitude = TeslaProtobuf.getDouble(dsFields, TeslaBleConstants.FIELD_DS_NATIVE_LATITUDE)
                 ?: TeslaProtobuf.getFloat(dsFields, TeslaBleConstants.FIELD_DS_LATITUDE)?.toDouble()
@@ -403,6 +406,7 @@ object TeslaBleMessages {
             heading = heading,
             gear = gear,
             altitude = altitude,
+            powerKw = powerKw,
             batterySOC = batterySOC,
             batteryRange = batteryRange,
             odometer = odometer,
@@ -445,6 +449,7 @@ object TeslaBleMessages {
         val heading: Float? = null,
         val gear: String? = null,
         val altitude: Double? = null,
+        val powerKw: Float? = null,
         val batterySOC: Int? = null,
         val batteryRange: Float? = null,
         val odometer: Float? = null,

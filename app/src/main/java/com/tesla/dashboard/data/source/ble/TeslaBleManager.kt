@@ -325,7 +325,18 @@ class TeslaBleManager @Inject constructor(
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             // 忽略过期连接的回调 (v0.4.1: 直连超时后旧 GATT 可能仍在后台回调)
             if (gatt !== this@TeslaBleManager.gatt) return
-            Log.d(TAG, "onConnectionStateChange: status=$status, newState=$newState")
+
+            // v0.4.2: 断开原因诊断 — 非 0 状态码说明连接异常断开
+            if (newState == BluetoothProfile.STATE_DISCONNECTED && status != BluetoothGatt.GATT_SUCCESS) {
+                AppLog.e(
+                    TAG,
+                    "Unexpected GATT disconnect from ${gatt.device.address}: " +
+                        "status=$status (${describeDisconnectStatus(status)})",
+                )
+            } else {
+                Log.d(TAG, "onConnectionStateChange: status=$status, newState=$newState")
+            }
+
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     // 连接成功，发起服务发现
@@ -426,8 +437,31 @@ class TeslaBleManager @Inject constructor(
             status: Int,
         ) {
             if (gatt !== this@TeslaBleManager.gatt) return
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                AppLog.w(TAG, "Characteristic write failed: status=$status (${describeDisconnectStatus(status)})")
+            }
             Log.v(TAG, "onCharacteristicWrite: status=$status")
         }
+    }
+
+    /**
+     * 解析 GATT 状态码为可读描述 (v0.4.2 诊断)
+     *
+     * @param status GATT 回调中的 status 码
+     * @return 可读的原因描述
+     */
+    private fun describeDisconnectStatus(status: Int): String = when (status) {
+        BluetoothGatt.GATT_SUCCESS -> "normal (remote disconnect)"
+        0x08 -> "connection timeout"
+        0x13 -> "remote terminated (link loss)"
+        0x16 -> "local terminated"
+        0x22 -> "remote user terminated"
+        0x3E -> "unknown reason"
+        0x85 -> "GATT client error"
+        0x89 -> "authentication failure"
+        0x8B -> "pin or key missing"
+        0x100 -> "connection congestion"
+        else -> "GATT code $status"
     }
 
     // ===== 消息收发 =====
@@ -508,15 +542,33 @@ class TeslaBleManager @Inject constructor(
     }
 
     /**
-     * 发送消息并等待响应
+     * 发送消息并等待响应 (v0.4.2 支持超时重发)
+     *
+     * 响应超时后可选重发同一消息 (用于无状态请求, 如 SessionInfoRequest 握手),
+     * 避免单次广播丢包导致整个轮询周期失败。
      *
      * @param message 要发送的消息
      * @param timeoutMs 响应超时 (毫秒)
+     * @param retries 超时后的重发次数 (默认 0 = 不重发)
      * @return 响应消息
      */
-    suspend fun sendAndWait(message: ByteArray, timeoutMs: Long = TeslaBleConstants.COMMAND_TIMEOUT_MS): ByteArray {
-        sendMessage(message)
-        return receiveMessage(timeoutMs)
+    suspend fun sendAndWait(
+        message: ByteArray,
+        timeoutMs: Long = TeslaBleConstants.COMMAND_TIMEOUT_MS,
+        retries: Int = 0,
+    ): ByteArray {
+        var attempt = 0
+        while (true) {
+            try {
+                sendMessage(message)
+                return receiveMessage(timeoutMs)
+            } catch (e: TimeoutCancellationException) {
+                if (attempt >= retries) throw e
+                attempt++
+                AppLog.w(TAG, "sendAndWait response timeout, retrying ($attempt/$retries)")
+                delay(200)
+            }
+        }
     }
 
     // ===== 接收数据处理 =====

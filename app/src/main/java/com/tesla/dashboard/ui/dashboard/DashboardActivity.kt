@@ -216,6 +216,8 @@ class DashboardActivity : BaseImmersiveActivity() {
 
         // ===== 详情区 - 瞬时电耗 =====
         binding.consumptionText.setTextColor(c.textPrimary)
+        // ===== 详情区 - 瞬时功率 (v0.4.2) =====
+        binding.powerText.setTextColor(c.textPrimary)
     }
 
     /**
@@ -234,6 +236,12 @@ class DashboardActivity : BaseImmersiveActivity() {
 
         // 缓存连接状态,供 applyThemeColors 在主题变化时复用
         isTeslaConnected = data.isTeslaConnected
+
+        // v0.4.2 数据失效保护: 过期帧保留数值展示, 核心视图降低透明度提示状态
+        val stale = data.isDataStale
+        binding.speedDisplay.alpha = if (stale) 0.55f else 1f
+        binding.verticalGauge.alpha = if (stale) 0.55f else 1f
+        binding.carSilhouette.alpha = if (stale) 0.55f else 1f
 
         // ===== 顶部栏 =====
 
@@ -298,6 +306,14 @@ class DashboardActivity : BaseImmersiveActivity() {
             getString(R.string.format_distance_value, value, getString(unit))
         } ?: getString(R.string.default_value)
 
+        // 瞬时功率 (v0.4.2): kW, 英制单位下换算为 hp (1 kW = 1.34102 hp)
+        binding.powerText.text = data.powerKw?.let { kw ->
+            val imperial = currentUnitSystem == UnitSystem.IMPERIAL
+            val value = if (imperial) kw * 1.34102f else kw
+            val unit = if (imperial) R.string.unit_hp else R.string.unit_kw
+            getString(R.string.format_speed_value, value, getString(unit))
+        } ?: getString(R.string.default_value)
+
         // ===== 底部 - 里程/G力/位置 =====
 
         // 本次行程里程 (按单位系统换算)
@@ -330,10 +346,11 @@ class DashboardActivity : BaseImmersiveActivity() {
         }
 
         // ===== Tesla BLE 连接状态 =====
-        binding.teslaStatusText.text = if (data.isTeslaConnected) {
-            getString(R.string.tesla_connected)
-        } else {
-            getString(R.string.tesla_disconnected)
+        // v0.4.2: 过期数据单独提示 (数值保留但标记过期)
+        binding.teslaStatusText.text = when {
+            data.isTeslaConnected -> getString(R.string.tesla_connected)
+            stale -> getString(R.string.tesla_stale)
+            else -> getString(R.string.tesla_disconnected)
         }
         // 连接状态颜色使用当前主题的绿/橙强调色
         binding.teslaStatusText.setTextColor(

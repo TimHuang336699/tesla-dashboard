@@ -64,6 +64,9 @@ data class VehicleData(
     /** 档位: P / R / N / D */
     val gear: String? = null,
 
+    /** 瞬时功率 kW (v0.4.2, 正=驱动/负=动能回收) */
+    val powerKw: Float? = null,
+
     /** 总里程表 km */
     val odometer: Float? = null,
 
@@ -94,6 +97,14 @@ data class VehicleData(
 
     /** Tesla BLE 是否已连接 */
     val isTeslaConnected: Boolean = false,
+
+    /**
+     * 数据是否已过期 (v0.4.2 数据失效保护)
+     *
+     * true 表示最近一次轮询失败, 当前字段保留的是上次成功轮询的有效值,
+     * UI 应继续展示该值但提示数据过期, 而不是清空归零。
+     */
+    val isDataStale: Boolean = false,
 
     /** 上一次轮询的总里程表 km(内部用于行程里程计算) */
     val prevOdometer: Float? = null,

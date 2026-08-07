@@ -10,6 +10,7 @@
             <string name="label_temperature">TEMPERATURE</string>
         <string name="label_odometer">ODO</string>
                     <string name="label_consumption">电耗</string>
+        <string name="label_power">功率</string>
 
     <!-- ===== 单位 ===== -->
     <string name="unit_kmh">km/h</string>
@@ -21,6 +22,8 @@
     <string name="unit_fahrenheit">°F</string>
     <string name="unit_kwh_100km">kWh/100km</string>
     <string name="unit_kwh_100mi">kWh/100mi</string>
+    <string name="unit_kw">kW</string>
+    <string name="unit_hp">hp</string>
 
     <!-- ===== 按钮 ===== -->
             <string name="btn_history">HISTORY</string>
@@ -28,6 +31,7 @@
     <!-- ===== 状态文字 ===== -->
     <string name="tesla_connected">Tesla: 已连接</string>
     <string name="tesla_disconnected">Tesla: 未连接</string>
+    <string name="tesla_stale">Tesla: 数据过期</string>
         
     <!-- ===== 默认占位符 ===== -->
     <string name="default_value">--</string>
