@@ -5,19 +5,11 @@
     <string name="app_name">Tesla Dashboard</string>
 
     <!-- ===== Dashboard 标题栏 ===== -->
-    <string name="title_dashboard">TESLA DASHBOARD</string>
-
+    
     <!-- ===== 标签文字 ===== -->
-    <string name="label_battery">BATTERY</string>
-    <string name="label_range">RANGE</string>
-    <string name="label_temperature">TEMPERATURE</string>
-    <string name="label_trip">TRIP</string>
-    <string name="label_odometer">ODO</string>
-    <string name="label_gforce">G-FORCE</string>
-    <string name="label_latitude">LAT</string>
-    <string name="label_longitude">LON</string>
-    <string name="label_heading">HDG</string>
-
+            <string name="label_temperature">TEMPERATURE</string>
+        <string name="label_odometer">ODO</string>
+                
     <!-- ===== 单位 ===== -->
     <string name="unit_kmh">km/h</string>
     <string name="unit_km">km</string>
@@ -26,18 +18,17 @@
     <string name="unit_mi">mi</string>
     <string name="unit_celsius">°C</string>
     <string name="unit_fahrenheit">°F</string>
+    <string name="unit_kwh_100km">kWh/100km</string>
+    <string name="unit_kwh_100mi">kWh/100mi</string>
+    <string name="label_consumption">电耗</string>
 
     <!-- ===== 按钮 ===== -->
-    <string name="btn_start">START</string>
-    <string name="btn_stop">STOP</string>
-    <string name="btn_history">HISTORY</string>
+            <string name="btn_history">HISTORY</string>
 
     <!-- ===== 状态文字 ===== -->
     <string name="tesla_connected">Tesla: 已连接</string>
     <string name="tesla_disconnected">Tesla: 未连接</string>
-    <string name="gps_locked">GPS: 已锁定</string>
-    <string name="gps_searching">GPS: 搜索中</string>
-
+        
     <!-- ===== 默认占位符 ===== -->
     <string name="default_value">--</string>
 
@@ -94,11 +85,16 @@
     <string name="settings_vin_masked_hint">已配对车辆（尾号隐藏）</string>
 
     <!-- ===== 设置页列表/二级页 (安卓分级) ===== -->
+    <string name="settings_group_vehicle">车辆</string>
+    <string name="settings_group_display">显示</string>
+    <string name="settings_group_general">通用</string>
+    <string name="settings_group_about">关于</string>
     <string name="settings_ble_vehicle">蓝牙与车辆</string>
     <string name="settings_display_appearance">显示与外观</string>
     <string name="settings_unit">单位</string>
     <string name="settings_language">语言</string>
     <string name="settings_about">关于</string>
+    <string name="settings_about_summary">版本信息</string>
     <string name="settings_unit_system">单位系统</string>
     <string name="settings_unit_metric">公制 (km/h, km, °C)</string>
     <string name="settings_unit_imperial">英制 (mph, mi, °F)</string>

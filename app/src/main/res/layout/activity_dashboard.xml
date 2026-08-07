@@ -19,9 +19,9 @@
     └──────────────────────────────────────────────────────────┘
 
     设计要点:
-    - 深色氛围背景 (bg_dashboard_atmosphere)
+    - 纯色背景 (无背景图, v0.4 移除氛围背景资源)
     - 左列: SpeedDisplayView (大号速度数字 + km/h 单位 + READY 状态)
-    - 中列: CarSilhouetteView (车辆剪影, 转向灯 UI 已隐藏)
+    - 中列: CarSilhouetteView (车辆剪影)
     - 右列: VerticalGaugeView (竖向电量仪表)
     - 底部: 连接状态 + 行程数据 + 指示灯条 + 按钮
     - 主题颜色由 ThemeManager 在代码中实时应用
@@ -145,19 +145,8 @@
         app:layout_constraintEnd_toStartOf="@id/centerGuide" />
 
     <!-- ================================================================ -->
-    <!-- ===== 中列: 车辆剪影 (转向灯 UI 已隐藏, 代码保留) ===== -->
+    <!-- ===== 中列: 车辆剪影 ===== -->
     <!-- ================================================================ -->
-
-    <!-- 转向灯 (Dash 绿色箭头, 居中, 顶部) — 已隐藏显示, 代码保留 -->
-    <com.tesla.dashboard.ui.dashboard.TurnSignalView
-        android:id="@+id/turnSignals"
-        android:layout_width="0dp"
-        android:layout_height="30dp"
-        android:layout_marginTop="8dp"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/topDivider"
-        app:layout_constraintStart_toStartOf="@id/centerGuide"
-        app:layout_constraintEnd_toStartOf="@id/rightGuide" />
 
     <!-- 车辆俯视剪影 (中列居中, 放大尺寸) -->
     <com.tesla.dashboard.ui.dashboard.CarSilhouetteView
@@ -379,6 +368,26 @@
             android:progress="0"
             android:progressTint="@color/accent_green"
             android:progressBackgroundTint="@color/divider" />
+
+        <!-- v0.4: 瞬时电耗 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="@string/label_consumption"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/consumptionText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-thin"
+            android:text="@string/default_value"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -25,17 +25,6 @@
         <attr name="vgFillColor" format="color" />
     </declare-styleable>
 
-    <!-- ===== AutonomousStatusView ===== -->
-    <declare-styleable name="AutonomousStatusView">
-        <attr name="asvLabel" format="string" />
-        <attr name="asvState" format="enum">
-            <enum name="inactive" value="0" />
-            <enum name="standby" value="1" />
-            <enum name="active" value="2" />
-            <enum name="warning" value="3" />
-        </attr>
-    </declare-styleable>
-
     <!-- ===== IndicatorStripView ===== -->
     <declare-styleable name="IndicatorStripView">
         <attr name="isvIndicatorSpacing" format="dimension" />
@@ -48,13 +37,6 @@
         <attr name="csvStrokeColor" format="color" />
         <attr name="csvGlassColor" format="color" />
         <attr name="csvWheelColor" format="color" />
-    </declare-styleable>
-
-    <!-- ===== TurnSignalView ===== -->
-    <declare-styleable name="TurnSignalView">
-        <attr name="tsvActiveColor" format="color" />
-        <attr name="tsvInactiveColor" format="color" />
-        <attr name="tsvArrowSize" format="dimension" />
     </declare-styleable>
 
 </resources>

@@ -3,6 +3,7 @@ package com.tesla.dashboard.data.source.ble
 import android.util.Log
 import com.tesla.dashboard.data.model.VehicleData
 import com.tesla.dashboard.data.source.VehicleDataSource
+import com.tesla.dashboard.util.AppLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -161,6 +162,7 @@ class TeslaBleProvider @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                AppLog.w(TAG, "Poll error: ${e.message}")
                 Log.w(TAG, "Poll error: ${e.message}")
                 _isAvailable.value = false
                 emit(VehicleData(isTeslaConnected = false))
@@ -229,13 +231,13 @@ class TeslaBleProvider @Inject constructor(
      * 然后使用调用方所在作用域的协程运行配对流程。
      *
      * @param vin 车辆识别号
-     * @param scanTimeoutMs 扫描/连接超时(毫秒),默认 [TeslaBleConstants.CONNECT_TIMEOUT_MS] = 10s
+     * @param scanTimeoutMs 扫描/连接超时(毫秒),默认 20s (车辆深睡时广播可能延迟)
      * @param nfcTimeoutMs 等待 NFC 确认超时(毫秒),默认 [TeslaBleConstants.NFC_CONFIRM_TIMEOUT_MS] = 30s
      * @return 配对是否成功
      */
     suspend fun startPairing(
         vin: String,
-        scanTimeoutMs: Long = TeslaBleConstants.CONNECT_TIMEOUT_MS,
+        scanTimeoutMs: Long = 20000L,
         nfcTimeoutMs: Long = TeslaBleConstants.NFC_CONFIRM_TIMEOUT_MS,
     ): Boolean {
         // 防止旧的配对协程残留: 先取消,再启动新的
@@ -259,9 +261,11 @@ class TeslaBleProvider @Inject constructor(
             // 2. 扫描车辆
             _pairingState.value = PairingState.Scanning
             val device = withTimeoutOrNull(scanTimeoutMs) {
-                bleManager.scanForVehicle(vin)
+                bleManager.scanForVehicle(vin, timeoutMs = scanTimeoutMs)
             } ?: run {
-                _pairingState.value = PairingState.Failed("扫描车辆失败,请确认车辆在附近且蓝牙已开启")
+                _pairingState.value = PairingState.Failed(
+                    "未发现车辆广播。请确认: 1) 已解锁车门/踩下刹车唤醒车辆 2) 手机靠近中控台 3) 车辆电量正常"
+                )
                 return false
             }
 
@@ -358,6 +362,7 @@ class TeslaBleProvider @Inject constructor(
     suspend fun unpair() {
         keyManager.clearAll()
         vin = null
+        bleManager.clearDeviceCache()
         _pairingState.value = PairingState.Idle
         _isAvailable.value = false
         Log.i(TAG, "Unpaired and keys cleared")
@@ -506,16 +511,25 @@ class TeslaBleProvider @Inject constructor(
      */
     private suspend fun pollVehicleState(vin: String): VehicleData? {
         // 加载密钥
-        val privateKey = keyManager.loadPrivateKey() ?: return null
+        val privateKey = keyManager.loadPrivateKey() ?: run {
+            AppLog.w(TAG, "Poll skipped: private key not available")
+            return null
+        }
         val publicKeyRaw = keyManager.loadPublicKeyRaw() ?: return null
 
         try {
-            // 1. 扫描并连接
-            val device = withTimeoutOrNull(10000L) {
-                bleManager.scanForVehicle(vin, timeoutMs = 10000L)
-            } ?: return null
-
-            bleManager.connect(device, timeoutMs = 15000L)
+            // 1. 优先使用缓存的设备地址直接连接 (v0.4 优化, 免扫描),
+            //    失败(地址失效/车辆换机等)时回退到全量扫描
+            val connected = bleManager.tryConnectCached(timeoutMs = 15000L)
+            if (!connected) {
+                val device = withTimeoutOrNull(10000L) {
+                    bleManager.scanForVehicle(vin, timeoutMs = 10000L)
+                } ?: run {
+                    AppLog.w(TAG, "Scan fallback failed: vehicle not found (within 10s)")
+                    return null
+                }
+                bleManager.connect(device, timeoutMs = 15000L)
+            }
 
             // 2. VCSEC 域握手 → 唤醒车辆
             val vcsecSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
@@ -540,6 +554,7 @@ class TeslaBleProvider @Inject constructor(
             val responseBytes = withTimeoutOrNull(TeslaBleConstants.COMMAND_TIMEOUT_MS) {
                 bleManager.receiveMessage()
             } ?: run {
+                AppLog.w(TAG, "Infotainment response timeout")
                 Log.w(TAG, "Infotainment response timeout")
                 return VehicleData(isTeslaConnected = true)
             }
@@ -549,6 +564,7 @@ class TeslaBleProvider @Inject constructor(
             val plaintext = decryptResponse(response, infotainmentSession, TeslaBleConstants.DOMAIN_INFOTAINMENT)
 
             if (plaintext == null) {
+                AppLog.w(TAG, "Failed to decrypt Infotainment response")
                 Log.w(TAG, "Failed to decrypt Infotainment response")
                 return VehicleData(isTeslaConnected = true)
             }
@@ -869,8 +885,8 @@ class TeslaBleProvider @Inject constructor(
     }
 
     companion object {
-        /** BLE 轮询间隔 (毫秒) — BLE 通信低延迟，可较频繁 */
-        private const val POLL_INTERVAL_MS = 10_000L
+        /** BLE 轮询间隔 (毫秒) — v0.4: 10s → 5s, 配合缓存直连提升仪表响应 */
+        private const val POLL_INTERVAL_MS = 5_000L
 
         /** 重力加速度 m/s² (用于 G 力计算) */
         private const val GRAVITY_MS2 = 9.81f

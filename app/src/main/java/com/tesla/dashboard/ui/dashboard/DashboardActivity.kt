@@ -30,9 +30,9 @@ import kotlinx.coroutines.launch
  *
  * 以横屏全屏沉浸式模式展示车辆实时数据仪表盘,采用 Apple CarPlay 极简风格:
  * - 顶部:档位(左)+ 电量/续航(右)
- * - 中部:速度表(SpeedometerView 圆环动画)
+ * - 中部:大数字码表 + 车辆剪影 + 竖向电量仪表
  * - 底部:Tesla 连接状态、行程里程、G力、经纬度、航向、历史/设置按钮
- * - 详情区(可展开):温度、总里程、电量进度条
+ * - 详情区(可展开):温度、总里程、电量进度条、瞬时电耗
  *
  * ## 沉浸式全屏
  * - 使用 [WindowInsetsControllerCompat] 隐藏状态栏和导航栏
@@ -139,7 +139,7 @@ class DashboardActivity : BaseImmersiveActivity() {
                 launch {
                     viewModel.uiState.collect { state ->
                         currentUnitSystem = state.unitSystem
-                        updateUI(state.vehicleData)
+                        updateUI(state)
                     }
                 }
             }
@@ -159,7 +159,7 @@ class DashboardActivity : BaseImmersiveActivity() {
      * - 底部各项数据文字
      * - Tesla 连接状态(颜色依赖连接状态,使用最近一次 [isTeslaConnected])
      * - 历史/设置按钮
-     * - 速度表各部分配色(经 [SpeedometerView.setThemeColors] 传入)
+     * - 大数字码表/竖向仪表配色 (经 [SpeedDisplayView.setThemeColors] 等传入)
      *
      * @param c 当前主题颜色集合
      */
@@ -209,16 +209,13 @@ class DashboardActivity : BaseImmersiveActivity() {
         // 门/舱未关时的警告红色
         binding.carSilhouette.setWarningColor(c.accentRed)
 
-        // ===== 转向灯配色 (Dash 绿箭头) — 已隐藏显示, 代码保留 =====
-        binding.turnSignals.setColors(
-            active = c.accentGreen,
-            inactive = c.divider,
-        )
-
         // ===== 竖向仪表配色 =====
         binding.verticalGauge.setTrackColor(c.divider)
         binding.verticalGauge.setLabelColor(c.textSecondary)
         binding.verticalGauge.setValueColor(c.textPrimary)
+
+        // ===== 详情区 - 瞬时电耗 =====
+        binding.consumptionText.setTextColor(c.textPrimary)
     }
 
     /**
@@ -230,9 +227,11 @@ class DashboardActivity : BaseImmersiveActivity() {
      * 注意:Tesla 连接状态文字颜色使用 [currentColors](由主题流维护),
      * 从而在主题切换或连接状态变化时均能正确着色。
      *
-     * @param data 最新的车辆数据
+     * @param state 最新 UI 状态 (车辆数据 + 单位 + 瞬时电耗)
      */
-    private fun updateUI(data: VehicleData) {
+    private fun updateUI(state: DashboardUiState) {
+        val data = state.vehicleData
+
         // 缓存连接状态,供 applyThemeColors 在主题变化时复用
         isTeslaConnected = data.isTeslaConnected
 
@@ -278,7 +277,7 @@ class DashboardActivity : BaseImmersiveActivity() {
             )
         } ?: getString(R.string.default_value)
 
-        // ===== 详情区 - 温度/总里程(默认隐藏,展开后显示) =====
+        // ===== 详情区 - 温度/总里程/瞬时电耗(默认隐藏,展开后显示) =====
         binding.tempText.text = formatTemperature(
             data.insideTemp,
             data.outsideTemp,
@@ -289,6 +288,14 @@ class DashboardActivity : BaseImmersiveActivity() {
                 UnitFormatter.distanceValue(it, currentUnitSystem),
                 UnitFormatter.distanceUnit(this, currentUnitSystem),
             )
+        } ?: getString(R.string.default_value)
+
+        // 瞬时电耗 (v0.4): 英制单位下按 kWh/100mi 换算显示
+        binding.consumptionText.text = state.consumptionKwhPer100km?.let { c ->
+            val imperial = currentUnitSystem == UnitSystem.IMPERIAL
+            val value = if (imperial) c * 1.609344f else c
+            val unit = if (imperial) R.string.unit_kwh_100mi else R.string.unit_kwh_100km
+            getString(R.string.format_distance_value, value, getString(unit))
         } ?: getString(R.string.default_value)
 
         // ===== 底部 - 里程/G力/位置 =====

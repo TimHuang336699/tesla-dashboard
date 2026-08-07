@@ -10,16 +10,17 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
+import com.tesla.dashboard.util.AppLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -71,6 +72,15 @@ class TeslaBleManager @Inject constructor(
     @Volatile
     private var connectedDevice: BluetoothDevice? = null
 
+    /**
+     * 最近一次成功连接的设备地址缓存 (v0.4 优化)
+     *
+     * 轮询时优先使用缓存地址直接连接, 免去每次 10s 全量扫描,
+     * 显著缩短单次轮询耗时与功耗。
+     */
+    @Volatile
+    private var lastDeviceAddress: String? = null
+
     /** TX 特征 (写入) */
     @Volatile
     private var txCharacteristic: BluetoothGattCharacteristic? = null
@@ -100,7 +110,13 @@ class TeslaBleManager @Inject constructor(
     /**
      * 扫描 Tesla 车辆 BLE 广播
      *
-     * 根据车辆 VIN 计算广播名称，扫描匹配的设备。
+     * 采用宽扫描 + 回调内匹配 (v0.4.1 修复):
+     * 不再依赖系统按 Local Name 过滤 (部分固件广播名称拆分/截断会导致过滤失败),
+     * 而是扫描全部设备, 在回调中匹配:
+     * 1. 广播名称 (advData localName) 与期望名称一致 (不区分大小写), 或
+     * 2. 广播中包含 Tesla 服务 UUID [TeslaBleConstants.SERVICE_UUID]
+     *
+     * 扫描期间记录所有可见设备, 超时失败时写入 AppLog 供导出诊断。
      *
      * @param vin 车辆识别号
      * @param timeoutMs 扫描超时 (毫秒)
@@ -124,18 +140,37 @@ class TeslaBleManager @Inject constructor(
 
         scanDeferred = CompletableDeferred()
 
-        // 按名称过滤扫描
-        val filter = ScanFilter.Builder()
-            .setDeviceName(localName)
-            .build()
+        // 不设名称过滤, 宽扫描后回调内匹配 (v0.4.1)
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
 
+        // 诊断: 记录扫描期间看到的所有设备
+        val seenDevices = LinkedHashMap<String, String>() // address -> name
+
         val scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
-                Log.i(TAG, "Found Tesla vehicle: ${result.device.address}")
-                scanDeferred?.complete(result.device)
+                val address = result.device.address
+                // 记录设备 (仅首次) 供诊断
+                if (!seenDevices.containsKey(address)) {
+                    val name = result.scanRecord?.deviceName ?: result.device.name ?: "(unnamed)"
+                    seenDevices[address] = name
+                    Log.v(TAG, "Seen device: $name ($address)")
+                }
+
+                // 匹配: 广播名称 或 Service UUID
+                val advName = result.scanRecord?.deviceName
+                val nameMatch = advName != null && advName.equals(localName, ignoreCase = true)
+                val uuidMatch = result.scanRecord?.serviceUuids?.any {
+                    it.uuid.toString().uppercase() == TeslaBleConstants.SERVICE_UUID.uppercase()
+                } == true
+                val deviceNameMatch = result.device.name?.equals(localName, ignoreCase = true) == true
+
+                if (nameMatch || uuidMatch || deviceNameMatch) {
+                    Log.i(TAG, "Found Tesla vehicle: $address (name=$advName)")
+                    lastDeviceAddress = address
+                    scanDeferred?.complete(result.device)
+                }
             }
 
             override fun onScanFailed(errorCode: Int) {
@@ -146,14 +181,57 @@ class TeslaBleManager @Inject constructor(
             }
         }
 
-        scanner.startScan(listOf(filter), settings, scanCallback)
+        scanner.startScan(listOf(), settings, scanCallback)
 
         try {
             return withTimeout(timeoutMs) {
                 scanDeferred!!.await()
             }
+        } catch (e: TimeoutCancellationException) {
+            // 诊断: 记录扫描期间所有可见设备, 帮助定位车辆广播异常
+            val dump = seenDevices.entries.joinToString("; ") { "${it.value} <${it.key}>" }
+            val summary = if (seenDevices.isEmpty()) "(no devices seen)" else dump
+            AppLog.w(TAG, "Scan timeout, localName=$localName. Nearby devices: $summary")
+            throw e
         } finally {
             scanner.stopScan(scanCallback)
+        }
+    }
+
+    /**
+     * 尝试通过缓存的设备地址直接连接 (v0.4 优化)
+     *
+     * 跳过 BLE 扫描阶段, 直接按上次成功连接的 MAC 地址连接 GATT,
+     * 大幅缩短轮询耗时。失败(如地址失效/车辆换机)时返回 false,
+     * 调用方应回退到 [scanForVehicle] 全量扫描。
+     *
+     * 注意: 使用较短超时 (6s) — 缓存地址直连失败说明地址可能已轮换
+     * (Tesla 使用随机可解析 BLE 地址), 应尽快回退扫描。
+     *
+     * @param timeoutMs 连接超时 (毫秒)
+     * @return 是否连接成功
+     */
+    @SuppressLint("MissingPermission")
+    suspend fun tryConnectCached(timeoutMs: Long = 6000L): Boolean {
+        val address = lastDeviceAddress ?: return false
+        val adapter = bluetoothAdapter ?: return false
+        val device = try {
+            adapter.getRemoteDevice(address)
+        } catch (_: IllegalArgumentException) {
+            lastDeviceAddress = null
+            return false
+        }
+
+        return try {
+            connect(device, timeoutMs = timeoutMs)
+            Log.i(TAG, "Direct connect via cached address: $address")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Cached connect failed, fallback to scan: ${e.message}")
+            lastDeviceAddress = null
+            // 释放可能残留的半连接 GATT, 避免与后续扫描连接串扰
+            disconnect()
+            false
         }
     }
 
@@ -168,16 +246,26 @@ class TeslaBleManager @Inject constructor(
      */
     @SuppressLint("MissingPermission")
     suspend fun connect(device: BluetoothDevice, timeoutMs: Long = TeslaBleConstants.CONNECT_TIMEOUT_MS) {
+        // 清理可能残留的旧 GATT 连接 (如上次直连超时留下的半连接),
+        // 避免多个 GATT 并发导致旧连接回调串扰新连接的 deferred (v0.4.1 修复)
+        disconnect()
+
         connectionDeferred = CompletableDeferred()
 
-        gatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        val newGatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
         } else {
             device.connectGatt(context, false, gattCallback)
         }
+        gatt = newGatt
 
-        withTimeout(timeoutMs) {
-            connectionDeferred!!.await()
+        try {
+            withTimeout(timeoutMs) {
+                connectionDeferred!!.await()
+            }
+        } catch (e: TimeoutCancellationException) {
+            AppLog.w(TAG, "GATT connect timeout to ${device.address}, timeout=${timeoutMs}ms")
+            throw e
         }
 
         connectedDevice = device
@@ -186,6 +274,9 @@ class TeslaBleManager @Inject constructor(
 
     /**
      * 断开 GATT 连接
+     *
+     * 注意: [lastDeviceAddress] 缓存保留, 供下次轮询直接连接复用;
+     * 仅设备地址变化或解绑时才由外部清除。
      */
     @SuppressLint("MissingPermission")
     fun disconnect() {
@@ -200,6 +291,13 @@ class TeslaBleManager @Inject constructor(
         rxBuffer.reset()
         messageQueue.clear()
         Log.i(TAG, "GATT disconnected")
+    }
+
+    /**
+     * 清除缓存设备地址 (解绑/换车时调用, 避免直连旧车)
+     */
+    fun clearDeviceCache() {
+        lastDeviceAddress = null
     }
 
     /**
@@ -225,6 +323,8 @@ class TeslaBleManager @Inject constructor(
 
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            // 忽略过期连接的回调 (v0.4.1: 直连超时后旧 GATT 可能仍在后台回调)
+            if (gatt !== this@TeslaBleManager.gatt) return
             Log.d(TAG, "onConnectionStateChange: status=$status, newState=$newState")
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
@@ -240,6 +340,7 @@ class TeslaBleManager @Inject constructor(
 
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            if (gatt !== this@TeslaBleManager.gatt) return
             Log.d(TAG, "onServicesDiscovered: status=$status")
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 connectionDeferred?.completeExceptionally(
@@ -287,6 +388,7 @@ class TeslaBleManager @Inject constructor(
 
         @SuppressLint("MissingPermission")
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            if (gatt !== this@TeslaBleManager.gatt) return
             Log.d(TAG, "onMtuChanged: mtu=$mtu, status=$status")
             currentMtu = if (status == BluetoothGatt.GATT_SUCCESS) mtu else 23
             // MTU 协商完成，连接就绪
@@ -299,10 +401,22 @@ class TeslaBleManager @Inject constructor(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
         ) {
+            if (gatt !== this@TeslaBleManager.gatt) return
             // 接收车辆返回的数据 (Notify)
             @Suppress("DEPRECATION")
             val data = characteristic.value
             handleReceivedData(data)
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray,
+        ) {
+            if (gatt !== this@TeslaBleManager.gatt) return
+            // 接收车辆返回的数据 (Notify) — API 33+ 新重载
+            handleReceivedData(value)
         }
 
         @SuppressLint("MissingPermission")
@@ -311,6 +425,7 @@ class TeslaBleManager @Inject constructor(
             characteristic: BluetoothGattCharacteristic,
             status: Int,
         ) {
+            if (gatt !== this@TeslaBleManager.gatt) return
             Log.v(TAG, "onCharacteristicWrite: status=$status")
         }
     }
@@ -364,8 +479,8 @@ class TeslaBleManager @Inject constructor(
             }
 
             offset = end
-            // 短暂延迟避免 BLE 拥塞
-            Thread.sleep(5)
+            // 短暂延迟避免 BLE 拥塞 (v0.4: delay 替代 Thread.sleep, 不阻塞调用线程)
+            delay(5)
         }
     }
 

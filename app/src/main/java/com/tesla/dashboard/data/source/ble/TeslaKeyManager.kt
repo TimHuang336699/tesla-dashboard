@@ -1,14 +1,23 @@
 package com.tesla.dashboard.data.source.ble
 
 import android.content.Context
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.tesla.dashboard.util.AppLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
+import java.nio.ByteBuffer
+import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.PublicKey
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,8 +26,16 @@ import javax.inject.Singleton
  *
  * 负责:
  * - 生成 ECC 密钥对 (NIST P-256)
- * - 安全存储/加载密钥对 (DataStore + Base64)
+ * - 安全存储/加载密钥对
  * - 管理已配对车辆信息 (VIN, 会话信息)
+ *
+ * ## 私钥安全存储 (v0.4 升级)
+ *
+ * 私钥不再以明文 Base64 存入 DataStore，而是使用 **Android Keystore 封装的 AES-256-GCM
+ * 密钥** 进行加密后落盘:
+ * - Keystore 中的 AES 密钥不可导出（硬件级保护，root 也无法提取）
+ * - 落盘内容 = Base64(nonce(12B) || ciphertext)，无密钥无法解密
+ * - 旧版本明文私钥 (private_key_b64) 首次加载时自动迁移并清除明文
  *
  * 密钥对用于 BLE 认证握手和命令签名。
  *
@@ -28,12 +45,16 @@ import javax.inject.Singleton
 class TeslaKeyManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
+    private val TAG = "TeslaKeyManager"
 
     /** 密钥存储 DataStore */
     private val Context.bleKeyStore by preferencesDataStore(name = "tesla_ble_keys")
 
-    /** 私钥 (PKCS8 Base64) */
-    private val KEY_PRIVATE = stringPreferencesKey("private_key_b64")
+    /** 私钥 (旧版明文 PKCS8 Base64, 仅用于一次性迁移) */
+    private val KEY_PRIVATE_LEGACY = stringPreferencesKey("private_key_b64")
+
+    /** 私钥 (AES-256-GCM 加密: Base64(nonce(12B) || ciphertext)) */
+    private val KEY_PRIVATE_ENC = stringPreferencesKey("private_key_enc_b64")
 
     /** 公钥 (X509 Base64) */
     private val KEY_PUBLIC = stringPreferencesKey("public_key_b64")
@@ -44,7 +65,10 @@ class TeslaKeyManager @Inject constructor(
     /** 已配对车辆的 VIN */
     private val KEY_PAIRED_VIN = stringPreferencesKey("paired_vin")
 
-    /** 缓存的密钥对 (避免频繁读取 DataStore) */
+    /** Keystore 中 AES 封装密钥的别名 (不可导出) */
+    private val KEYSTORE_ALIAS = "tesla_ble_keystore_aes"
+
+    /** 缓存的密钥对 (避免频繁读取 DataStore/Keystore) */
     @Volatile
     private var cachedPrivateKey: PrivateKey? = null
 
@@ -53,6 +77,65 @@ class TeslaKeyManager @Inject constructor(
 
     @Volatile
     private var cachedPublicKeyRaw: ByteArray? = null
+
+    /**
+     * 获取 Keystore 中的 AES-256-GCM 封装密钥, 不存在时创建。
+     */
+    private fun getOrCreateAesKey(): SecretKey {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        (keyStore.getKey(KEYSTORE_ALIAS, null) as? SecretKey)?.let { return it }
+
+        val generator = KeyGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_AES,
+            "AndroidKeyStore",
+        )
+        generator.init(
+            KeyGenParameterSpec.Builder(
+                KEYSTORE_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+            )
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .build(),
+        )
+        return generator.generateKey()
+    }
+
+    /**
+     * 用 Keystore AES 密钥加密私钥 (PKCS8)
+     *
+     * @return Base64(nonce(12B) || ciphertext), 无换行
+     */
+    private fun encryptPrivateKey(pkcs8Bytes: ByteArray): String {
+        val key = getOrCreateAesKey()
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val ciphertext = cipher.doFinal(pkcs8Bytes)
+        val out = ByteBuffer.allocate(cipher.iv.size + ciphertext.size)
+            .put(cipher.iv)
+            .put(ciphertext)
+            .array()
+        return Base64.encodeToString(out, Base64.NO_WRAP)
+    }
+
+    /**
+     * 用 Keystore AES 密钥解密私钥
+     *
+     * @param b64 [encryptPrivateKey] 生成的密文
+     * @return PKCS8 私钥字节
+     */
+    private fun decryptPrivateKey(b64: String): ByteArray {
+        val key = getOrCreateAesKey()
+        val data = Base64.decode(b64, Base64.NO_WRAP)
+        val ivSize = 12 // GCM 默认 nonce 大小
+        require(data.size > ivSize) { "Encrypted key data is corrupted" }
+        val iv = data.copyOfRange(0, ivSize)
+        val ciphertext = data.copyOfRange(ivSize, data.size)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+        return cipher.doFinal(ciphertext)
+    }
 
     /**
      * 生成新的 ECC 密钥对
@@ -68,18 +151,19 @@ class TeslaKeyManager @Inject constructor(
     }
 
     /**
-     * 保存密钥对到 DataStore
+     * 保存密钥对 (私钥经 Keystore AES-256-GCM 加密后落盘)
      *
      * @param privateKey EC 私钥
      * @param publicKey EC 公钥
      */
     suspend fun saveKeyPair(privateKey: PrivateKey, publicKey: PublicKey) {
-        val privateKeyBytes = TeslaCrypto.encodePrivateKey(privateKey)
+        val privateKeyEnc = encryptPrivateKey(TeslaCrypto.encodePrivateKey(privateKey))
         val publicKeyBytes = publicKey.encoded
         val publicKeyRaw = TeslaCrypto.encodePublicKey(publicKey)
 
         context.bleKeyStore.edit { prefs ->
-            prefs[KEY_PRIVATE] = Base64.encodeToString(privateKeyBytes, Base64.NO_WRAP)
+            prefs[KEY_PRIVATE_ENC] = privateKeyEnc
+            prefs.remove(KEY_PRIVATE_LEGACY)
             prefs[KEY_PUBLIC] = Base64.encodeToString(publicKeyBytes, Base64.NO_WRAP)
             prefs[KEY_PUBLIC_RAW] = Base64.encodeToString(publicKeyRaw, Base64.NO_WRAP)
         }
@@ -91,7 +175,7 @@ class TeslaKeyManager @Inject constructor(
     }
 
     /**
-     * 加载已保存的私钥
+     * 加载已保存的私钥 (自动迁移旧版明文密钥)
      *
      * @return 私钥对象，未保存时返回 null
      */
@@ -99,10 +183,34 @@ class TeslaKeyManager @Inject constructor(
         cachedPrivateKey?.let { return it }
 
         val prefs = context.bleKeyStore.data.first()
-        val privateKeyB64 = prefs[KEY_PRIVATE] ?: return null
 
-        val privateKeyBytes = Base64.decode(privateKeyB64, Base64.NO_WRAP)
+        // 1. 新格式: Keystore 加密的私钥
+        prefs[KEY_PRIVATE_ENC]?.let { encB64 ->
+            val privateKeyBytes = runCatching { decryptPrivateKey(encB64) }.getOrNull()
+            if (privateKeyBytes != null) {
+                val privateKey = TeslaCrypto.decodePrivateKey(privateKeyBytes)
+                cachedPrivateKey = privateKey
+                return privateKey
+            }
+            // 解密失败(如 Keystore 被清除): 视为无密钥, 由用户重新配对
+            AppLog.e(TAG, "Keystore private key decryption FAILED - key unusable, need re-pair")
+            return null
+        }
+
+        // 2. 旧格式: 明文私钥 → 迁移为加密存储并删除明文
+        val legacyB64 = prefs[KEY_PRIVATE_LEGACY] ?: run {
+            AppLog.w(TAG, "No private key found (no encrypted, no legacy)")
+            return null
+        }
+        val privateKeyBytes = Base64.decode(legacyB64, Base64.NO_WRAP)
         val privateKey = TeslaCrypto.decodePrivateKey(privateKeyBytes)
+
+        AppLog.d(TAG, "Migrating legacy plaintext private key to Keystore-encrypted storage")
+        val encB64 = encryptPrivateKey(privateKeyBytes)
+        context.bleKeyStore.edit { p ->
+            p[KEY_PRIVATE_ENC] = encB64
+            p.remove(KEY_PRIVATE_LEGACY)
+        }
 
         cachedPrivateKey = privateKey
         return privateKey
@@ -174,7 +282,7 @@ class TeslaKeyManager @Inject constructor(
     suspend fun isPaired(): Boolean = !loadPairedVin().isNullOrBlank()
 
     /**
-     * 清除所有密钥和配对信息
+     * 清除所有密钥和配对信息 (同时删除 Keystore 封装密钥)
      *
      * 用于解绑车辆或重置配对。
      */
@@ -183,5 +291,9 @@ class TeslaKeyManager @Inject constructor(
         cachedPrivateKey = null
         cachedPublicKey = null
         cachedPublicKeyRaw = null
+        runCatching {
+            val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            keyStore.deleteEntry(KEYSTORE_ALIAS)
+        }
     }
 }

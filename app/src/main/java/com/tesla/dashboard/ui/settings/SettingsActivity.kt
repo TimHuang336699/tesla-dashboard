@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -11,20 +12,23 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.tesla.dashboard.R
 import com.tesla.dashboard.databinding.ActivitySettingsBinding
 import com.tesla.dashboard.databinding.ItemSettingsRowBinding
+import com.tesla.dashboard.databinding.ItemSettingsSectionHeaderBinding
 import com.tesla.dashboard.util.BaseImmersiveActivity
+import com.tesla.dashboard.util.LogExporter
 import com.tesla.dashboard.util.ThemeColors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 /**
- * 设置列表页 (一级页面) — 安卓分级设置结构
+ * 设置列表页 (一级页面) — 手机设置风格 (大分组 → 二级小项)
  *
- * 列表展示 5 组设置入口, 点击进入对应二级详情页:
- * - 蓝牙与车辆 → [BleSettingsActivity]
- * - 显示与外观 → [AppearanceSettingsActivity]
- * - 单位 → [UnitSettingsActivity]
- * - 语言 → [LanguageSettingsActivity]
- * - 关于 → [AboutActivity]
+ * 按功能分组, 每组带小号分组标题, 点击行进入对应二级详情页:
+ *
+ * - **车辆**: 蓝牙与车辆 → [BleSettingsActivity]
+ * - **显示**: 显示与外观 → [AppearanceSettingsActivity]
+ * - **通用**: 单位 → [UnitSettingsActivity]、语言 → [LanguageSettingsActivity]、
+ *   导出诊断日志 (直达导出, 不跳转)
+ * - **关于**: 关于 → [AboutActivity]
  *
  * 每行显示"标题 + 当前值副标题 + 箭头", 副标题由 [SettingsListViewModel]
  * 实时驱动 (配对状态/主题/单位/语言)。
@@ -40,20 +44,76 @@ class SettingsActivity : BaseImmersiveActivity() {
     /** 设置列表 ViewModel, 由 Hilt 自动提供 */
     private val viewModel: SettingsListViewModel by viewModels()
 
-    /** 行数据: 标题/副标题(当前值)/目标 Activity */
+    /** 行数据: 标题/副标题(当前值)/目标 Activity/点击动作 */
     private data class SettingsRow(
         val titleRes: Int,
-        val summaryRes: Int,
-        val target: Class<*>,
+        val summaryRes: Int = 0,
+        val hasSummary: Boolean = true,
+        val target: Class<*>? = null,
+        val action: ((SettingsActivity) -> Unit)? = null,
     )
 
-    /** 5 组设置行 (标题 + 副标题标签 + 目标页) */
-    private val rows = listOf(
-        SettingsRow(R.string.settings_ble_vehicle, R.string.settings_ble_vehicle, BleSettingsActivity::class.java),
-        SettingsRow(R.string.settings_display_appearance, R.string.settings_display_appearance, AppearanceSettingsActivity::class.java),
-        SettingsRow(R.string.settings_unit, R.string.settings_unit, UnitSettingsActivity::class.java),
-        SettingsRow(R.string.settings_language, R.string.settings_language, LanguageSettingsActivity::class.java),
-        SettingsRow(R.string.settings_about, R.string.settings_about, AboutActivity::class.java),
+    /** 分组数据: 标题 + 组内行 */
+    private data class SettingsGroup(
+        val headerRes: Int,
+        val rows: List<SettingsRow>,
+    )
+
+    /** 已创建的行 View 列表 (与 [groups] 的行一一对应, 用于更新副标题) */
+    private val rowViews = mutableListOf<android.view.View>()
+
+    /** 分组配置 (手机设置风格: 大项分组 → 小项) */
+    private val groups = listOf(
+        SettingsGroup(
+            headerRes = R.string.settings_group_vehicle,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_ble_vehicle,
+                    summaryRes = R.string.settings_not_paired,
+                    target = BleSettingsActivity::class.java,
+                ),
+            ),
+        ),
+        SettingsGroup(
+            headerRes = R.string.settings_group_display,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_display_appearance,
+                    summaryRes = R.string.settings_theme_system,
+                    target = AppearanceSettingsActivity::class.java,
+                ),
+            ),
+        ),
+        SettingsGroup(
+            headerRes = R.string.settings_group_general,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_unit,
+                    summaryRes = R.string.settings_unit_metric,
+                    target = UnitSettingsActivity::class.java,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_language,
+                    summaryRes = R.string.settings_language_system,
+                    target = LanguageSettingsActivity::class.java,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_export_logs,
+                    hasSummary = false,
+                    action = { activity -> LogExporter.export(activity) },
+                ),
+            ),
+        ),
+        SettingsGroup(
+            headerRes = R.string.settings_group_about,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_about,
+                    summaryRes = R.string.settings_about_summary,
+                    target = AboutActivity::class.java,
+                ),
+            ),
+        ),
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,8 +124,8 @@ class SettingsActivity : BaseImmersiveActivity() {
 
         binding.btnBack.setOnClickListener { finish() }
 
-        // 填充设置行
-        populateRows()
+        // 填充设置分组行
+        populateGroups()
 
         // 观察主题流 — 实时应用配色
         observeThemeColors()
@@ -76,29 +136,40 @@ class SettingsActivity : BaseImmersiveActivity() {
     }
 
     /**
-     * 动态填充设置行 (每行: 标题 + 副标题 + 箭头 + 点击跳转)
+     * 动态填充分组 (每组: 分组标题 + 若干设置行)
      */
-    private fun populateRows() {
+    private fun populateGroups() {
         val container = binding.rowsContainer
         container.removeAllViews()
+        rowViews.clear()
 
-        rows.forEach { row ->
-            val rowBinding = ItemSettingsRowBinding.inflate(
-                LayoutInflater.from(this),
-                container,
-                false,
-            )
-            rowBinding.tvRowTitle.setText(row.titleRes)
-            rowBinding.tvRowSummary.setText(row.summaryRes)
-            rowBinding.root.setOnClickListener {
-                startActivity(Intent(this, row.target))
+        val inflater = LayoutInflater.from(this)
+        groups.forEach { group ->
+            val headerBinding = ItemSettingsSectionHeaderBinding.inflate(inflater, container, false)
+            headerBinding.tvSectionTitle.setText(group.headerRes)
+            container.addView(headerBinding.root)
+
+            group.rows.forEach { row ->
+                val rowBinding = ItemSettingsRowBinding.inflate(inflater, container, false)
+                rowBinding.tvRowTitle.setText(row.titleRes)
+                if (row.hasSummary && row.summaryRes != 0) {
+                    rowBinding.tvRowSummary.setText(row.summaryRes)
+                } else {
+                    rowBinding.tvRowSummary.visibility = android.view.View.GONE
+                }
+                rowBinding.root.setOnClickListener {
+                    row.action?.invoke(this) ?: row.target?.let { target ->
+                        startActivity(Intent(this, target))
+                    }
+                }
+                container.addView(rowBinding.root)
+                rowViews.add(rowBinding.root)
             }
-            container.addView(rowBinding.root)
         }
     }
 
     /**
-     * 观察列表状态, 更新各行的副标题 (当前值)
+     * 观察列表状态, 更新各行副标题 (当前值)
      */
     private fun observeListState() {
         lifecycleScope.launch {
@@ -112,35 +183,35 @@ class SettingsActivity : BaseImmersiveActivity() {
     }
 
     /**
-     * 更新各行副标题为当前值
+     * 更新各行副标题为当前值 (通过 [rowViews] 定位, 与硬编码索引解耦)
      *
      * @param state 当前设置列表状态
      */
     private fun updateRowSummaries(state: SettingsListUiState) {
-        val container = binding.rowsContainer
-        val rowCount = container.childCount
-        if (rowCount < rows.size) return
+        if (rowViews.size < 6) return
 
-        // 行 0: 蓝牙与车辆 — 已配对/未配对
-        (container.getChildAt(0).findViewById<android.widget.TextView>(R.id.tvRowSummary))
+        // 0: 蓝牙与车辆 — 已配对/未配对
+        rowViews[0].findViewById<TextView>(R.id.tvRowSummary)
             .setText(if (state.isPaired) R.string.settings_paired else R.string.settings_not_paired)
 
-        // 行 1: 显示与外观 — 当前主题名
-        (container.getChildAt(1).findViewById<android.widget.TextView>(R.id.tvRowSummary))
+        // 1: 显示与外观 — 当前主题名
+        rowViews[1].findViewById<TextView>(R.id.tvRowSummary)
             .text = themeDisplayName(state.themeMode)
 
-        // 行 2: 单位 — 公制/英制
-        (container.getChildAt(2).findViewById<android.widget.TextView>(R.id.tvRowSummary))
+        // 2: 单位 — 公制/英制
+        rowViews[2].findViewById<TextView>(R.id.tvRowSummary)
             .setText(
                 if (state.unitSystem == "imperial") R.string.settings_unit_imperial
                 else R.string.settings_unit_metric
             )
 
-        // 行 3: 语言 — 跟随系统/中文/English
-        (container.getChildAt(3).findViewById<android.widget.TextView>(R.id.tvRowSummary))
+        // 3: 语言 — 跟随系统/中文/English
+        rowViews[3].findViewById<TextView>(R.id.tvRowSummary)
             .text = languageDisplayName(state.appLanguage)
 
-        // 行 4: 关于 — 版本号 (保持原标题, 由 About 页展示)
+        // 5: 关于 — 版本号
+        rowViews[5].findViewById<TextView>(R.id.tvRowSummary)
+            .text = getString(R.string.settings_version_format, com.tesla.dashboard.BuildConfig.VERSION_NAME)
     }
 
     /**
@@ -187,15 +258,17 @@ class SettingsActivity : BaseImmersiveActivity() {
         binding.btnBack.imageTintList = ColorStateList.valueOf(c.accentCyan)
         binding.tvTitle.setTextColor(c.textPrimary)
 
-        // 更新所有行的配色
+        // 更新所有分组标题与行的配色
         val container = binding.rowsContainer
         for (i in 0 until container.childCount) {
             val child = container.getChildAt(i)
-            child.findViewById<android.widget.TextView>(R.id.tvRowTitle)
-                ?.setTextColor(c.textPrimary)
-            child.findViewById<android.widget.TextView>(R.id.tvRowSummary)
+            child.findViewById<TextView>(R.id.tvSectionTitle)
                 ?.setTextColor(c.textSecondary)
-            child.findViewById<android.widget.TextView>(R.id.tvRowChevron)
+            child.findViewById<TextView>(R.id.tvRowTitle)
+                ?.setTextColor(c.textPrimary)
+            child.findViewById<TextView>(R.id.tvRowSummary)
+                ?.setTextColor(c.textSecondary)
+            child.findViewById<TextView>(R.id.tvRowChevron)
                 ?.setTextColor(c.textSecondary)
         }
     }

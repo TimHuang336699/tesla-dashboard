@@ -24,21 +24,27 @@ import javax.inject.Inject
  *
  * @property vehicleData 车辆实时数据 (内部统一公制)
  * @property unitSystem 当前单位系统 (公制/英制, 由设置驱动)
+ * @property consumptionKwhPer100km 瞬时电耗 kWh/100km (v0.4, 由 SOC 差+里程差估算, null=数据不足)
  */
 data class DashboardUiState(
     val vehicleData: VehicleData = VehicleData(),
     val unitSystem: UnitSystem = UnitSystem.METRIC,
+    val consumptionKwhPer100km: Float? = null,
 )
 
 /**
  * Dashboard ViewModel
  *
  * 作为 UI 层与数据层之间的桥梁,负责:
- * 1. 暴露车辆实时数据流 [uiState] 供 UI 观察更新 (合并单位系统)
+ * 1. 暴露车辆实时数据流 [uiState] 供 UI 观察更新 (合并单位系统与瞬时电耗)
  * 2. 首次订阅时延迟 200ms 自动启动 Tesla BLE 唯一数据源 (避免与 UI 首帧渲染竞争)
  *
+ * ## 瞬时电耗 (v0.4)
+ * 基于相邻两帧数据: 电池 SOC 下降量 × 电池容量 / 里程表差值,
+ * 车型代码来自设置 (SettingsRepository.batteryModelFlow), 无车型时电耗为 null。
+ *
  * @param vehicleDataRepository 车辆数据仓库
- * @param settingsRepository 设置持久化仓库 (单位系统)
+ * @param settingsRepository 设置持久化仓库 (单位系统/车型)
  */
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
@@ -47,17 +53,19 @@ class DashboardViewModel @Inject constructor(
 ) : ViewModel() {
 
     /**
-     * 车辆实时数据 + 单位系统合并流
+     * 车辆实时数据 + 单位系统 + 瞬时电耗合并流
      *
-     * 单位切换时 (DataStore 变化) 重新发射, UI 层实时换算刷新, 无需重建 Activity。
+     * 单位/车型切换时 (DataStore 变化) 重新发射, UI 层实时换算刷新, 无需重建 Activity。
      */
     val uiState: StateFlow<DashboardUiState> = combine(
         vehicleDataRepository.observeVehicleData(),
         settingsRepository.unitSystemFlow,
-    ) { data, unitCode ->
+        settingsRepository.batteryModelFlow,
+    ) { data, unitCode, modelCode ->
         DashboardUiState(
             vehicleData = data,
             unitSystem = UnitSystem.fromCode(unitCode),
+            consumptionKwhPer100km = computeConsumption(data, modelCode),
         )
     }.stateIn(
         scope = viewModelScope,
@@ -75,6 +83,34 @@ class DashboardViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000L),
             initialValue = VehicleData(),
         )
+
+    /**
+     * 上一帧车辆数据缓存 (电耗计算用, 与数据流收集同步更新)
+     */
+    private var lastData: VehicleData? = null
+
+    /**
+     * 计算瞬时电耗 kWh/100km
+     *
+     * 使用上一帧数据与当前数据计算 SOC 变化量对应的能量消耗。
+     * 距离增量过小(≤0)或 SOC 未变化时返回 null, 避免显示无意义数值。
+     *
+     * @param data 当前帧数据
+     * @param modelCode 车型代码 (用于查询电池容量)
+     * @return 瞬时电耗, 数据不足时返回 null
+     */
+    private fun computeConsumption(data: VehicleData, modelCode: String): Float? {
+        val prev = lastData
+        lastData = data
+        if (prev == null) return null
+
+        val consumption = data.computeConsumption(
+            prevData = prev,
+            modelCode = modelCode.ifBlank { null },
+        )
+        // SOC 无变化(0f)或数据不足(null)时不展示
+        return consumption?.takeIf { it > 0f }
+    }
 
     /**
      * BLE 启动任务句柄,用于幂等控制 (避免重复启动)

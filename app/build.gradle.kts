@@ -13,8 +13,8 @@ android {
         applicationId = "com.tesla.dashboard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 13
-        versionName = "0.3.5"
+        versionCode = 14
+        versionName = "0.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

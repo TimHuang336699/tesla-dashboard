@@ -12,31 +12,49 @@
 
 ## 项目简介
 
-Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯拉车辆的实时仪表盘。结合 GNSS 定位、加速度传感器和 Tesla Fleet API，以苹果式简约设计提供全面的驾驶体验。
+Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯拉车辆的实时仪表盘。应用通过**蓝牙低功耗（BLE）直连车辆**——无需云 API、无订阅费——以苹果式简约设计实时展示驾驶数据。
 
 ## 功能特性
 
-### 数据源
-- **GNSS 定位** — 高精度 GPS 测速（500ms 间隔），位置、航向、海拔、行驶里程
-- **加速度传感器** — 纵向/横向加速度及 G 力值
-- **Tesla Fleet API** — 电池电量 SOC、续航里程、车内/车外温度、档位（PRND）、里程表（15 秒轮询）
+### 数据源 — Tesla BLE 直连
+- **自研 BLE 协议** — 实现 Tesla vehicle-command 蓝牙协议（VCSEC + Infotainment 双域加密会话，ECDH 密钥协商 + AES-GCM）
+- **5 秒轮询（v0.4 由 10s 优化）** — 缓存设备地址直连，后续轮询免扫描
+- **车速** — 车辆 CAN 总线实时车速（Infotainment 域 DriveState，mph→km/h）
+- **电量 SOC / 续航 / 车内车外温度 / 档位 (PRND) / 里程表** — ChargeState / ClimateState / CarState
+- **位置 / 航向 / 海拔** — 车辆 GPS 模块
+- **导出数据** — 纵/横向加速度（Δv/Δt、v×ω）、合成 G 力、行程里程（里程表差值）、**瞬时电耗（SOC 差值 × 电池容量 / 里程）**
+- **门/前备箱/后备箱/锁状态** — 车辆剪影警告指示
+- **车辆唤醒** — 每次轮询发送 RKE 唤醒命令
+
+### 配对与安全
+- **BLE 配对向导** — 输入 VIN → 生成 ECC 密钥 → 车机中控刷 NFC 卡片确认 → 保存密钥
+- **私钥保护（v0.4）** — 私钥经 Android Keystore AES-256-GCM 密钥加密后落盘；旧版明文密钥自动迁移并清除
+- **VIN 解码器** — 17 位 VIN 完整解码（车型/代际/电池/工厂/年份），按代际切换 NFC 刷卡位置插图
+- **连接测试** — 无需完整轮询即可验证配对有效性
 
 ### UI / 交互
 - **苹果式简约设计** — 纯黑背景、圆角卡片、System Blue 强调色
-- **自定义 SpeedometerView** — 270° 圆弧速度表，带平滑动画过渡
-- **日夜主题切换** — 深色、浅色、跟随系统，基于 DataStore 持久化
+- **大数字码表** — Pump 仪表字体、300ms 平滑动画、READY 状态
+- **11 套主题** — 跟随系统 / 深色 / 浅色 + 4 款彩色主题 × 深浅，实时切换无需重建
+- **多语言** — 中文 / English / 跟随系统
+- **单位系统** — 公制 / 英制（速度、距离、温度、电耗）
 - **横屏全屏沉浸式** — 针对车载显示优化
 
-### 行程记录
-- **Room 数据库** — 本地行程历史，含起止位置、距离、时长、最高速度
-- **GPS 轨迹序列化** — 行程中的轨迹点序列化为 JSON 存储
-- **前台服务** — 持续记录，带常驻通知保活
+### 仪表盘布局
+- 顶部栏：档位（PRND）+ 电量与续航
+- 中部：车辆剪影（门/舱未关红色警告）
+- 右侧：竖向电量仪表
+- 底部：连接状态、行程里程、G 力、经纬度、航向、历史/设置按钮
+- 可展开详情区（长按设置按钮）：温度、总里程、电量条、**瞬时电耗 kWh/100km（v0.4）**
 
-### Tesla API 集成
-- **设置页面** — 输入 VIN、Access Token，选择区域（中国区/全球/欧洲）
-- **动态电池容量** — 根据车型自动获取电池容量，精确计算电耗
-- **连接测试** — 保存前验证 Tesla API 凭据
-- **优雅降级** — 仅用 GNSS + 传感器即可完整运行，Tesla API 为可选
+### 设置（手机设置风格分组，v0.4）
+- **车辆** — 蓝牙与车辆（VIN、配对、车型选择、连接测试、解除配对）
+- **显示** — 主题选择（11 项）
+- **通用** — 单位、语言、**导出诊断日志（直达导出）**
+- **关于** — 版本信息 + 日志导出
+
+### 诊断
+- **应用内日志环形缓冲**（500 条）+ 一键导出（FileProvider 分享，微信/邮件均可，无需权限）
 
 ## 技术栈
 
@@ -45,10 +63,10 @@ Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯�
 | 开发语言 | Kotlin 100% |
 | 架构 | MVVM + Repository 模式 |
 | 依赖注入 | Hilt (Dagger) |
-| 数据库 | Room |
+| 数据库 | Room（行程历史，规划中） |
 | 异步 | Coroutines + Flow |
-| 网络 | Retrofit + OkHttp + Gson |
-| 定位 | FusedLocationProvider (Google Play Services) |
+| 蓝牙 | 原生 GATT + 自研 Tesla 协议（protobuf wire、ECDH、AES-GCM） |
+| 安全 | Android Keystore（AES-256-GCM 封装 BLE 私钥） |
 | 设置存储 | DataStore Preferences |
 | UI 框架 | Material 3 (DayNight) + 自定义 View |
 | 最低 SDK | 26 (Android 8.0) |
@@ -59,100 +77,99 @@ Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯�
 ```
 ┌─────────────────────────────────────────────┐
 │                  UI 层                       │
-│  DashboardActivity · SettingsActivity ·      │
-│  HistoryActivity · SpeedometerView           │
+│  DashboardActivity · SettingsActivity ·     │
+│  PairingActivity · HistoryActivity ·        │
+│  SplashActivity + 自定义 View               │
 ├─────────────────────────────────────────────┤
-│               ViewModel 层                   │
-│  DashboardViewModel · SettingsViewModel      │
+│               ViewModel 层                  │
+│  DashboardViewModel · SettingsListViewModel │
+│  BleSettingsViewModel · SettingsLightViewModel│
 ├─────────────────────────────────────────────┤
-│              Repository 层                   │
-│  VehicleDataRepository（数据融合）·           │
-│  TripRepository · SettingsRepository         │
+│              Repository 层                  │
+│  VehicleDataRepository (BLE 透传 + 电耗计算)│
+│  TripRepository                             │
 ├─────────────────────────────────────────────┤
-│              数据源层                        │
-│  GnssProvider · SensorProvider ·             │
-│  TeslaBleProvider                            │
+│              Data Source 层                 │
+│  TeslaBleProvider (轮询状态机)              │
+│  TeslaBleManager (GATT) · TeslaKeyManager   │
+│  TeslaCrypto · TeslaProtobuf · TeslaMessages│
 ├─────────────────────────────────────────────┤
 │              基础设施                        │
-│  Room DB · DataStore · BLE · Hilt DI         │
+│  Room DB · DataStore · Keystore · Hilt DI   │
 └─────────────────────────────────────────────┘
 ```
-
-### 数据融合策略
-
-`VehicleDataRepository` 使用 Kotlin Flow `combine` 合并三个数据源：
-
-1. **GNSS** 作为基底（车速、位置、航向、里程）
-2. **传感器** 叠加加速度和 G 力数据
-3. **Tesla BLE** 叠加电池、温度、档位、里程表 — 仅在配对成功时取用
-
-车速始终来自 GNSS（亚秒级延迟），而非 Tesla BLE（10 秒轮询），确保最低延迟。
 
 ## 快速开始
 
 ### 环境要求
-- Android Studio Hedgehog（或更新版本）
-- JDK 17
+- Android Studio Hedgehog 或更新版本
+- JDK 17+（注意：`gradle.properties` 含本机路径配置，换机器请调整或删除 `org.gradle.java.home` / `android.aapt2FromMavenOverride`）
 - Android SDK 34
 
-### 编译
+### 构建
 
 ```bash
-# 克隆仓库
-git clone https://github.com/TimHuang336699/tesla-dashboard-android.git
-cd tesla-dashboard-android
+git clone https://github.com/TimHuang336699/tesla-dashboard.git
+cd tesla-dashboard
 
-# 编译 Debug APK
+# 生成调试 APK
 ./gradlew assembleDebug
 ```
 
 ### 运行
 
-1. 在 Android Studio 中打开项目
+1. 用 Android Studio 打开项目
 2. 连接 Android 设备（API 26+）或启动模拟器
-3. 点击 **Run** 或执行 `./gradlew installDebug`
+3. 点击 Run，或执行 `./gradlew installDebug`
 
-### Tesla BLE 配对（可选）
+### Tesla BLE 配对（实时数据必需）
 
-1. 打开应用，点击右上角 **设置** 图标
-2. 输入特斯拉 **VIN**（17 位）
-3. 点击 **配对车辆** 开始 BLE 蓝牙配对
-4. 根据提示，在车机中控台上刷 **NFC 卡片** 确认配对
-5. 选择 **车型**，用于电池容量查询
-6. 点击 **测试连接** 验证，然后 **保存**
+1. 打开应用，点击右下角**设置**图标
+2. **车辆 → 蓝牙与车辆**，输入特斯拉 **VIN**（17 位）
+3. 点击**配对车辆**开始 BLE 配对
+4. 提示时，将 **NFC 卡片**放在车辆中控台指定位置确认
+5. 选择**车型**（用于电池容量查询）
+6. 点击**测试连接**验证，然后保存
 
-> 应用无需 BLE 配对即可完整运行 — 速度、G 力、GPS、行程记录均使用本地传感器。
-> BLE 配对需要靠近车辆（约 10 米）并开启蓝牙。
+> BLE 配对需要在车辆附近（约 10 米）且蓝牙已开启。
+> 未配对车辆时，仪表盘显示 `--` 占位符。
 
 ## 项目结构
 
 ```
 app/src/main/java/com/tesla/dashboard/
-├── app/                    # Application 类，Hilt 初始化
+├── app/                    # Application 类, Hilt 入口
 ├── data/
-│   ├── local/              # Room 数据库、DAO、SettingsRepository、TripRepository
-│   ├── model/              # VehicleData、TrackPoint、BatteryConfig、Trip
-│   ├── repository/         # VehicleDataRepository、TrackPointCollector
-│   └── source/             # VehicleDataSource 接口
-│       ├── gnss/           # GnssProvider
-│       ├── sensor/         # SensorProvider
-│       └── ble/            # TeslaBleProvider（BLE 蓝牙直连）
+│   ├── local/              # Room DB, DAO, SettingsRepository, TripRepository
+│   ├── model/              # VehicleData, Trip, TrackPoint, BatteryConfig
+│   ├── repository/         # VehicleDataRepository
+│   └── source/
+│       ├── VehicleDataSource.kt
+│       └── ble/            # TeslaBleProvider, TeslaBleManager, TeslaKeyManager,
+│                           # TeslaCrypto, TeslaProtobuf, TeslaBleMessages, TeslaBleConstants
 ├── di/                     # Hilt 模块 (DataSourceModule, DatabaseModule)
-├── service/                # TripRecordingService (前台服务)
+├── service/                # TripRecordingService (前台服务, 规划中)
 ├── ui/
-│   ├── dashboard/          # DashboardActivity、DashboardViewModel、SpeedometerView
-│   ├── history/            # HistoryActivity、行程列表
-│   └── settings/           # SettingsActivity、SettingsViewModel
-└── util/                   # ThemeManager
+│   ├── dashboard/          # DashboardActivity, DashboardViewModel, 自定义 View
+│   ├── history/            # HistoryActivity, 行程列表 (规划中)
+│   ├── settings/           # 设置 + 5 个二级页
+│   ├── pairing/            # 配对向导
+│   └── splash/             # 启动页 (狐狸 logo 动画)
+└── util/                   # ThemeManager, LanguageManager, UnitSystem,
+                            # VinDecoder, VinMasker, AppLog, LogExporter
 ```
 
-## 预览
+## 更新日志
 
-浏览器预览页面已提供（`tesla-dashboard-preview.html`），用任意浏览器打开即可查看仪表盘 UI 及模拟实时数据效果。
+- **v0.4.0** — 设置改为手机风格分组（车辆/显示/通用/关于）；设置直达导出日志；仪表盘瞬时电耗展示（kWh/100km）；BLE 私钥迁至 Android Keystore（AES-256-GCM 封装）；BLE 轮询 10s→5s + 设备缓存直连；清理死代码与背景图片资源；README 重写
+- **v0.3.5** — 狐狸 logo 重绘 + 1s 启动动画
+- **v0.3.0** — 多语言、多单位、分级设置、VIN 遮罩
+- **v0.2.x** — 圆环表改为大数字码表、多主题支持、主题下拉含浅色变体
+- **v0.1** — 初版：BLE 门锁状态
 
-## 许可声明
+## 许可
 
-本项目仅供学习交流。Tesla 是 Tesla, Inc. 的商标。本应用与 Tesla 无关联，未获得 Tesla 认可。
+本项目仅用于学习交流。Tesla 是 Tesla, Inc. 的商标。本应用与 Tesla 无任何关联或背书。
 
 ---
 
