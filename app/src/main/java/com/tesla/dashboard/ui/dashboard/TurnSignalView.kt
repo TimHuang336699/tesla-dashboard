@@ -14,12 +14,16 @@ import androidx.core.animation.doOnEnd
 /**
  * 转向灯指示视图 2.0 (v0.5.0)
  *
- * 替代 v0.2.2 已删除的位图版 TurnSignalView:
- * - **矢量绘制**: 纯 Canvas 三角箭头, 不依赖位图资源, 任意尺寸清晰
- * - **Tesla 风格顺序扫描动画**: 每个箭头分根/中/尖三段,
+ * 基于 Material Design 实心三角形图标的转向灯指示器:
+ * - **矢量绘制**: 纯 Canvas 实心三角形, 不依赖位图资源, 任意尺寸清晰
+ * - **Tesla 风格顺序扫描动画**: 每个箭头分 3 段,
  *   亮起脉冲从箭头根部向尖端依次流动 (与真实转向灯一致)
  * - **双闪模式**: 左右箭头同步扫描
  * - **主题色联动**: 通过 [setColors] 设置激活色/熄灭色, 随主题切换
+ *
+ * 三角形形状参考 Material Design Icons (menu-left / menu-right):
+ * - 左三角: 等腰三角形, 尖端在左, 根部在右
+ * - 右三角: 左三角的水平镜像
  *
  * 说明: Tesla BLE 协议不暴露转向灯真实状态, 本视图为装饰性显示
  * (常显静态箭头), 状态接口 [setState] 保留, 供未来接入真实信号数据。
@@ -123,8 +127,6 @@ class TurnSignalView @JvmOverloads constructor(
 
     /**
      * 根据状态启停扫描动画
-     *
-     * OFF 时停止动画 (静态熄灭); LEFT/RIGHT/HAZARD 时启动循环扫描。
      */
     private fun updateAnimation() {
         sweepAnimator?.cancel()
@@ -176,33 +178,42 @@ class TurnSignalView @JvmOverloads constructor(
     }
 
     /**
-     * 构建左右箭头的 Path (对称三角形)
+     * 构建左右箭头的 Path (Material Design 实心三角形)
      *
-     * 左箭头: 等腰三角形, 尖端指向左, 根部在右
-     * 右箭头: 等腰三角形, 尖端指向右, 根部在左
-     * 两者互为水平镜像, 保证完全对称
+     * 左三角: 尖端在左, 根部在右 (M tipX,centerY L baseX,top L baseX,bottom Z)
+     * 右三角: 尖端在右, 根部在左 (左三角的水平镜像)
+     *
+     * 参考 Material Design Icons:
+     * - menu-left:  M14,7 L9,12 L14,17 V7Z
+     * - menu-right: M10,17 L15,12 L10,7 V17Z
      */
     private fun buildArrowPaths(w: Int, h: Int) {
         val centerY = h / 2f
-        val arrowLen = w * 0.28f        // 箭头长度 (水平)
-        val arrowHalfH = h * 0.35f      // 箭头根部半高 (垂直)
+        val arrowW = w * 0.32f    // 三角形宽度 (水平)
+        val arrowH = h * 0.72f    // 三角形高度 (垂直, 根部跨度)
 
-        // 左箭头: 尖端在左 (x = padding), 根部在右
+        // 左三角: 尖端在左, 根部在右
         val leftTipX = w * 0.1f
-        val leftBaseX = leftTipX + arrowLen
+        val leftBaseX = leftTipX + arrowW
+        val leftTop = centerY - arrowH / 2f
+        val leftBottom = centerY + arrowH / 2f
+
         leftArrowPath.reset()
-        leftArrowPath.moveTo(leftTipX, centerY)               // 尖端
-        leftArrowPath.lineTo(leftBaseX, centerY - arrowHalfH) // 根部上
-        leftArrowPath.lineTo(leftBaseX, centerY + arrowHalfH) // 根部下
+        leftArrowPath.moveTo(leftTipX, centerY)       // 尖端
+        leftArrowPath.lineTo(leftBaseX, leftTop)      // 根部上
+        leftArrowPath.lineTo(leftBaseX, leftBottom)   // 根部下
         leftArrowPath.close()
 
-        // 右箭头: 尖端在右, 根部在左 (左箭头的水平镜像)
+        // 右三角: 尖端在右, 根部在左 (水平镜像)
         val rightTipX = w - w * 0.1f
-        val rightBaseX = rightTipX - arrowLen
+        val rightBaseX = rightTipX - arrowW
+        val rightTop = centerY - arrowH / 2f
+        val rightBottom = centerY + arrowH / 2f
+
         rightArrowPath.reset()
-        rightArrowPath.moveTo(rightTipX, centerY)                 // 尖端
-        rightArrowPath.lineTo(rightBaseX, centerY - arrowHalfH)   // 根部上
-        rightArrowPath.lineTo(rightBaseX, centerY + arrowHalfH)   // 根部下
+        rightArrowPath.moveTo(rightTipX, centerY)       // 尖端
+        rightArrowPath.lineTo(rightBaseX, rightTop)     // 根部上
+        rightArrowPath.lineTo(rightBaseX, rightBottom)  // 根部下
         rightArrowPath.close()
     }
 
@@ -224,8 +235,6 @@ class TurnSignalView @JvmOverloads constructor(
 
         for (i in 0 until segmentCount) {
             // 段 i 的 x 范围: 根部(i=0) → 尖端(i=2)
-            // 左箭头: 根部在右 (bounds.right), 尖端在左 (bounds.left)
-            // 右箭头: 根部在左 (bounds.left), 尖端在右 (bounds.right)
             val segLeft: Float
             val segRight: Float
             if (pointingLeft) {
@@ -241,7 +250,6 @@ class TurnSignalView @JvmOverloads constructor(
             // 判断该段是否被扫描脉冲点亮
             var lit = false
             if (sweepPhase >= 0f) {
-                // 脉冲从根部(i=0)向尖端(i=2)流动
                 val segmentStart = i / segmentCount.toFloat()
                 val t = sweepPhase + segmentStart
                 lit = t % 1f < pulseWidth
