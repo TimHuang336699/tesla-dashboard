@@ -15,10 +15,10 @@ import androidx.core.animation.doOnEnd
 /**
  * 转向灯指示视图 2.0 (v0.5.0)
  *
- * 基于 Material Design 实心三角形图标的转向灯指示器:
- * - **矢量绘制**: 纯 Canvas 实心三角形, 不依赖位图资源, 任意尺寸清晰
- * - **Tesla 风格顺序扫描动画**: 每个箭头分 3 段,
- *   亮起脉冲从箭头根部向尖端依次流动 (与真实转向灯一致)
+ * 基于 Tesla 真实转向灯样式的 V 形箭头:
+ * - **矢量绘制**: 纯 Canvas V 形箭头 (chevron), 不依赖位图资源
+ * - **Tesla 风格顺序扫描动画**: 每个 V 形分 3 段,
+ *   亮起脉冲从外侧向内侧依次流动 (与真实转向灯一致)
  * - **双闪模式**: 左右箭头同步扫描
  * - **主题色联动**: 通过 [setColors] 设置激活色/熄灭色, 随主题切换
  *
@@ -53,7 +53,9 @@ class TurnSignalView @JvmOverloads constructor(
     }
 
     private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
     }
 
     /** 激活色 (扫描亮起时的颜色, 默认主题绿) */
@@ -71,19 +73,20 @@ class TurnSignalView @JvmOverloads constructor(
     /** 扫描动画 */
     private var sweepAnimator: ValueAnimator? = null
 
-    /** 扫描脉冲在箭头上的宽度比例 (根→尖为一个完整脉冲) */
-    private val pulseWidth = 0.38f
+    /** 扫描脉冲在箭头上的宽度比例 */
+    private val pulseWidth = 0.35f
 
-    /** 左箭头 Path (预计算, onSizeChanged 时更新) */
+    /** 左箭头 V 形 Path (预计算) */
     private val leftArrowPath = Path()
 
-    /** 右箭头 Path (预计算, onSizeChanged 时更新) */
+    /** 右箭头 V 形 Path (预计算) */
     private val rightArrowPath = Path()
+
+    /** 描边宽度 */
+    private var strokePx: Float = 0f
 
     /**
      * 设置转向灯状态
-     *
-     * @param state 目标状态
      */
     fun setState(state: State) {
         if (this.state == state) return
@@ -93,9 +96,6 @@ class TurnSignalView @JvmOverloads constructor(
 
     /**
      * 设置主题色
-     *
-     * @param active 激活色 (亮起脉冲)
-     * @param idle 熄灭色 (静态箭头)
      */
     fun setColors(active: Int, idle: Int) {
         if (activeColor == active && idleColor == idle) return
@@ -107,6 +107,8 @@ class TurnSignalView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0) {
+            strokePx = h * 0.12f
+            arrowPaint.strokeWidth = strokePx
             buildArrowPaths(w, h)
         }
     }
@@ -122,9 +124,6 @@ class TurnSignalView @JvmOverloads constructor(
         sweepAnimator = null
     }
 
-    /**
-     * 根据状态启停扫描动画
-     */
     private fun updateAnimation() {
         sweepAnimator?.cancel()
         sweepAnimator = null
@@ -143,9 +142,7 @@ class TurnSignalView @JvmOverloads constructor(
                 sweepPhase = animator.animatedValue as Float
                 postInvalidateOnAnimation()
             }
-            doOnEnd {
-                sweepPhase = 0f
-            }
+            doOnEnd { sweepPhase = 0f }
             start()
         }
     }
@@ -156,88 +153,75 @@ class TurnSignalView @JvmOverloads constructor(
 
         when (state) {
             State.OFF -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f, pointingLeft = true)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f, pointingLeft = false)
+                drawChevron(canvas, leftArrowPath, sweepPhase = -1f)
+                drawChevron(canvas, rightArrowPath, sweepPhase = -1f)
             }
             State.LEFT -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase, pointingLeft = true)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase = -1f, pointingLeft = false)
+                drawChevron(canvas, leftArrowPath, sweepPhase)
+                drawChevron(canvas, rightArrowPath, sweepPhase = -1f)
             }
             State.RIGHT -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase = -1f, pointingLeft = true)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase, pointingLeft = false)
+                drawChevron(canvas, leftArrowPath, sweepPhase = -1f)
+                drawChevron(canvas, rightArrowPath, sweepPhase)
             }
             State.HAZARD -> {
-                drawArrowSegments(canvas, leftArrowPath, sweepPhase, pointingLeft = true)
-                drawArrowSegments(canvas, rightArrowPath, sweepPhase, pointingLeft = false)
+                drawChevron(canvas, leftArrowPath, sweepPhase)
+                drawChevron(canvas, rightArrowPath, sweepPhase)
             }
         }
     }
 
     /**
-     * 构建左右箭头的 Path (Material Design 实心三角形)
+     * 构建 V 形 (chevron) 箭头 Path
      *
-     * 左三角: 尖端在左, 根部在右
-     * 右三角: 尖端在右, 根部在左
+     * 左 V:  <<  (尖端在左, 开口在右)
+     * 右 V:  >>  (尖端在右, 开口在左)
      *
-     * 两者互为水平镜像, 保证完全对称。
+     * 每个 V 由两段线段组成, 形成一个锐角。
      */
     private fun buildArrowPaths(w: Int, h: Int) {
         val centerY = h / 2f
-        val arrowW = w * 0.30f    // 三角形宽度 (水平)
-        val arrowH = h * 0.70f    // 三角形高度 (垂直)
+        val vWidth = w * 0.22f     // V 的水平宽度
+        val vHeight = h * 0.42f    // V 的垂直半高 (从中心到上下端点)
 
-        // === 左三角: 尖端在左 (x 小), 根部在右 (x 大) ===
-        val leftTipX = w * 0.08f
-        val leftBaseX = leftTipX + arrowW
+        // === 左 V: << ===
+        // 尖端 (顶点) 在左, 两个端点在右
+        val leftTipX = w * 0.12f
+        val leftOpenX = leftTipX + vWidth
 
         leftArrowPath.reset()
-        leftArrowPath.moveTo(leftTipX, centerY)              // 尖端 (左侧)
-        leftArrowPath.lineTo(leftBaseX, centerY - arrowH / 2) // 根部上
-        leftArrowPath.lineTo(leftBaseX, centerY + arrowH / 2) // 根部下
+        leftArrowPath.moveTo(leftOpenX, centerY - vHeight)  // 右上端点
+        leftArrowPath.lineTo(leftTipX, centerY)              // 尖端 (左侧)
+        leftArrowPath.lineTo(leftOpenX, centerY + vHeight)  // 右下端点
         leftArrowPath.close()
 
-        // === 右三角: 尖端在右 (x 大), 根部在左 (x 小) ===
-        val rightBaseX = w - leftBaseX
+        // === 右 V: >> (水平镜像) ===
         val rightTipX = w - leftTipX
+        val rightOpenX = w - leftOpenX
 
         rightArrowPath.reset()
-        rightArrowPath.moveTo(rightTipX, centerY)               // 尖端 (右侧)
-        rightArrowPath.lineTo(rightBaseX, centerY - arrowH / 2) // 根部上
-        rightArrowPath.lineTo(rightBaseX, centerY + arrowH / 2) // 根部下
+        rightArrowPath.moveTo(rightOpenX, centerY - vHeight)  // 左上端点
+        rightArrowPath.lineTo(rightTipX, centerY)              // 尖端 (右侧)
+        rightArrowPath.lineTo(rightOpenX, centerY + vHeight)  // 左下端点
         rightArrowPath.close()
     }
 
     /**
-     * 绘制箭头的 3 段扫描效果
+     * 绘制 V 形箭头的扫描效果
      *
-     * @param pointingLeft true=左箭头(根部在右), false=右箭头(根部在左)
+     * 将 V 形分为 3 段 (上臂、尖端、下臂), 根据 sweepPhase 依次点亮。
      */
-    private fun drawArrowSegments(
-        canvas: Canvas,
-        arrowPath: Path,
-        sweepPhase: Float,
-        pointingLeft: Boolean,
-    ) {
+    private fun drawChevron(canvas: Canvas, chevronPath: Path, sweepPhase: Float) {
         val bounds = RectF()
-        arrowPath.computeBounds(bounds, true)
+        chevronPath.computeBounds(bounds, true)
 
         val segmentCount = 3
-        val segW = bounds.width() / segmentCount
+        val segH = bounds.height() / segmentCount
 
         for (i in 0 until segmentCount) {
-            // 段 i 的 x 范围: 根部(i=0) → 尖端(i=2)
-            val segLeft: Float
-            val segRight: Float
-            if (pointingLeft) {
-                // 左箭头: 根部在右, 尖端在左
-                segRight = bounds.right - segW * i
-                segLeft = bounds.right - segW * (i + 1)
-            } else {
-                // 右箭头: 根部在左, 尖端在右
-                segLeft = bounds.left + segW * i
-                segRight = bounds.left + segW * (i + 1)
-            }
+            // 段 i 的 y 范围: 从上到下
+            val segTop = bounds.top + segH * i
+            val segBottom = bounds.top + segH * (i + 1)
 
             // 判断该段是否被扫描脉冲点亮
             var lit = false
@@ -249,12 +233,12 @@ class TurnSignalView @JvmOverloads constructor(
 
             arrowPaint.color = if (lit) activeColor else idleColor
 
-            // 用 clipPath 裁剪当前段, 再绘制完整箭头
+            // 用 clipPath 裁剪当前段, 再绘制完整 V 形
             canvas.save()
             val clipPath = Path()
-            clipPath.addRect(segLeft, bounds.top - 1f, segRight, bounds.bottom + 1f, Path.Direction.CW)
+            clipPath.addRect(bounds.left - 1f, segTop, bounds.right + 1f, segBottom, Path.Direction.CW)
             canvas.clipPath(clipPath)
-            canvas.drawPath(arrowPath, arrowPaint)
+            canvas.drawPath(chevronPath, arrowPaint)
             canvas.restore()
         }
     }
