@@ -65,6 +65,14 @@ class TeslaKeyManager @Inject constructor(
     /** 已配对车辆的 VIN */
     private val KEY_PAIRED_VIN = stringPreferencesKey("paired_vin")
 
+    /**
+     * 车辆 VCSEC 公钥 (65 字节未压缩格式, Base64)
+     *
+     * 配对成功时固定, 之后每次 BLE 握手校验车辆出示的公钥必须一致,
+     * 防止中继/伪装设备 (MITM) 冒充车辆 (v0.4.1 安全加固)。
+     */
+    private val KEY_VEHICLE_PUBLIC_RAW = stringPreferencesKey("vehicle_public_key_raw_b64")
+
     /** Keystore 中 AES 封装密钥的别名 (不可导出) */
     private val KEYSTORE_ALIAS = "tesla_ble_keystore_aes"
 
@@ -97,6 +105,8 @@ class TeslaKeyManager @Inject constructor(
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
+                // 安全加固: 强制随机 IV, 避免 IV 复用导致 GCM 密钥损坏 (v0.4.1)
+                .setRandomizedEncryptionRequired(true)
                 .build(),
         )
         return generator.generateKey()
@@ -257,8 +267,30 @@ class TeslaKeyManager @Inject constructor(
      */
     suspend fun savePairedVin(vin: String) {
         context.bleKeyStore.edit { prefs ->
-            prefs[KEY_PAIRED_VIN] = vin.trim()
+            prefs[KEY_PAIRED_VIN] = vin
         }
+    }
+
+    /**
+     * 保存车辆 VCSEC 公钥 (配对成功时固定)
+     *
+     * @param publicKeyRaw 65 字节未压缩格式公钥
+     */
+    suspend fun saveVehiclePublicKeyRaw(publicKeyRaw: ByteArray) {
+        context.bleKeyStore.edit { prefs ->
+            prefs[KEY_VEHICLE_PUBLIC_RAW] = Base64.encodeToString(publicKeyRaw, Base64.NO_WRAP)
+        }
+    }
+
+    /**
+     * 加载固定的车辆公钥
+     *
+     * @return 65 字节未压缩格式公钥, 未固定时返回 null
+     */
+    suspend fun loadVehiclePublicKeyRaw(): ByteArray? {
+        val prefs = context.bleKeyStore.data.first()
+        val b64 = prefs[KEY_VEHICLE_PUBLIC_RAW] ?: return null
+        return runCatching { Base64.decode(b64, Base64.NO_WRAP) }.getOrNull()
     }
 
     /**

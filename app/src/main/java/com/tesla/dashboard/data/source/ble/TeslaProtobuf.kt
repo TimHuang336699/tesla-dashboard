@@ -99,22 +99,30 @@ object TeslaProtobuf {
     /**
      * 解码 varint
      *
+     * 安全加固 (v0.4.1): 限定最多 10 字节 (64 位 varint 上限),
+     * 超限或无终止符时抛 [IllegalArgumentException], 防止恶意输入引发
+     * 越界/死循环/资源消耗。
+     *
      * @param data 字节数组
      * @param offset 起始偏移
      * @return Pair(value, nextOffset)
+     * @throws IllegalArgumentException 数据损坏 (varint 过长或无终止符)
      */
     fun decodeVarint(data: ByteArray, offset: Int): Pair<Long, Int> {
         var result = 0L
         var shift = 0
         var pos = offset
-        while (pos < data.size) {
+        while (pos < data.size && pos - offset < 10) {
             val byte = data[pos].toInt() and 0xFF
             result = result or ((byte and 0x7F).toLong() shl shift)
             pos++
-            if (byte and 0x80 == 0) break
+            if (byte and 0x80 == 0) {
+                return Pair(result, pos)
+            }
             shift += 7
         }
-        return Pair(result, pos)
+        // 10 字节内未终止 → 非法 varint (安全拒绝, 避免死循环/越界)
+        throw IllegalArgumentException("Malformed varint (truncated or too long)")
     }
 
     /**
@@ -140,12 +148,18 @@ object TeslaProtobuf {
     /**
      * 解析下一个字段
      *
+     * 安全加固 (v0.4.1): 所有 wire type 均校验边界,
+     * 恶意输入 (越界长度/截断的 fixed 值/超长 varint) 一律抛
+     * [IllegalArgumentException], 由调用方统一捕获, 防止崩溃与死循环。
+     *
      * @param data 字节数组
      * @param offset 起始偏移
      * @return Pair(field, nextOffset) 或 null 表示结束
+     * @throws IllegalArgumentException 数据损坏
      */
     fun parseField(data: ByteArray, offset: Int): Pair<ProtoField, Int>? {
         if (offset >= data.size) return null
+        if (offset < 0) throw IllegalArgumentException("Negative offset")
 
         // 解析 tag
         val (tag, pos) = decodeVarint(data, offset)
@@ -158,18 +172,29 @@ object TeslaProtobuf {
                 Pair(ProtoField(fieldNumber, wireType, value, ByteArray(0), pos, endPos), endPos)
             }
             WIRE_TYPE_FIXED32 -> {
+                if (pos + 4 > data.size) {
+                    throw IllegalArgumentException("Truncated fixed32 field")
+                }
                 val (value, endPos) = decodeFixed32(data, pos)
                 Pair(ProtoField(fieldNumber, wireType, value.toLong() and 0xFFFFFFFFL, ByteArray(0), pos, endPos), endPos)
             }
             WIRE_TYPE_FIXED64 -> {
+                if (pos + 8 > data.size) {
+                    throw IllegalArgumentException("Truncated fixed64 field")
+                }
                 val value = ByteBuffer.wrap(data, pos, 8).order(ByteOrder.LITTLE_ENDIAN).long
                 Pair(ProtoField(fieldNumber, wireType, value, ByteArray(0), pos, pos + 8), pos + 8)
             }
             WIRE_TYPE_LENGTH_DELIMITED -> {
                 val (length, lenStart) = decodeVarint(data, pos)
                 val bytesStart = lenStart
+                // 边界校验: 长度必须非负且在剩余数据范围内 (防越界/恶意长度)
+                if (length < 0 || length > data.size - bytesStart) {
+                    throw IllegalArgumentException("Malformed length-delimited field")
+                }
                 val bytesEnd = bytesStart + length.toInt()
-                Pair(ProtoField(fieldNumber, wireType, 0, data.copyOfRange(bytesStart, bytesEnd), bytesStart, bytesEnd), bytesEnd)
+                val bytes = data.copyOfRange(bytesStart, bytesEnd)
+                Pair(ProtoField(fieldNumber, wireType, 0, bytes, bytesStart, bytesEnd), bytesEnd)
             }
             else -> null // 不支持的 wire type
         }

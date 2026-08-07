@@ -303,6 +303,8 @@ class TeslaBleProvider @Inject constructor(
             _pairingState.value = PairingState.SavingKey
             keyManager.saveKeyPair(privateKey, publicKey)
             keyManager.savePairedVin(vin)
+            // 固定车辆 VCSEC 公钥, 后续握手校验防止中继/伪装 (v0.4.1 安全加固)
+            keyManager.saveVehiclePublicKeyRaw(TeslaCrypto.encodePublicKey(tempSession.vehiclePublicKey))
             this.vin = vin
 
             _pairingState.value = PairingState.Completed
@@ -533,6 +535,14 @@ class TeslaBleProvider @Inject constructor(
 
             // 2. VCSEC 域握手 → 唤醒车辆
             val vcsecSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            // 车辆公钥固定校验: 与配对时固定的公钥不符 → 拒绝连接 (防中继/伪装)
+            val pinnedVehicleKey = keyManager.loadVehiclePublicKeyRaw()
+            if (pinnedVehicleKey != null &&
+                !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
+            ) {
+                AppLog.e(TAG, "Vehicle public key MISMATCH vs pinned - aborting (possible relay/MITM)")
+                return null
+            }
             session = vcsecSession
 
             val wakePayload = TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_WAKE_VEHICLE)
@@ -831,7 +841,16 @@ class TeslaBleProvider @Inject constructor(
             } ?: return false
 
             bleManager.connect(device, timeoutMs = 15000L)
-            performHandshake(privateKey, publicKeyRaw)
+            val vcsecSession = performHandshake(privateKey, publicKeyRaw)
+            // 车辆公钥固定校验 (与配对时固定值一致才视为同一辆车)
+            val pinnedVehicleKey = keyManager.loadVehiclePublicKeyRaw()
+            if (pinnedVehicleKey != null &&
+                !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
+            ) {
+                AppLog.e(TAG, "Connection test: vehicle public key MISMATCH vs pinned")
+                disconnectSession()
+                return false
+            }
             disconnectSession()
             true
         } catch (e: Exception) {

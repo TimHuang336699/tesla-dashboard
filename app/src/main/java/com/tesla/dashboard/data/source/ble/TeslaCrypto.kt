@@ -145,6 +145,10 @@ object TeslaCrypto {
         plaintext: ByteArray,
         aad: ByteArray,
     ): Pair<ByteArray, ByteArray> {
+        // 安全加固: GCM nonce 必须为 12 字节, 尺寸错误立即失败 (v0.4.1)
+        require(nonce.size == TeslaBleConstants.NONCE_SIZE) {
+            "Invalid nonce size: ${nonce.size} (expected ${TeslaBleConstants.NONCE_SIZE})"
+        }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         val keySpec = SecretKeySpec(key, "AES")
         val gcmSpec = GCMParameterSpec(TeslaBleConstants.GCM_TAG_SIZE * 8, nonce)
@@ -176,6 +180,13 @@ object TeslaCrypto {
         tag: ByteArray,
         aad: ByteArray,
     ): ByteArray {
+        // 安全加固: GCM nonce/tag 尺寸校验, 防止尺寸错误的输入进入解密 (v0.4.1)
+        require(nonce.size == TeslaBleConstants.NONCE_SIZE) {
+            "Invalid nonce size: ${nonce.size} (expected ${TeslaBleConstants.NONCE_SIZE})"
+        }
+        require(tag.size == TeslaBleConstants.GCM_TAG_SIZE) {
+            "Invalid GCM tag size: ${tag.size} (expected ${TeslaBleConstants.GCM_TAG_SIZE})"
+        }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         val keySpec = SecretKeySpec(key, "AES")
         val gcmSpec = GCMParameterSpec(TeslaBleConstants.GCM_TAG_SIZE * 8, nonce)
@@ -217,6 +228,8 @@ object TeslaCrypto {
         val out = ByteArrayOutputStream()
         for ((tag, value) in sorted) {
             if (tag == TeslaBleConstants.TAG_END) continue
+            // 安全加固: TLV 值长度必须 ≤255 字节, 否则 write() 会静默截断 (v0.4.1)
+            require(value.size <= 255) { "TLV value too long: ${value.size} bytes (max 255)" }
             out.write(tag)
             out.write(value.size)
             out.write(value)
@@ -239,6 +252,8 @@ object TeslaCrypto {
      * (基于协议分析: epoch 为 16 字节，取前 8 字节 + 4 字节 counter)
      */
     fun buildNonce(epoch: ByteArray, counter: Int): ByteArray {
+        // 安全加固: epoch 必须 ≥8 字节, 否则越界拷贝 (v0.4.1)
+        require(epoch.size >= 8) { "Epoch too short: ${epoch.size} bytes (min 8)" }
         val nonce = ByteArray(TeslaBleConstants.NONCE_SIZE)
         // 取 epoch 前 8 字节
         System.arraycopy(epoch, 0, nonce, 0, 8)
