@@ -78,11 +78,11 @@ class DashboardActivity : BaseImmersiveActivity() {
     private var detailExpanded = false
 
     // ===== 缓存的字符串资源 (避免 updateUI 中重复调用 getString) =====
-    private val defaultStr by lazy { getString(R.string.default_value) }
-    private val connectedStr by lazy { getString(R.string.tesla_connected) }
-    private val gnssFallbackStr by lazy { getString(R.string.tesla_gnss_fallback) }
-    private val staleStr by lazy { getString(R.string.tesla_stale) }
-    private val disconnectedStr by lazy { getString(R.string.tesla_disconnected) }
+    private lateinit var defaultStr: String
+    private lateinit var connectedStr: String
+    private lateinit var gnssFallbackStr: String
+    private lateinit var staleStr: String
+    private lateinit var disconnectedStr: String
 
     // ===== 复用的 StringBuilder (避免 G-force 文本每次分配) =====
     private val gForceStringBuilder = StringBuilder(16)
@@ -98,6 +98,13 @@ class DashboardActivity : BaseImmersiveActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 初始化缓存字符串 (必须在 super.onCreate 之后)
+        defaultStr = getString(R.string.default_value)
+        connectedStr = getString(R.string.tesla_connected)
+        gnssFallbackStr = getString(R.string.tesla_gnss_fallback)
+        staleStr = getString(R.string.tesla_stale)
+        disconnectedStr = getString(R.string.tesla_disconnected)
 
         // 1. 初始化 ViewBinding
         binding = ActivityDashboardBinding.inflate(layoutInflater)
