@@ -47,11 +47,22 @@
 
     </LinearLayout>
 
-    <!-- ===== 设置行列表容器 (代码动态填充) ===== -->
-    <LinearLayout
-        android:id="@+id/rowsContainer"
+    <!-- ===== 可滚动内容区 ===== -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:scrollbars="vertical"
+        android:overScrollMode="never">
+
+        <!-- ===== 设置行列表容器 (代码动态填充) ===== -->
+        <LinearLayout
+            android:id="@+id/rowsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
 
 </LinearLayout>
