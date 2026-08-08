@@ -132,13 +132,13 @@ class TurnSignalView @JvmOverloads constructor(
      * 计算箭头布局位置和裁剪区域
      */
     private fun calculateLayout(w: Int, h: Int) {
-        val arrowW = w * 0.38f
+        val arrowW = w * 0.35f
         val arrowH = h * 0.85f
         val arrowSize = minOf(arrowW, arrowH)
-        val gap = w * 0.08f  // 左右箭头间距
+        val padding = w * 0.02f  // 边距
 
-        // 左箭头中心
-        val leftCx = w / 2f - arrowSize / 2f - gap / 2f
+        // 左箭头靠左
+        val leftCx = arrowSize / 2f + padding
         val cy = h / 2f
 
         leftBounds.set(
@@ -148,8 +148,8 @@ class TurnSignalView @JvmOverloads constructor(
             cy + arrowSize / 2f,
         )
 
-        // 右箭头中心
-        val rightCx = w / 2f + arrowSize / 2f + gap / 2f
+        // 右箭头靠右
+        val rightCx = w - arrowSize / 2f - padding
 
         rightBounds.set(
             rightCx - arrowSize / 2f,
