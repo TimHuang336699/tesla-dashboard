@@ -54,7 +54,8 @@ class DataSettingsActivity : BaseImmersiveActivity() {
         // 数据刷新频率
         addClickRow(container, inflater,
             titleRes = R.string.settings_data_refresh,
-            summary = getRefreshRateText(),
+            summaryRes = 0,
+            summaryText = getRefreshRateText(),
             onClick = { showRefreshRateDialog() }
         )
 
@@ -69,7 +70,7 @@ class DataSettingsActivity : BaseImmersiveActivity() {
         // 数据源优先级 (显示当前值)
         addClickRow(container, inflater,
             titleRes = R.string.settings_data_source,
-            summary = "BLE 优先，GNSS 降级"
+            summaryRes = R.string.settings_data_source_summary
         )
     }
 
@@ -115,10 +116,16 @@ class DataSettingsActivity : BaseImmersiveActivity() {
     }
 
     private fun addClickRow(container: android.widget.LinearLayout, inflater: LayoutInflater,
-                            titleRes: Int, summary: String, onClick: (() -> Unit)? = null) {
+                            titleRes: Int, summaryRes: Int = 0, summaryText: String? = null, onClick: (() -> Unit)? = null) {
         val binding = ItemSettingsRowBinding.inflate(inflater, container, false)
         binding.tvRowTitle.setText(titleRes)
-        binding.tvRowSummary.text = summary
+        if (summaryText != null) {
+            binding.tvRowSummary.text = summaryText
+        } else if (summaryRes != 0) {
+            binding.tvRowSummary.setText(summaryRes)
+        } else {
+            binding.tvRowSummary.visibility = android.view.View.GONE
+        }
         onClick?.let { binding.root.setOnClickListener { it() } }
         container.addView(binding.root)
     }

@@ -28,10 +28,24 @@
     <!-- ===== Buttons ===== -->
             <string name="btn_history">HISTORY</string>
 
-    <!-- ===== Status Text ===== -->
+    <!-- ===== Vehicle Control Panel (v0.5.0) ===== -->
+    <string name="control_panel_title">Vehicle Control</string>
+    <string name="control_unlock">Unlock Vehicle</string>
+    <string name="control_lock">Lock Vehicle</string>
+    <string name="control_frunk">Open Frunk</string>
+    <string name="control_trunk">Open Trunk</string>
+    <string name="control_sending">Sending command…</string>
+    <string name="control_success">Command executed</string>
+    <string name="control_failed">Command failed. Please move closer to the vehicle and retry</string>
+    <string name="control_not_paired">Vehicle not paired. Please pair in settings first</string>
+
+    <!-- ===== Turn Signal Settings (v0.5.0) ===== -->
+    <string name="settings_turn_signals">Turn Signal Indicator</string>
+    <string name="settings_turn_signals_summary">Display turn signal arrows at the top of the dashboard</string>
     <string name="tesla_connected">Tesla: Connected</string>
     <string name="tesla_disconnected">Tesla: Disconnected</string>
     <string name="tesla_stale">Tesla: Stale data</string>
+    <string name="tesla_gnss_fallback">Phone GPS (BLE fallback)</string>
         
     <!-- ===== Default Placeholder ===== -->
     <string name="default_value">--</string>
@@ -92,6 +106,10 @@
     <string name="settings_group_vehicle">Vehicle</string>
     <string name="settings_group_display">Display</string>
     <string name="settings_group_general">General</string>
+    <string name="settings_group_data">Data</string>
+    <string name="settings_group_notification">Notifications</string>
+    <string name="settings_group_security">Security</string>
+    <string name="settings_group_advanced">Advanced</string>
     <string name="settings_group_about">About</string>
     <string name="settings_ble_vehicle">Bluetooth &amp; Vehicle</string>
     <string name="settings_display_appearance">Display &amp; Appearance</string>
@@ -106,6 +124,52 @@
     <string name="settings_language_zh">中文</string>
     <string name="settings_language_en">English</string>
     <string name="settings_language_switch_failed">Language switch failed, please retry</string>
+
+    <!-- ===== Data Settings (v0.5.0) ===== -->
+    <string name="settings_gnss_fallback">GNSS Fallback</string>
+    <string name="settings_gnss_fallback_summary">Auto-enable phone GPS when BLE disconnects</string>
+    <string name="settings_data_refresh">Data Refresh Rate</string>
+    <string name="settings_data_refresh_summary">Current: 1 second</string>
+    <string name="settings_trip_auto_record">Auto Record Trip</string>
+    <string name="settings_trip_auto_record_summary">Start recording automatically when connected</string>
+    <string name="settings_data_source">Data Source Priority</string>
+    <string name="settings_data_source_summary">BLE primary, GNSS fallback</string>
+
+    <!-- ===== Notification Settings (v0.5.0) ===== -->
+    <string name="settings_notify_low_battery">Low Battery Alert</string>
+    <string name="settings_notify_low_battery_summary">Alert when battery is below 20%</string>
+    <string name="settings_notify_charging">Charging Status Alert</string>
+    <string name="settings_notify_charging_summary">Notify when charging starts/ends</string>
+    <string name="settings_notify_temperature">Temperature Alert</string>
+    <string name="settings_notify_temperature_summary">Alert when cabin temperature is too high/low</string>
+    <string name="settings_notify_door">Door Open Alert</string>
+    <string name="settings_notify_door_summary">Alert when door or trunk is open</string>
+
+    <!-- ===== Security Settings (v0.5.0) ===== -->
+    <string name="settings_security_lock_confirm">Control Command Confirmation</string>
+    <string name="settings_security_lock_confirm_summary">Show confirmation dialog before unlock/lock</string>
+    <string name="settings_security_auto_lock">Auto Lock</string>
+    <string name="settings_security_auto_lock_summary">Auto-lock when BLE disconnects</string>
+    <string name="settings_security_nfc_auth">NFC Authentication</string>
+    <string name="settings_security_nfc_auth_summary">Require NFC confirmation for sensitive operations</string>
+
+    <!-- ===== Advanced Settings (v0.5.0) ===== -->
+    <string name="settings_advanced_debug">Debug Mode</string>
+    <string name="settings_advanced_debug_summary">Show raw BLE data frames</string>
+    <string name="settings_advanced_reset">Reset All Settings</string>
+    <string name="settings_advanced_reset_summary">Restore factory settings</string>
+    <string name="settings_advanced_clear_cache">Clear Cache</string>
+    <string name="settings_advanced_clear_cache_summary">Clear local cache data</string>
+    <string name="settings_advanced_export_raw">Export Raw Data</string>
+    <string name="settings_advanced_export_raw_summary">Export raw BLE data packets</string>
+
+    <!-- ===== Advanced Settings Dialogs (v0.5.0.1) ===== -->
+    <string name="dialog_reset_title">Reset All Settings</string>
+    <string name="dialog_reset_message">Are you sure you want to reset all settings? This action cannot be undone.</string>
+    <string name="dialog_reset_confirm">Reset</string>
+    <string name="toast_settings_reset">Settings reset</string>
+    <string name="toast_cache_cleared">Cache cleared</string>
+    <string name="toast_export_raw_developing">Export raw data feature coming soon…</string>
     <string name="about_description">Tesla BLE direct-connection dashboard. Securely connects to your vehicle over Bluetooth to display live speed, battery, temperature and trip data.</string>
     <string name="settings_export_logs">Export diagnostic logs</string>
     <string name="settings_logs_share_subject">Tesla Dashboard diagnostic log</string>

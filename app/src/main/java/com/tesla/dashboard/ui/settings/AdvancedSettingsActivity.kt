@@ -72,11 +72,11 @@ class AdvancedSettingsActivity : BaseImmersiveActivity() {
 
     private fun showResetDialog() {
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.settings_advanced_reset)
-            .setMessage("确定要重置所有设置吗？此操作不可撤销。")
-            .setPositiveButton("重置") { _, _ ->
+            .setTitle(R.string.dialog_reset_title)
+            .setMessage(R.string.dialog_reset_message)
+            .setPositiveButton(R.string.dialog_reset_confirm) { _, _ ->
                 prefs.edit().clear().apply()
-                Toast.makeText(this, "设置已重置", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.toast_settings_reset, Toast.LENGTH_SHORT).show()
                 recreate()
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -85,11 +85,11 @@ class AdvancedSettingsActivity : BaseImmersiveActivity() {
 
     private fun clearCache() {
         cacheDir.deleteRecursively()
-        Toast.makeText(this, "缓存已清除", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.toast_cache_cleared, Toast.LENGTH_SHORT).show()
     }
 
     private fun exportRawData() {
-        Toast.makeText(this, "导出原始数据功能开发中...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, R.string.toast_export_raw_developing, Toast.LENGTH_SHORT).show()
     }
 
     private fun addSwitchRow(container: android.widget.LinearLayout, inflater: LayoutInflater,

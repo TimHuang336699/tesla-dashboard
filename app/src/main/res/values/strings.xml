@@ -164,6 +164,14 @@
     <string name="settings_advanced_clear_cache_summary">清除本地缓存数据</string>
     <string name="settings_advanced_export_raw">导出原始数据</string>
     <string name="settings_advanced_export_raw_summary">导出 BLE 原始数据包</string>
+
+    <!-- ===== 高级设置对话框 (v0.5.0.1) ===== -->
+    <string name="dialog_reset_title">重置所有设置</string>
+    <string name="dialog_reset_message">确定要重置所有设置吗？此操作不可撤销。</string>
+    <string name="dialog_reset_confirm">重置</string>
+    <string name="toast_settings_reset">设置已重置</string>
+    <string name="toast_cache_cleared">缓存已清除</string>
+    <string name="toast_export_raw_developing">导出原始数据功能开发中…</string>
     <string name="about_description">Tesla BLE 直连仪表盘应用。通过蓝牙安全连接车辆，实时显示车速、电量、温度与行程数据。</string>
     <string name="settings_export_logs">导出诊断日志</string>
     <string name="settings_logs_share_subject">Tesla Dashboard 诊断日志</string>
