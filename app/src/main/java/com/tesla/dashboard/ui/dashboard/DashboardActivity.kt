@@ -152,21 +152,17 @@ class DashboardActivity : BaseImmersiveActivity() {
     /**
      * 呼出车辆控制面板 (v0.5.0)
      *
-     * 提供 解锁/闭锁/打开前备箱/打开后备箱 四个控制命令。
+     * 提供 解锁/闭锁 控制命令。
      * 通过 VCSEC 域 BLE 加密通道发送, 结果以 Toast 提示。
      */
     private fun showControlPanel() {
         val options = arrayOf(
             getString(R.string.control_unlock),
             getString(R.string.control_lock),
-            getString(R.string.control_frunk),
-            getString(R.string.control_trunk),
         )
         val commands = arrayOf(
             TeslaBleProvider.VehicleCommand.Unlock,
             TeslaBleProvider.VehicleCommand.Lock,
-            TeslaBleProvider.VehicleCommand.OpenFrunk,
-            TeslaBleProvider.VehicleCommand.OpenTrunk,
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.control_panel_title)
