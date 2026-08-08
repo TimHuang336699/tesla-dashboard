@@ -118,6 +118,34 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.settings.DataSettingsActivity"
+            android:screenOrientation="landscape"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode|density|fontScale"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.settings.NotificationSettingsActivity"
+            android:screenOrientation="landscape"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode|density|fontScale"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.settings.SecuritySettingsActivity"
+            android:screenOrientation="landscape"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode|density|fontScale"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.settings.AdvancedSettingsActivity"
+            android:screenOrientation="landscape"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode|density|fontScale"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.pairing.PairingActivity"
             android:screenOrientation="landscape"
             android:resizeableActivity="true"
