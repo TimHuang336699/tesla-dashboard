@@ -92,6 +92,14 @@ class SpeedDisplayView @JvmOverloads constructor(
     /** ArgB 求值器 */
     private val argbEvaluator = ArgbEvaluator()
 
+    // ===== 缓存的文本测量数据 (避免 onDraw 中重复计算) =====
+    private var cachedSpeedStr: String = "0"
+    private var cachedTextSize: Float = 0f
+    private var cachedMeasuredWidth: Float = 0f
+    private var cachedDensity: Float = 0f
+    private var cachedWidth: Int = 0
+    private var cachedHeight: Int = 0
+
     init {
         context.obtainStyledAttributes(attrs, R.styleable.SpeedDisplayView).apply {
             maxSpeed = getInt(R.styleable.SpeedDisplayView_sdvMaxSpeed, 240).toFloat()
@@ -195,19 +203,36 @@ class SpeedDisplayView @JvmOverloads constructor(
         speedTextPaint.color = currentSpeedTextColor
         val speedStr = displaySpeed.toInt().toString()
 
-        // 字号自适应: 高度受限时以高度为基准, 并确保数字撑满宽度
-        // 预留底部单位空间 (单位 + 边距), 防止数字过大挤压单位导致显示不全
-        val unitHeight = 20f * density + 20f * density
-        val maxTextHeight = height - unitHeight - 16f * density
-        var textSize = maxTextHeight * 0.62f
-        speedTextPaint.textSize = textSize
+        // 仅在速度或尺寸变化时重新计算字号和测量
+        val needsRecalc = speedStr != cachedSpeedStr ||
+            width != cachedWidth ||
+            height != cachedHeight ||
+            density != cachedDensity
 
-        // 三位数宽度保护: 数字过宽时按宽度等比缩小字号
-        val maxTextWidth = width - 12f * density
-        val measured = speedTextPaint.measureText(speedStr)
-        if (measured > maxTextWidth) {
-            textSize *= maxTextWidth / measured
+        if (needsRecalc) {
+            cachedSpeedStr = speedStr
+            cachedWidth = width
+            cachedHeight = height
+            cachedDensity = density
+
+            // 字号自适应: 高度受限时以高度为基准, 并确保数字撑满宽度
+            // 预留底部单位空间 (单位 + 边距), 防止数字过大挤压单位导致显示不全
+            val unitHeight = 20f * density + 20f * density
+            val maxTextHeight = height - unitHeight - 16f * density
+            var textSize = maxTextHeight * 0.62f
             speedTextPaint.textSize = textSize
+
+            // 三位数宽度保护: 数字过宽时按宽度等比缩小字号
+            val maxTextWidth = width - 12f * density
+            val measured = speedTextPaint.measureText(speedStr)
+            if (measured > maxTextWidth) {
+                textSize *= maxTextWidth / measured
+                speedTextPaint.textSize = textSize
+            }
+            cachedTextSize = textSize
+            cachedMeasuredWidth = speedTextPaint.measureText(speedStr)
+        } else {
+            speedTextPaint.textSize = cachedTextSize
         }
 
         val speedMetrics = speedTextPaint.fontMetrics

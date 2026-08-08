@@ -77,6 +77,16 @@ class DashboardActivity : BaseImmersiveActivity() {
     /** 详情区(detailSection)是否已展开 */
     private var detailExpanded = false
 
+    // ===== 缓存的字符串资源 (避免 updateUI 中重复调用 getString) =====
+    private val defaultStr by lazy { getString(R.string.default_value) }
+    private val connectedStr by lazy { getString(R.string.tesla_connected) }
+    private val gnssFallbackStr by lazy { getString(R.string.tesla_gnss_fallback) }
+    private val staleStr by lazy { getString(R.string.tesla_stale) }
+    private val disconnectedStr by lazy { getString(R.string.tesla_disconnected) }
+
+    // ===== 复用的 StringBuilder (避免 G-force 文本每次分配) =====
+    private val gForceStringBuilder = StringBuilder(16)
+
     /**
      * Activity 创建入口
      *
@@ -323,7 +333,7 @@ class DashboardActivity : BaseImmersiveActivity() {
         // ===== 顶部栏 =====
 
         // 档位(P/R/N/D),Tesla BLE 未连接时显示 "--"
-        binding.gearText.text = data.gear ?: getString(R.string.default_value)
+        binding.gearText.text = data.gear ?: defaultStr
 
         // v0.5.0: 温度常驻顶部 (车内/车外)
         binding.tempTopText.text = formatTemperature(
@@ -353,12 +363,12 @@ class DashboardActivity : BaseImmersiveActivity() {
         val soc = data.batterySOC ?: 0
         binding.verticalGauge.setValue(soc.toFloat())
         binding.verticalGauge.setValueText(
-            data.batterySOC?.let { "$it%" } ?: getString(R.string.default_value)
+            data.batterySOC?.let { "$it%" } ?: defaultStr
         )
         binding.verticalGauge.setFillColor(getBatteryColor(soc, currentColors))
 
         // ===== 顶部右侧 - 电量/续航 =====
-        binding.socText.text = data.batterySOC?.let { "$it%" } ?: getString(R.string.default_value)
+        binding.socText.text = data.batterySOC?.let { "$it%" } ?: defaultStr
         binding.batteryBar.progress = data.batterySOC ?: 0
         binding.rangeText.text = data.batteryRange?.let {
             getString(
@@ -366,7 +376,7 @@ class DashboardActivity : BaseImmersiveActivity() {
                 UnitFormatter.distanceValue(it, currentUnitSystem),
                 UnitFormatter.distanceUnit(this, currentUnitSystem),
             )
-        } ?: getString(R.string.default_value)
+        } ?: defaultStr
 
         // ===== 详情区 - 温度/总里程/瞬时电耗(默认隐藏,展开后显示) =====
         binding.tempText.text = formatTemperature(
@@ -379,7 +389,7 @@ class DashboardActivity : BaseImmersiveActivity() {
                 UnitFormatter.distanceValue(it, currentUnitSystem),
                 UnitFormatter.distanceUnit(this, currentUnitSystem),
             )
-        } ?: getString(R.string.default_value)
+        } ?: defaultStr
 
         // 瞬时电耗 (v0.4): 英制单位下按 kWh/100mi 换算显示
         binding.consumptionText.text = state.consumptionKwhPer100km?.let { c ->
@@ -387,7 +397,7 @@ class DashboardActivity : BaseImmersiveActivity() {
             val value = if (imperial) c * 1.609344f else c
             val unit = if (imperial) R.string.unit_kwh_100mi else R.string.unit_kwh_100km
             getString(R.string.format_distance_value, value, getString(unit))
-        } ?: getString(R.string.default_value)
+        } ?: defaultStr
 
         // 瞬时功率 (v0.4.2): kW, 英制单位下换算为 hp (1 kW = 1.34102 hp)
         binding.powerText.text = data.powerKw?.let { kw ->
@@ -395,7 +405,7 @@ class DashboardActivity : BaseImmersiveActivity() {
             val value = if (imperial) kw * 1.34102f else kw
             val unit = if (imperial) R.string.unit_hp else R.string.unit_kw
             getString(R.string.format_speed_value, value, getString(unit))
-        } ?: getString(R.string.default_value)
+        } ?: defaultStr
 
         // ===== 中列 - 常驻功率 (v0.5.0) =====
         // 瞬时功率 kW, 英制单位下换算为 hp (1 kW = 1.34102 hp)
@@ -404,7 +414,7 @@ class DashboardActivity : BaseImmersiveActivity() {
             val value = if (imperial) kw * 1.34102f else kw
             val unit = if (imperial) R.string.unit_hp else R.string.unit_kw
             getString(R.string.format_speed_value, value, getString(unit))
-        } ?: getString(R.string.default_value)
+        } ?: defaultStr
 
         // ===== 底部 - 里程/G力/位置 =====
 
@@ -415,37 +425,41 @@ class DashboardActivity : BaseImmersiveActivity() {
             UnitFormatter.distanceUnit(this, currentUnitSystem),
         )
 
-        // G 力值
-        binding.gForceText.text = String.format("%.2f G", data.gForce)
+        // G 力值 — 使用缓存的 StringBuilder 避免每次分配
+        binding.gForceText.text = gForceStringBuilder.apply {
+            clear()
+            append(String.format("%.2f", data.gForce))
+            append(" G")
+        }.toString()
 
         // 经纬度(BLE/GNSS 均无数据时显示 "--") (v0.5.0: GNSS 降级也可用)
         val hasPosition = data.hasPosition
         binding.latText.text = if (hasPosition) {
             String.format("%.5f", data.latitude)
         } else {
-            getString(R.string.default_value)
+            defaultStr
         }
         binding.lonText.text = if (hasPosition) {
             String.format("%.5f", data.longitude)
         } else {
-            getString(R.string.default_value)
+            defaultStr
         }
 
         // 航向角
         binding.headingText.text = if (hasPosition) {
             getString(R.string.format_temperature_value, data.heading.toInt())
         } else {
-            getString(R.string.default_value)
+            defaultStr
         }
 
         // ===== Tesla BLE 连接状态 =====
         // v0.4.2: 过期数据单独提示 (数值保留但标记过期)
         // v0.5.0: GNSS 降级时提示 "手机定位"
         binding.teslaStatusText.text = when {
-            data.isTeslaConnected -> getString(R.string.tesla_connected)
-            data.dataSource == DataSource.GNSS -> getString(R.string.tesla_gnss_fallback)
-            stale -> getString(R.string.tesla_stale)
-            else -> getString(R.string.tesla_disconnected)
+            data.isTeslaConnected -> connectedStr
+            data.dataSource == DataSource.GNSS -> gnssFallbackStr
+            stale -> staleStr
+            else -> disconnectedStr
         }
         // 连接状态颜色: 已连接=绿, GNSS 降级/过期/未连接=橙
         binding.teslaStatusText.setTextColor(
@@ -484,7 +498,7 @@ class DashboardActivity : BaseImmersiveActivity() {
                 getString(R.string.format_temperature_pair, insideStr, outsideStr)
             insideStr != null -> insideStr
             outsideStr != null -> outsideStr
-            else -> getString(R.string.default_value)
+            else -> defaultStr
         }
     }
 

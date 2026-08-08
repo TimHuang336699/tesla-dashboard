@@ -105,6 +105,16 @@ class CarSilhouetteView @JvmOverloads constructor(
     /** 闪烁进度 */
     private var blinkProgress: Float = 0f
 
+    // ===== 缓存的 RectF 对象 (避免 onDraw 中分配) =====
+    private val bodyRect = RectF()
+    private val frontRect = RectF()
+    private val middleRect = RectF()
+    private val rearRect = RectF()
+    private val frontGlassRect = RectF()
+    private val rearGlassRect = RectF()
+    private val wheelRect = RectF()
+    private val wheels = Array(4) { RectF() }
+
     init {
         bodyFillPaint.color = bodyColor
         bodyFillPaint.alpha = 60
@@ -186,8 +196,8 @@ class CarSilhouetteView @JvmOverloads constructor(
         val carW = minOf(width, height) * 0.32f  // 车宽
         val carL = minOf(width, height) * 0.62f  // 车长
 
-        // 车身圆角矩形 (竖向)
-        val bodyRect = RectF(
+        // 车身圆角矩形 (竖向) — 复用缓存对象
+        bodyRect.set(
             cx - carW / 2, cy - carL / 2,
             cx + carW / 2, cy + carL / 2,
         )
@@ -196,17 +206,17 @@ class CarSilhouetteView @JvmOverloads constructor(
         // ===== 1. 绘制车身填充 (分前/中/后三段) =====
 
         // 前段 (前备箱区域) — 上 1/3
-        val frontRect = RectF(
+        frontRect.set(
             bodyRect.left, bodyRect.top,
             bodyRect.right, bodyRect.top + carL / 3f,
         )
         // 中段 (车门区域) — 中间 1/3
-        val middleRect = RectF(
+        middleRect.set(
             bodyRect.left, bodyRect.top + carL / 3f,
             bodyRect.right, bodyRect.top + carL * 2f / 3f,
         )
         // 后段 (后备箱区域) — 下 1/3
-        val rearRect = RectF(
+        rearRect.set(
             bodyRect.left, bodyRect.top + carL * 2f / 3f,
             bodyRect.right, bodyRect.bottom,
         )
@@ -248,15 +258,15 @@ class CarSilhouetteView @JvmOverloads constructor(
         val frontGlassH = carL * 0.2f
         val rearGlassH = carL * 0.18f
 
-        // 前挡风玻璃
-        val frontGlassRect = RectF(
+        // 前挡风玻璃 — 复用缓存对象
+        frontGlassRect.set(
             cx - glassW / 2, cy - carL * 0.32f,
             cx + glassW / 2, cy - carL * 0.32f + frontGlassH,
         )
         canvas.drawRoundRect(frontGlassRect, dpToPx(4f), dpToPx(4f), glassPaint)
 
-        // 后挡风玻璃
-        val rearGlassRect = RectF(
+        // 后挡风玻璃 — 复用缓存对象
+        rearGlassRect.set(
             cx - glassW / 2, cy + carL * 0.14f,
             cx + glassW / 2, cy + carL * 0.14f + rearGlassH,
         )
@@ -271,20 +281,19 @@ class CarSilhouetteView @JvmOverloads constructor(
         val wheelOffsetX = carW / 2 + dpToPx(1f)
         val wheelOffsetY = carL * 0.28f
 
-        // 车轮位置
-        val wheels = listOf(
-            RectF(cx - wheelOffsetX - wheelW, cy - wheelOffsetY - wheelH / 2,
-                  cx - wheelOffsetX, cy - wheelOffsetY + wheelH / 2),          // 左前
-            RectF(cx + wheelOffsetX, cy - wheelOffsetY - wheelH / 2,
-                  cx + wheelOffsetX + wheelW, cy - wheelOffsetY + wheelH / 2),  // 右前
-            RectF(cx - wheelOffsetX - wheelW, cy + wheelOffsetY - wheelH / 2,
-                  cx - wheelOffsetX, cy + wheelOffsetY + wheelH / 2),          // 左后
-            RectF(cx + wheelOffsetX, cy + wheelOffsetY - wheelH / 2,
-                  cx + wheelOffsetX + wheelW, cy + wheelOffsetY + wheelH / 2),  // 右后
-        )
+        // 车轮位置 — 复用缓存对象
+        wheels[0].set(cx - wheelOffsetX - wheelW, cy - wheelOffsetY - wheelH / 2,
+              cx - wheelOffsetX, cy - wheelOffsetY + wheelH / 2)          // 左前
+        wheels[1].set(cx + wheelOffsetX, cy - wheelOffsetY - wheelH / 2,
+              cx + wheelOffsetX + wheelW, cy - wheelOffsetY + wheelH / 2)  // 右前
+        wheels[2].set(cx - wheelOffsetX - wheelW, cy + wheelOffsetY - wheelH / 2,
+              cx - wheelOffsetX, cy + wheelOffsetY + wheelH / 2)          // 左后
+        wheels[3].set(cx + wheelOffsetX, cy + wheelOffsetY - wheelH / 2,
+              cx + wheelOffsetX + wheelW, cy + wheelOffsetY + wheelH / 2)  // 右后
 
         val wheelRadius = dpToPx(2f)
-        wheels.forEachIndexed { index, rect ->
+        for (index in wheels.indices) {
+            val rect = wheels[index]
             val isLeft = index == 0 || index == 2
             val isActive = when (turnSignal) {
                 "left" -> isLeft
