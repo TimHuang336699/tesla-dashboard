@@ -92,6 +92,10 @@
     <string name="settings_group_vehicle">车辆</string>
     <string name="settings_group_display">显示</string>
     <string name="settings_group_general">通用</string>
+    <string name="settings_group_data">数据</string>
+    <string name="settings_group_notification">通知</string>
+    <string name="settings_group_security">安全</string>
+    <string name="settings_group_advanced">高级</string>
     <string name="settings_group_about">关于</string>
     <string name="settings_ble_vehicle">蓝牙与车辆</string>
     <string name="settings_display_appearance">显示与外观</string>
@@ -106,6 +110,44 @@
     <string name="settings_language_zh">中文</string>
     <string name="settings_language_en">English</string>
     <string name="settings_language_switch_failed">语言切换失败，请重试</string>
+
+    <!-- ===== 数据设置 (v0.5.0) ===== -->
+    <string name="settings_gnss_fallback">GNSS 降级</string>
+    <string name="settings_gnss_fallback_summary">BLE 断开时自动使用手机定位</string>
+    <string name="settings_data_refresh">数据刷新频率</string>
+    <string name="settings_data_refresh_summary">当前: 1 秒</string>
+    <string name="settings_trip_auto_record">自动记录行程</string>
+    <string name="settings_trip_auto_record_summary">连接车辆后自动开始记录</string>
+    <string name="settings_data_source">数据源优先级</string>
+    <string name="settings_data_source_summary">BLE 优先，GNSS 降级</string>
+
+    <!-- ===== 通知设置 (v0.5.0) ===== -->
+    <string name="settings_notify_low_battery">低电量提醒</string>
+    <string name="settings_notify_low_battery_summary">电量低于 20% 时提醒</string>
+    <string name="settings_notify_charging">充电状态提醒</string>
+    <string name="settings_notify_charging_summary">开始/结束充电时通知</string>
+    <string name="settings_notify_temperature">温度异常提醒</string>
+    <string name="settings_notify_temperature_summary">车内温度过高/过低时提醒</string>
+    <string name="settings_notify_door">车门未关提醒</string>
+    <string name="settings_notify_door_summary">车门/舱盖未关时提醒</string>
+
+    <!-- ===== 安全设置 (v0.5.0) ===== -->
+    <string name="settings_security_lock_confirm">控制命令确认</string>
+    <string name="settings_security_lock_confirm_summary">执行解锁/闭锁前弹窗确认</string>
+    <string name="settings_security_auto_lock">自动锁车</string>
+    <string name="settings_security_auto_lock_summary">BLE 断开后自动锁车</string>
+    <string name="settings_security_nfc_auth">NFC 身份验证</string>
+    <string name="settings_security_nfc_auth_summary">敏感操作需要 NFC 确认</string>
+
+    <!-- ===== 高级设置 (v0.5.0) ===== -->
+    <string name="settings_advanced_debug">调试模式</string>
+    <string name="settings_advanced_debug_summary">显示 BLE 原始数据帧</string>
+    <string name="settings_advanced_reset">重置所有设置</string>
+    <string name="settings_advanced_reset_summary">恢复出厂设置</string>
+    <string name="settings_advanced_clear_cache">清除缓存</string>
+    <string name="settings_advanced_clear_cache_summary">清除本地缓存数据</string>
+    <string name="settings_advanced_export_raw">导出原始数据</string>
+    <string name="settings_advanced_export_raw_summary">导出 BLE 原始数据包</string>
     <string name="about_description">Tesla BLE 直连仪表盘应用。通过蓝牙安全连接车辆，实时显示车速、电量、温度与行程数据。</string>
     <string name="settings_export_logs">导出诊断日志</string>
     <string name="settings_logs_share_subject">Tesla Dashboard 诊断日志</string>

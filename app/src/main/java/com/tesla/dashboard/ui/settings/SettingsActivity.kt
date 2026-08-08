@@ -105,6 +105,86 @@ class SettingsActivity : BaseImmersiveActivity() {
             ),
         ),
         SettingsGroup(
+            headerRes = R.string.settings_group_data,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_gnss_fallback,
+                    summaryRes = R.string.settings_gnss_fallback_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_data_refresh,
+                    summaryRes = R.string.settings_data_refresh_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_trip_auto_record,
+                    summaryRes = R.string.settings_trip_auto_record_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_data_source,
+                    summaryRes = R.string.settings_data_source_summary,
+                ),
+            ),
+        ),
+        SettingsGroup(
+            headerRes = R.string.settings_group_notification,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_notify_low_battery,
+                    summaryRes = R.string.settings_notify_low_battery_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_notify_charging,
+                    summaryRes = R.string.settings_notify_charging_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_notify_temperature,
+                    summaryRes = R.string.settings_notify_temperature_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_notify_door,
+                    summaryRes = R.string.settings_notify_door_summary,
+                ),
+            ),
+        ),
+        SettingsGroup(
+            headerRes = R.string.settings_group_security,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_security_lock_confirm,
+                    summaryRes = R.string.settings_security_lock_confirm_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_security_auto_lock,
+                    summaryRes = R.string.settings_security_auto_lock_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_security_nfc_auth,
+                    summaryRes = R.string.settings_security_nfc_auth_summary,
+                ),
+            ),
+        ),
+        SettingsGroup(
+            headerRes = R.string.settings_group_advanced,
+            rows = listOf(
+                SettingsRow(
+                    titleRes = R.string.settings_advanced_debug,
+                    summaryRes = R.string.settings_advanced_debug_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_advanced_reset,
+                    summaryRes = R.string.settings_advanced_reset_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_advanced_clear_cache,
+                    summaryRes = R.string.settings_advanced_clear_cache_summary,
+                ),
+                SettingsRow(
+                    titleRes = R.string.settings_advanced_export_raw,
+                    summaryRes = R.string.settings_advanced_export_raw_summary,
+                ),
+            ),
+        ),
+        SettingsGroup(
             headerRes = R.string.settings_group_about,
             rows = listOf(
                 SettingsRow(
@@ -188,7 +268,7 @@ class SettingsActivity : BaseImmersiveActivity() {
      * @param state 当前设置列表状态
      */
     private fun updateRowSummaries(state: SettingsListUiState) {
-        if (rowViews.size < 6) return
+        if (rowViews.size < 18) return
 
         // 0: 蓝牙与车辆 — 已配对/未配对
         rowViews[0].findViewById<TextView>(R.id.tvRowSummary)
@@ -209,8 +289,8 @@ class SettingsActivity : BaseImmersiveActivity() {
         rowViews[3].findViewById<TextView>(R.id.tvRowSummary)
             .text = languageDisplayName(state.appLanguage)
 
-        // 5: 关于 — 版本号
-        rowViews[5].findViewById<TextView>(R.id.tvRowSummary)
+        // 17: 关于 — 版本号
+        rowViews[17].findViewById<TextView>(R.id.tvRowSummary)
             .text = getString(R.string.settings_version_format, com.tesla.dashboard.BuildConfig.VERSION_NAME)
     }
 
