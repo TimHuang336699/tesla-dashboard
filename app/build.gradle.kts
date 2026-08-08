@@ -9,12 +9,21 @@ android {
     namespace = "com.tesla.dashboard"
     compileSdk = 34
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../keystore/release.jks")
+            storePassword = "tesla123"
+            keyAlias = "tesla-dashboard"
+            keyPassword = "tesla123"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.tesla.dashboard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 17
-        versionName = "0.5.0"
+        versionCode = 18
+        versionName = "0.5.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -25,6 +34,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
