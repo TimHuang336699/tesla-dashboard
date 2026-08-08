@@ -3,7 +3,6 @@ package com.tesla.dashboard.ui.dashboard
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
@@ -124,7 +123,7 @@ class DashboardActivity : BaseImmersiveActivity() {
      * 设置按钮点击与长按监听
      *
      * - historyButton:跳转到历史行程页面
-     * - controlButton (v0.5.0):呼出车辆控制面板 (解锁/闭锁/前后备箱)
+     * - controlButton (v0.5.0):直接切换解锁/闭锁
      * - settingsButton(点击):跳转到设置页面
      * - settingsButton(长按):切换详情区展开/收起,带高度动画
      */
@@ -133,9 +132,9 @@ class DashboardActivity : BaseImmersiveActivity() {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
 
-        // v0.5.0: 车辆控制面板
+        // v0.5.0: 直接切换解锁/闭锁
         binding.controlButton.setOnClickListener {
-            showControlPanel()
+            toggleLockState()
         }
 
         binding.settingsButton.setOnClickListener {
@@ -150,27 +149,19 @@ class DashboardActivity : BaseImmersiveActivity() {
     }
 
     /**
-     * 呼出车辆控制面板 (v0.5.0)
+     * 切换车辆解锁/闭锁状态 (v0.5.0)
      *
-     * 提供 解锁/闭锁 控制命令。
+     * 根据当前车辆锁定状态自动发送解锁或闭锁命令。
      * 通过 VCSEC 域 BLE 加密通道发送, 结果以 Toast 提示。
      */
-    private fun showControlPanel() {
-        val options = arrayOf(
-            getString(R.string.control_unlock),
-            getString(R.string.control_lock),
-        )
-        val commands = arrayOf(
-            TeslaBleProvider.VehicleCommand.Unlock,
-            TeslaBleProvider.VehicleCommand.Lock,
-        )
-        AlertDialog.Builder(this)
-            .setTitle(R.string.control_panel_title)
-            .setItems(options) { _, which ->
-                viewModel.sendVehicleCommand(commands[which])
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+    private fun toggleLockState() {
+        val isLocked = viewModel.vehicleData.value.isLocked
+        val command = if (isLocked == true) {
+            TeslaBleProvider.VehicleCommand.Unlock
+        } else {
+            TeslaBleProvider.VehicleCommand.Lock
+        }
+        viewModel.sendVehicleCommand(command)
     }
 
     /**
