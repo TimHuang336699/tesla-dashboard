@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <lint>
-    <!-- Ignore specific issues -->
     <issue id="GradleDependency" severity="warning" />
     <issue id="OldTargetApi" severity="warning" />
     <issue id="UnknownNullness" severity="warning" />
     <issue id="UnusedResources" severity="warning" />
-    <issue="HardcodedText" severity="warning" />
+    <issue id="HardcodedText" severity="warning" />
     <issue id="TypographyQuotes" severity="warning" />
     <issue id="ContentDescription" severity="warning" />
+    <issue id="MissingPermission" severity="warning" />
+    <issue id="InvalidPackage" severity="warning" />
+    <issue id="UnusedImport" severity="warning" />
+    <issue id="RedundantImport" severity="warning" />
+    <issue id="UnusedVariable" severity="warning" />
+    <issue id="PrivateMemberNameConvention" severity="warning" />
+    <issue id="ReturnCount" severity="warning" />
+    <issue id="MaxLineLength" severity="warning" />
+    <issue id="MagicNumber" severity="warning" />
+    <issue id="ComplexMethod" severity="warning" />
+    <issue id="LongMethod" severity="warning" />
+    <issue id="TooManyFunctions" severity="warning" />
+    <issue id="LargeClass" severity="warning" />
+    <issue id="NestedBlockDepth" severity="warning" />
+    <issue id="ComplexCondition" severity="warning" />
+    <issue id="TooManyLaunches" severity="warning" />
+    <issue id="CoroutineCreationDuringComposition" severity="warning" />
+    <issue id="ComposableNaming" severity="warning" />
+    <issue id="ComposableModifierFactory" severity="warning" />
+    <issue id="ModifierParameter" severity="warning" />
+    <issue id="MissingModifierDefaultUnspecified" severity="warning" />
+    <issue id="UnrememberedMutableState" severity="warning" />
+    <issue id="ViewModelConstructorInjection" severity="warning" />
+    <issue id="ViewModelForwarding" severity="warning" />
+    <issue id="MissingStateHolderTypedef" severity="warning" />
+    <issue id="MissingStateSaveableTypedef" severity="warning" />
+    <issue id="KotlinPropertyAccess" severity="warning" />
+    <issue id="NotConstructor" severity="warning" />
+    <issue id="ModifierParameter" severity="warning" />
+    <issue id="ModifierParameter" severity="warning" />
 </lint>
