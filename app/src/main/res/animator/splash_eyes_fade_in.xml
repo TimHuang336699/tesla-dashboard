@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动动画: 眼睛整体淡入 -->
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:propertyName="alpha"
+    android:duration="400"
+    android:startOffset="0"
+    android:valueFrom="0"
+    android:valueTo="1" />

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动动画: 左眼眨眼 (400-660ms, 眨一下) -->
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:propertyName="scaleY"
+    android:duration="130"
+    android:startOffset="400"
+    android:repeatCount="1"
+    android:repeatMode="reverse"
+    android:valueFrom="1.0"
+    android:valueTo="0.05" />

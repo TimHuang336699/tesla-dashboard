@@ -17,11 +17,11 @@ import com.tesla.dashboard.util.ThemeColors
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * 启动页 Activity — 展示狐狸 logo 动画 1 秒后进入仪表盘
+ * 启动页 Activity — 展示眼睛眨眼动画 1 秒后进入仪表盘
  *
- * 动画: 狐狸 logo 淡入 + 轻微放大 + 大小眼先后眨眼 (AnimatedVectorDrawable, ~1s)
- * - 播放完成后淡出并跳转 [DashboardActivity]
- * - API 31+ 由系统 SplashScreen 先行展示同一动画, 本页承接后立即跳转
+ * 动画: 眼睛淡入 + 左右眼先后眨眼 (AnimatedVectorDrawable, ~1s)
+ * - 播放完成后跳转 [DashboardActivity]
+ * - API 31+ 由系统 SplashScreen 先行展示, 本页承接后立即跳转
  */
 @AndroidEntryPoint
 class SplashActivity : BaseImmersiveActivity() {
@@ -48,7 +48,7 @@ class SplashActivity : BaseImmersiveActivity() {
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 启动狐狸动画
+        // 启动眼睛动画
         val drawable = binding.ivFox.drawable
         if (drawable is Animatable) {
             drawable.start()
@@ -57,7 +57,7 @@ class SplashActivity : BaseImmersiveActivity() {
         // 应用品牌配色 (启动页固定深蓝黑)
         applyThemeColors(ThemeColors.Dark)
 
-        AppLog.d("Splash", "fox splash animation started, duration=${splashDurationMs}ms")
+        AppLog.d("Splash", "eyes splash animation started, duration=${splashDurationMs}ms")
 
         // 动画播放期间隐藏应用名 (先展示 logo), 播放结束后淡入应用名
         binding.tvAppName.alpha = 0f

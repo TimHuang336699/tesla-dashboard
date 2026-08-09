@@ -10,13 +10,13 @@
     android:gravity="center"
     android:orientation="vertical">
 
-    <!-- 狐狸 logo 动画 (1s) -->
+    <!-- 眼睛眨眼动画 (1s) -->
     <ImageView
         android:id="@+id/ivFox"
         android:layout_width="160dp"
         android:layout_height="160dp"
         android:contentDescription="@string/app_name"
-        android:src="@drawable/splash_fox_anim" />
+        android:src="@drawable/splash_eyes_anim" />
 
     <!-- 应用名 -->
     <TextView
