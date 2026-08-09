@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Ignore specific issues -->
+    <issue id="GradleDependency" severity="warning" />
+    <issue id="OldTargetApi" severity="warning" />
+    <issue id="UnknownNullness" severity="warning" />
+    <issue id="UnusedResources" severity="warning" />
+    <issue="HardcodedText" severity="warning" />
+    <issue id="TypographyQuotes" severity="warning" />
+    <issue id="ContentDescription" severity="warning" />
+</lint>

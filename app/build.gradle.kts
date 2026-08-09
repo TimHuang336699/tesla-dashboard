@@ -11,10 +11,13 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../keystore/release.jks")
-            storePassword = "tesla123"
-            keyAlias = "tesla-dashboard"
-            keyPassword = "tesla123"
+            val keystoreFile = file("../keystore/release.jks")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "tesla123"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "tesla-dashboard"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "tesla123"
+            }
         }
     }
 
