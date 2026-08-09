@@ -22,15 +22,14 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Use CI Gradle Properties
+      run: cp .github/ci-gradle.properties gradle.properties
+
     - name: Decode Keystore
       run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore/release.jks
 
     - name: Build Release APK
       run: ./gradlew assembleRelease
-      env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
     - name: Create Release
       uses: softprops/action-gh-release@v2

@@ -23,6 +23,9 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Use CI Gradle Properties
+      run: cp .github/ci-gradle.properties gradle.properties
+
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
@@ -52,6 +55,9 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+
+    - name: Use CI Gradle Properties
+      run: cp .github/ci-gradle.properties gradle.properties
 
     - name: Run Lint
       run: ./gradlew lintDebug
