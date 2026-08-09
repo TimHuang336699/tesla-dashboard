@@ -1,0 +1,19 @@
+title: "General Discussion"
+labels: ["discussion"]
+body:
+  - type: textarea
+    id: topic
+    attributes:
+      label: Topic
+      description: What would you like to discuss?
+      placeholder: Tell us what's on your mind...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Any additional context or screenshots?
+      placeholder: Add any relevant context here...
+    validations:
+      required: false
