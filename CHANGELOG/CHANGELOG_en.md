@@ -2,6 +2,7 @@
 
 > Each version has its own changelog file.
 
+- **v0.5.0.2** - [CHANGELOG/v0.5.0.2_en.md](v0.5.0.2_en.md)
 - **v0.5.0.1** - [CHANGELOG/v0.5.0.1.md](v0.5.0.1.md)
 - **v0.5.0** - [CHANGELOG/v0.5.0.md](v0.5.0.md)
 - **v0.4.2** - [CHANGELOG/v0.4.2.md](v0.4.2.md)
