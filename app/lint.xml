@@ -9,32 +9,22 @@
     <issue id="ContentDescription" severity="warning" />
     <issue id="MissingPermission" severity="warning" />
     <issue id="InvalidPackage" severity="warning" />
-    <issue id="UnusedImport" severity="warning" />
-    <issue id="RedundantImport" severity="warning" />
-    <issue id="UnusedVariable" severity="warning" />
-    <issue id="PrivateMemberNameConvention" severity="warning" />
-    <issue id="ReturnCount" severity="warning" />
-    <issue id="MaxLineLength" severity="warning" />
-    <issue id="MagicNumber" severity="warning" />
-    <issue id="ComplexMethod" severity="warning" />
-    <issue id="LongMethod" severity="warning" />
-    <issue id="TooManyFunctions" severity="warning" />
-    <issue id="LargeClass" severity="warning" />
-    <issue id="NestedBlockDepth" severity="warning" />
-    <issue id="ComplexCondition" severity="warning" />
-    <issue id="TooManyLaunches" severity="warning" />
-    <issue id="CoroutineCreationDuringComposition" severity="warning" />
-    <issue id="ComposableNaming" severity="warning" />
-    <issue id="ComposableModifierFactory" severity="warning" />
-    <issue id="ModifierParameter" severity="warning" />
-    <issue id="MissingModifierDefaultUnspecified" severity="warning" />
-    <issue id="UnrememberedMutableState" severity="warning" />
-    <issue id="ViewModelConstructorInjection" severity="warning" />
-    <issue id="ViewModelForwarding" severity="warning" />
-    <issue id="MissingStateHolderTypedef" severity="warning" />
-    <issue id="MissingStateSaveableTypedef" severity="warning" />
     <issue id="KotlinPropertyAccess" severity="warning" />
     <issue id="NotConstructor" severity="warning" />
-    <issue id="ModifierParameter" severity="warning" />
-    <issue id="ModifierParameter" severity="warning" />
+    <issue id="Overdraw" severity="warning" />
+    <issue id="DiscouragedApi" severity="warning" />
+    <issue id="AppBundleLocaleChanges" severity="warning" />
+    <issue id="CustomSplashScreen" severity="warning" />
+    <issue id="NotifyDataSetChanged" severity="warning" />
+    <issue id="ObsoleteSdkInt" severity="warning" />
+    <issue id="DisableBaselineAlignment" severity="warning" />
+    <issue id="Autofill" severity="warning" />
+    <issue id="LabelFor" severity="warning" />
+    <issue id="Typos" severity="warning" />
+    <issue id="DataExtractionRules" severity="warning" />
+    <issue id="TypographyEllipsis" severity="warning" />
+    <issue id="GifUsage" severity="warning" />
+    <issue id="IconLocation" severity="warning" />
+    <issue id="MonochromeLauncherIcon" severity="warning" />
+    <issue id="UnusedAttribute" severity="warning" />
 </lint>
