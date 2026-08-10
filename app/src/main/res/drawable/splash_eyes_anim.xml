@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    启动动画 — 眼睛淡入 + 左右眼先后眨眼 (总时长 ~1s)
+    启动动画 — 眼睛淡入 + 左眼眨眼 (总时长 ~1s)
 -->
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/splash_eyes">
@@ -13,11 +13,6 @@
     <!-- 左眼眨眼 -->
     <target
         android:name="leftEye"
-        android:animation="@animator/splash_eye_blink_left" />
-
-    <!-- 右眼眨眼 (错开) -->
-    <target
-        android:name="rightEye"
-        android:animation="@animator/splash_eye_blink_right" />
+        android:animation="@animator/splash_eye_blink" />
 
 </animated-vector>

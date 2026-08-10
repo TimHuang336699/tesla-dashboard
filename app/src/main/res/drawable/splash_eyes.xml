@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    启动页眼睛矢量 — 两只黑色椭圆眼睛，带命名组供眨眼动画
-    参照 app icon：左眼略大偏竖椭圆，右眼略小略倾斜
+    启动页眼睛矢量 — 两只黑色椭圆眼睛
+    左眼独立命名组供眨眼动画，右眼不眨
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="160dp"
@@ -9,13 +9,13 @@
     android:viewportWidth="160"
     android:viewportHeight="160">
 
-    <!-- 整体缩放/淡入的根 group -->
+    <!-- 整体淡入的根 group -->
     <group
         android:name="eyesWhole"
         android:pivotX="80"
         android:pivotY="80">
 
-        <!-- ===== 左眼 (大) — 命名组, 供眨眼动画 ===== -->
+        <!-- 左眼 (大) — 独立组，供眨眼动画 -->
         <group
             android:name="leftEye"
             android:pivotX="62"
@@ -25,15 +25,10 @@
                 android:pathData="M62,52 a18,28 0 1,0 0,56 a18,28 0 1,0 0,-56 Z" />
         </group>
 
-        <!-- ===== 右眼 (小) — 命名组, 供眨眼动画 ===== -->
-        <group
-            android:name="rightEye"
-            android:pivotX="108"
-            android:pivotY="78">
-            <path
-                android:fillColor="#1A1A1A"
-                android:pathData="M108,54 a14,22 0 1,0 0,44 a14,22 0 1,0 0,-44 Z" />
-        </group>
+        <!-- 右眼 (小) — 不眨 -->
+        <path
+            android:fillColor="#1A1A1A"
+            android:pathData="M108,54 a14,22 0 1,0 0,44 a14,22 0 1,0 0,-44 Z" />
 
     </group>
 
