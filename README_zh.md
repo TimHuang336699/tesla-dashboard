@@ -49,9 +49,30 @@ Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯�
 
 ### 设置（手机设置风格分组，v0.4）
 - **车辆** — 蓝牙与车辆（VIN、配对、车型选择、连接测试、解除配对）
+- **插件中心** — 已安装插件管理 + 在线市场 (v0.5.2)
 - **显示** — 主题选择（11 项）
 - **通用** — 单位、语言、**导出诊断日志（直达导出）**
 - **关于** — 版本信息 + 日志导出
+
+### 插件系统（v0.5.2）
+- **插件框架**: `DashboardPlugin` 接口 + Hilt `Multibinding` 注册机制
+- **PluginManager**: 启用状态持久化 (DataStore)、动态启用/停用、失败自动回滚
+- **BLE 拓展命令插件**: 充电限值 / 开始·停止充电 / 空调开关与温度 / 充电口 / 低功耗模式
+
+### 插件市场（v0.5.2）
+- 从 GitHub 拉取 `plugin-catalog.json`，本地缓存，支持强制刷新
+- 在线插件列表、APK 一键下载至私有目录、版本兼容性检查
+- 规范文档: `docs/PLUGIN_CATALOG.md`
+
+### 车辆数据读取 — 现代 carserver 协议（v0.5.2）
+- 读取: 充电状态 / 额定·估算续航 / 充电电流 / 内外温度 /
+  车速 / 功率 / 挡位 / 里程表 / 航向
+- 老固件不支持时提示"车辆拒绝执行"
+
+### 省电优化（v0.5.2）
+- **ScreenStateTracker**: 熄屏时 BLE 轮询降至 30s，亮屏立即恢复
+- 连续失败退避上限 60s；≥6 次连续失败进入深度休眠慢轮询
+- 数据刷新频率联动 GNSS 降级定位间隔
 
 ### 诊断
 - **应用内日志环形缓冲**（500 条）+ 一键导出（FileProvider 分享，微信/邮件均可，无需权限）
@@ -62,13 +83,15 @@ Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯�
 |------|------|
 | 开发语言 | Kotlin 100% |
 | 架构 | MVVM + Repository 模式 |
-| 依赖注入 | Hilt (Dagger) |
+| 依赖注入 | Hilt (Dagger) + 插件 Multibinding |
 | 数据库 | Room（行程历史，规划中） |
 | 异步 | Coroutines + Flow |
 | 蓝牙 | 原生 GATT + 自研 Tesla 协议（protobuf wire、ECDH、AES-GCM） |
+| 插件系统 | `DashboardPlugin` 接口 + Hilt `@IntoMap` 注册 |
 | 安全 | Android Keystore（AES-256-GCM 封装 BLE 私钥） |
 | 设置存储 | DataStore Preferences |
 | UI 框架 | Material 3 (DayNight) + 自定义 View |
+| CI | GitHub Actions（Kotlin lint + test + assemble） |
 | 最低 SDK | 26 (Android 8.0) |
 | 目标 SDK | 34 (Android 14) |
 
@@ -79,7 +102,8 @@ Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯�
 │                  UI 层                       │
 │  DashboardActivity · SettingsActivity ·     │
 │  PairingActivity · HistoryActivity ·        │
-│  SplashActivity + 自定义 View               │
+│  SplashActivity · PluginCenterActivity      │
+│  BleExtensionActivity + 自定义 View         │
 ├─────────────────────────────────────────────┤
 │               ViewModel 层                  │
 │  DashboardViewModel · SettingsListViewModel │
@@ -88,14 +112,22 @@ Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯�
 │              Repository 层                  │
 │  VehicleDataRepository (BLE 透传 + 电耗计算)│
 │  TripRepository                             │
+│  PluginCatalogRepository (GitHub JSON +    │
+│  本地缓存)                                  │
 ├─────────────────────────────────────────────┤
 │              Data Source 层                 │
 │  TeslaBleProvider (轮询状态机)              │
 │  TeslaBleManager (GATT) · TeslaKeyManager   │
 │  TeslaCrypto · TeslaProtobuf · TeslaMessages│
 ├─────────────────────────────────────────────┤
+│              Plugin 层                      │
+│  PluginManager (DataStore 持久化)           │
+│  DashboardPlugin 接口 · Hilt Module         │
+│  BleExtensionPlugin · MarketPluginInfo      │
+├─────────────────────────────────────────────┤
 │              基础设施                        │
 │  Room DB · DataStore · Keystore · Hilt DI   │
+│  ScreenStateTracker · VersionUtils          │
 └─────────────────────────────────────────────┘
 ```
 
@@ -165,25 +197,31 @@ app/src/main/java/com/tesla/dashboard/
 ├── data/
 │   ├── local/              # Room DB, DAO, SettingsRepository, TripRepository
 │   ├── model/              # VehicleData, Trip, TrackPoint, BatteryConfig
-│   ├── repository/         # VehicleDataRepository
+│   ├── remote/             # PluginCatalogRepository (GitHub JSON + 本地缓存)
 │   └── source/
-│       ├── VehicleDataSource.kt
 │       └── ble/            # TeslaBleProvider, TeslaBleManager, TeslaKeyManager,
 │                           # TeslaCrypto, TeslaProtobuf, TeslaBleMessages, TeslaBleConstants
-├── di/                     # Hilt 模块 (DataSourceModule, DatabaseModule)
-├── service/                # TripRecordingService (前台服务, 规划中)
+├── di/                     # Hilt 模块 (DataSourceModule, DatabaseModule, PluginModule)
+├── plugin/                 # 插件框架
+│   ├── DashboardPlugin.kt  # 插件接口
+│   ├── PluginManager.kt    # 生命周期 + DataStore 持久化
+│   ├── PluginCategory.kt   # 分类枚举
+│   ├── ble/                # BleExtensionPlugin
+│   └── market/             # MarketPluginInfo, PluginCatalogParser (Gson)
 ├── ui/
 │   ├── dashboard/          # DashboardActivity, DashboardViewModel, 自定义 View
-│   ├── history/            # HistoryActivity, 行程列表 (规划中)
-│   ├── settings/           # 设置 + 5 个二级页
+│   ├── settings/           # 设置 + 7 个二级页
+│   ├── plugins/            # PluginCenterActivity, BleExtensionActivity
 │   ├── pairing/            # 配对向导
 │   └── splash/             # 启动页 (狐狸 logo 动画)
 └── util/                   # ThemeManager, LanguageManager, UnitSystem,
-                            # VinDecoder, VinMasker, AppLog, LogExporter
+                             # VinDecoder, VinMasker, AppLog, LogExporter,
+                             # ScreenStateTracker, VersionUtils
 ```
 
 ## 更新日志
 
+- **v0.5.2** — 插件系统（框架 + BLE 拓展命令插件）；插件市场（在线目录、一键下载 APK、版本兼容性检查）；现代 carserver 协议读取车辆数据；`ScreenStateTracker` 省电优化；插件中心移至设置主页
 - **v0.5.0** — BLE 断开时自动降级手机 GNSS（车速/位置/航向，行程里程不中断）；车辆控制面板（解锁/闭锁/前后备箱，BLE 直连命令）；转向灯指示 2.0（矢量箭头 + 特斯拉风格顺序扫描动画 + 主题色联动 + 设置开关）；温度/功率常驻主界面；数据来源状态显示（手机定位降级提示）
 - **v0.4.2** — 数据失效保护（过期帧保留数值 + 降透明度提示）；行驶中自适应轮询 2.5s；连续失败指数退避；瞬时功率展示
 - **v0.4.1** — 扫描健壮性优化；GATT 竞态修复；车辆公钥固定（防中继/伪装）

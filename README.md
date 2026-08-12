@@ -53,9 +53,24 @@ Tesla Dashboard is a native Android application that turns your device into a re
 
 ### Settings (phone-style grouped menus, v0.4)
 - **Vehicle** — Bluetooth & Vehicle (VIN, pairing, model selection, connection test, unpair)
+- **Plugin Center** — installed plugins (on/off toggle), online marketplace (v0.5.2)
 - **Display** — theme selection (11 options)
 - **General** — units, language, **export diagnostic logs (direct action)**
 - **About** — version info + log export
+
+### Plugin System (v0.5.2)
+- **Plugin framework**: `DashboardPlugin` interface, Hilt `Multibinding`, `PluginManager` with DataStore persistence
+- **BLE Extension Plugin**: charge limit / start-stop / AC temp / charge port / low-power mode
+- **Plugin Marketplace**: fetches `plugin-catalog.json` from GitHub, one-tap APK download, version compatibility check
+
+### Vehicle Data (Modern carserver Protocol, v0.5.2)
+- Read: charge state / rated & estimated range / charge current / in-outside temp / speed / power / gear / odometer / heading
+- Fall back to "vehicle rejected" on old firmware without modern protocol support
+
+### Power Optimization (v0.5.2)
+- **ScreenStateTracker**: BLE polling throttles to 30s when screen off, resumes immediately on wake
+- Backoff cap raised to 60s; deep-sleep slow polling after ≥6 consecutive failures
+- Data refresh interval synced with GNSS fallback rate
 
 ### Diagnostics
 - **In-app log ring buffer** (500 entries) + one-tap export via FileProvider share (WeChat/email, no permission needed)
@@ -66,13 +81,15 @@ Tesla Dashboard is a native Android application that turns your device into a re
 |----------|-----------|
 | Language | Kotlin 100% |
 | Architecture | MVVM + Repository pattern |
-| DI | Hilt (Dagger) |
+| Dependency Injection | Hilt (Dagger) with plugin Multibinding |
 | Database | Room (trip history, WIP) |
 | Async | Coroutines + Flow |
 | BLE | Native GATT + custom Tesla protocol (protobuf wire, ECDH, AES-GCM) |
+| Plugin System | `DashboardPlugin` interface + Hilt `@IntoMap` registration |
 | Security | Android Keystore (AES-256-GCM envelope for BLE private key) |
 | Settings | DataStore Preferences |
 | UI | Material 3 (DayNight) + Custom Views |
+| CI | GitHub Actions (Kotlin lint + test + assemble) |
 | Min SDK | 26 (Android 8.0) |
 | Target SDK | 34 (Android 14) |
 
@@ -83,7 +100,8 @@ Tesla Dashboard is a native Android application that turns your device into a re
 │                  UI Layer                    │
 │  DashboardActivity · SettingsActivity ·     │
 │  PairingActivity · HistoryActivity ·        │
-│  SplashActivity + custom Views              │
+│  SplashActivity · PluginCenterActivity      │
+│  BleExtensionActivity + custom Views        │
 ├─────────────────────────────────────────────┤
 │               ViewModel Layer                │
 │  DashboardViewModel · SettingsListViewModel  │
@@ -92,14 +110,22 @@ Tesla Dashboard is a native Android application that turns your device into a re
 │              Repository Layer                │
 │  VehicleDataRepository (BLE passthrough +    │
 │  consumption calc) · TripRepository          │
+│  PluginCatalogRepository (GitHub JSON +     │
+│  local cache)                              │
 ├─────────────────────────────────────────────┤
 │              Data Source Layer               │
 │  TeslaBleProvider (polling state machine)    │
 │  TeslaBleManager (GATT) · TeslaKeyManager    │
 │  TeslaCrypto · TeslaProtobuf · TeslaMessages │
 ├─────────────────────────────────────────────┤
+│              Plugin Layer                    │
+│  PluginManager (DataStore persistence)       │
+│  DashboardPlugin interface · Hilt Module     │
+│  BleExtensionPlugin · MarketPluginInfo       │
+├─────────────────────────────────────────────┤
 │              Infrastructure                  │
-│  Room DB · DataStore · Keystore · Hilt DI    │
+│  Room DB · DataStore · Keystore · Hilt DI   │
+│  ScreenStateTracker · VersionUtils          │
 └─────────────────────────────────────────────┘
 ```
 
@@ -170,25 +196,31 @@ app/src/main/java/com/tesla/dashboard/
 ├── data/
 │   ├── local/              # Room DB, DAOs, SettingsRepository, TripRepository
 │   ├── model/              # VehicleData, Trip, TrackPoint, BatteryConfig
-│   ├── repository/         # VehicleDataRepository
+│   ├── remote/             # PluginCatalogRepository (GitHub JSON + cache)
 │   └── source/
-│       ├── VehicleDataSource.kt
 │       └── ble/            # TeslaBleProvider, TeslaBleManager, TeslaKeyManager,
 │                           # TeslaCrypto, TeslaProtobuf, TeslaBleMessages, TeslaBleConstants
-├── di/                     # Hilt modules (DataSourceModule, DatabaseModule)
-├── service/                # TripRecordingService (foreground, WIP)
+├── di/                     # Hilt modules (DataSourceModule, DatabaseModule, PluginModule)
+├── plugin/                 # Plugin framework
+│   ├── DashboardPlugin.kt  # Plugin interface
+│   ├── PluginManager.kt    # Lifecycle + DataStore persistence
+│   ├── PluginCategory.kt   # Category enum
+│   ├── ble/                # BleExtensionPlugin
+│   └── market/             # MarketPluginInfo, PluginCatalogParser (Gson)
 ├── ui/
 │   ├── dashboard/          # DashboardActivity, DashboardViewModel, custom Views
-│   ├── history/            # HistoryActivity, trip list (WIP)
-│   ├── settings/           # Settings + 5 sub-pages
+│   ├── settings/           # SettingsActivity + 7 sub-pages
+│   ├── plugins/            # PluginCenterActivity, BleExtensionActivity
 │   ├── pairing/            # Pairing wizard
 │   └── splash/             # SplashActivity (fox logo animation)
 └── util/                   # ThemeManager, LanguageManager, UnitSystem,
-                            # VinDecoder, VinMasker, AppLog, LogExporter
+                             # VinDecoder, VinMasker, AppLog, LogExporter,
+                             # ScreenStateTracker, VersionUtils
 ```
 
 ## Changelog
 
+- **v0.5.2** — Plugin system (framework + BLE Extension plugin); Plugin Marketplace (online catalog, one-tap APK download, version compatibility); modern carserver vehicle data read (charge/range/temp/speed/power/gear/odometer); `ScreenStateTracker` power optimization; Plugin Center moved to main Settings page
 - **v0.5.0** — GNSS fallback on BLE outage (speed/position/heading, uninterrupted trip distance); vehicle control panel (unlock/lock/frunk/trunk via BLE); turn signal indicators 2.0 (vector arrows, Tesla-style sweep animation, theme colors, settings toggle); persistent temperature/power display; data source status (GNSS fallback badge)
 - **v0.4.2** — Stale data protection (keep values + dim on failure); adaptive polling 2.5s while driving; exponential backoff on repeated failures; instant power display
 - **v0.4.1** — Scan robustness; GATT race fix; vehicle public key pinning (anti-relay/MITM)
