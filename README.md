@@ -120,6 +120,30 @@ cd tesla-dashboard
 ./gradlew assembleDebug
 ```
 
+### Build Release APK (Signed)
+
+Release APK requires a signing keystore. The keystore is **not committed** (`*.jks` is in `.gitignore`).
+Generate it after cloning:
+
+```bash
+# Create keystore directory and generate key (password can be customized; defaults in build.gradle.kts are tesla123)
+keytool -genkeypair -v \
+  -keystore keystore/release.jks \
+  -alias tesla-dashboard \
+  -keypass tesla123 \
+  -storepass tesla123 \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -dname "CN=TeslaDashboard, OU=Dev, O=TeslaDashboard, L=Shenzhen, ST=Guangdong, C=CN"
+
+# Build signed APK
+./gradlew assembleRelease
+# Output: app/build/outputs/apk/release/app-release.apk
+```
+
+> ⚠️ **Security Note**: The original v0.5.2 release accidentally committed the signing key to the repo.
+> It has been purged from all git history using BFG Repo-Cleaner (including all prior commits).
+> Never commit `release.jks` or any file containing signing keys.
+
 ### Run
 
 1. Open the project in Android Studio

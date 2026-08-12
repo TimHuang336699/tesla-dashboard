@@ -116,6 +116,29 @@ cd tesla-dashboard
 ./gradlew assembleDebug
 ```
 
+### 构建 Release APK（签名）
+
+Release APK 需要签名密钥。密钥**不入库**（`.gitignore` 已排除 `*.jks`）。
+克隆后请自行生成：
+
+```bash
+# 创建 keystore 目录并生成密钥（密码可自定义，build.gradle.kts 默认值为 tesla123）
+keytool -genkeypair -v \
+  -keystore keystore/release.jks \
+  -alias tesla-dashboard \
+  -keypass tesla123 \
+  -storepass tesla123 \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -dname "CN=TeslaDashboard, OU=Dev, O=TeslaDashboard, L=Shenzhen, ST=Guangdong, C=CN"
+
+# 构建签名 APK
+./gradlew assembleRelease
+# 输出: app/build/outputs/apk/release/app-release.apk
+```
+
+> ⚠️ **安全须知**：原 v0.5.2 版本曾误将密钥提交至仓库，已通过 BFG Repo-Cleaner 从历史中彻底清除（含所有旧 commit）。
+> 请勿将 `release.jks` 或任何包含密钥的文件提交到 git。
+
 ### 运行
 
 1. 用 Android Studio 打开项目

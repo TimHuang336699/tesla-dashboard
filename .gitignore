@@ -8,3 +8,8 @@ build/
 .externalNativeBuild
 .cxx
 local.properties
+
+# Ç©ÃûÃÜÔ¿ (½ûÖ¹Èë¿â)
+*.jks
+*.keystore
+.git.bfg-report/
