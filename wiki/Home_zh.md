@@ -1,4 +1,4 @@
-﻿# Tesla Dashboard 寮€鍙戞寚鍗?
+# Tesla Dashboard 寮€鍙戞寚鍗?
 [English](Home.md)
 
 娆㈣繋鏌ラ槄 Tesla Dashboard 涓枃鏂囨。锛佹湰鏂囨。闈㈠悜寮€鍙戣€呭拰璐＄尞鑰呫€?

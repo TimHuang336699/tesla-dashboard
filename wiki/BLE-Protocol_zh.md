@@ -1,4 +1,4 @@
-﻿# BLE 鍗忚
+# BLE 鍗忚
 
 [English](BLE-Protocol.md)
 

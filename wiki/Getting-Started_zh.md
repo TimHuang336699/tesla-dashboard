@@ -1,4 +1,4 @@
-﻿# 蹇€熷紑濮?
+# 蹇€熷紑濮?
 [English](Getting-Started.md)
 
 ## 鐜瑕佹眰

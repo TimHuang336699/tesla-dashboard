@@ -1,4 +1,4 @@
-﻿# 瀹夊叏绛栫暐
+# 瀹夊叏绛栫暐
 
 [English](SECURITY.md)
 

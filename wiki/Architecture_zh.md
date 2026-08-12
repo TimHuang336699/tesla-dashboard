@@ -1,4 +1,4 @@
-﻿# 鏋舵瀯璁捐
+# 鏋舵瀯璁捐
 
 [English](Architecture_en.md)
 

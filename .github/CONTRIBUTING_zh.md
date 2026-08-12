@@ -1,4 +1,4 @@
-﻿# 濡備綍涓?Tesla Dashboard 璐＄尞
+# 濡備綍涓?Tesla Dashboard 璐＄尞
 
 [English](CONTRIBUTING.md)
 
