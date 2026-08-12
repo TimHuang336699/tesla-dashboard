@@ -1,7 +1,5 @@
 # Tesla Dashboard Android
 
-[中文文档](README_zh.md)
-
 <p align="center">
   <strong>A modern car dashboard app for Tesla vehicles, built with Kotlin &amp; Jetpack</strong>
 </p>
