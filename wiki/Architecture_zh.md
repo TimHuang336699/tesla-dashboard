@@ -1,5 +1,7 @@
 # 架构设计
 
+[English](Architecture_en.md)
+
 ## 概述
 
 Tesla Dashboard 采用 **MVVM（Model-View-ViewModel）** 架构，结合 **Repository 模式**实现职责分离。

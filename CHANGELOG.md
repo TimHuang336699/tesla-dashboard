@@ -1,5 +1,7 @@
 # 变更记录
 
+[English](CHANGELOG_en.md)
+
 ## v0.5.2 (2026-08-11)
 
 ### 插件系统 (Plugin System)

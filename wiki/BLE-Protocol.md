@@ -1,5 +1,7 @@
 # BLE Protocol
 
+[中文](BLE-Protocol_zh.md)
+
 ## Overview
 
 Tesla Dashboard implements Tesla's vehicle-command BLE protocol for direct vehicle communication. This document describes the protocol implementation.

@@ -1,5 +1,7 @@
 # Architecture
 
+[中文](Architecture_zh.md)
+
 ## Overview
 
 Tesla Dashboard follows **MVVM (Model-View-ViewModel)** architecture with **Repository pattern** for clean separation of concerns.

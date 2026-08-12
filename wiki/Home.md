@@ -1,5 +1,7 @@
 # Tesla Dashboard Wiki
 
+[中文](Home_zh.md)
+
 Welcome to the Tesla Dashboard wiki! This is a comprehensive guide for developers and users.
 
 ## Table of Contents

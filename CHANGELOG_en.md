@@ -1,5 +1,7 @@
 # CHANGELOG
 
+[中文](CHANGELOG.md)
+
 ## v0.5.2 (2026-08-12)
 
 ### Plugin System

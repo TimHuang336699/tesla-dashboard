@@ -1,5 +1,7 @@
 # Tesla Dashboard 开发指南
 
+[English](Home.md)
+
 欢迎查阅 Tesla Dashboard 中文文档！本文档面向开发者和贡献者。
 
 ## 目录

@@ -1,5 +1,7 @@
 # Tesla Dashboard 安卓车载仪表盘
 
+[English](README.md)
+
 <p align="center">
   <strong>面向特斯拉车辆的现代化车载仪表盘应用，基于 Kotlin &amp; Jetpack 开发</strong>
 </p>

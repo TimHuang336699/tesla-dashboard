@@ -1,5 +1,7 @@
 # Getting Started
 
+[中文](Getting-Started_zh.md)
+
 ## Prerequisites
 
 - **Android Studio** Hedgehog (or newer)

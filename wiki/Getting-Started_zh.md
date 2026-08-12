@@ -1,5 +1,7 @@
 # 快速开始
 
+[English](Getting-Started.md)
+
 ## 环境要求
 
 - **Android Studio** Hedgehog（或更新版本）

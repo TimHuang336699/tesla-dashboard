@@ -1,5 +1,7 @@
 # Tesla Dashboard 插件市场规范 (v0.5.2)
 
+[English](PLUGIN_CATALOG_en.md)
+
 外部可选插件通过 GitHub 仓库 `tesla-dashboard-plugins` 分发。
 仓库根目录放置 `plugin-catalog.json` 描述可用插件，本应用后续版本据此加载与展示。
 

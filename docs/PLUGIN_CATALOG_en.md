@@ -1,5 +1,7 @@
 # Plugin Catalog Specification (v0.5.2)
 
+[中文](PLUGIN_CATALOG.md)
+
 External optional plugins are distributed via the GitHub repository `tesla-dashboard-plugins`.
 The repository root contains `plugin-catalog.json` describing available plugins;
 the app loads and displays them in subsequent versions.
