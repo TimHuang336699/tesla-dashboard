@@ -1,6 +1,6 @@
 # Security Policy
 
-[中文](wiki/zh/SECURITY_zh.md)
+[中文](SECURITY_zh.md)
 
 ## Supported Versions
 

@@ -1,6 +1,6 @@
 # Contributing to Tesla Dashboard
 
-[中文](wiki/zh/CONTRIBUTING_zh.md)
+[中文](CONTRIBUTING_zh.md)
 
 Thank you for your interest in contributing to Tesla Dashboard! This document provides guidelines and information for contributors.
 

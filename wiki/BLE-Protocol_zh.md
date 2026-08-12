@@ -1,70 +1,51 @@
-# BLE 协议
+﻿# BLE 鍗忚
 
 [English](BLE-Protocol.md)
 
-## 概述
+## 姒傝堪
 
-Tesla Dashboard 实现了 Tesla 的 vehicle-command BLE 协议，用于与车辆直接通信。本文档描述协议的实现细节。
-
-## 协议栈
-
+Tesla Dashboard 瀹炵幇浜?Tesla 鐨?vehicle-command BLE 鍗忚锛岀敤浜庝笌杞﹁締鐩存帴閫氫俊銆傛湰鏂囨。鎻忚堪鍗忚鐨勫疄鐜扮粏鑺傘€?
+## 鍗忚鏍?
 ```
-┌─────────────────────────────────────┐
-│        应用层 (Application Layer)     │
-│  VehicleData / VehicleCommand       │
-├─────────────────────────────────────┤
-│        加密层 (Crypto Layer)         │
-│  ECDH + AES-GCM + TLV              │
-├─────────────────────────────────────┤
-│        消息层 (Message Layer)        │
-│  RoutableMessage / UnsignedMessage  │
-├─────────────────────────────────────┤
-│        传输层 (Transport Layer)      │
-│  GATT 特征值 (TX/RX)                │
-└─────────────────────────────────────┘
-```
+鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?       搴旂敤灞?(Application Layer)     鈹?鈹? VehicleData / VehicleCommand       鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?       鍔犲瘑灞?(Crypto Layer)         鈹?鈹? ECDH + AES-GCM + TLV              鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?       娑堟伅灞?(Message Layer)        鈹?鈹? RoutableMessage / UnsignedMessage  鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?       浼犺緭灞?(Transport Layer)      鈹?鈹? GATT 鐗瑰緛鍊?(TX/RX)                鈹?鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?```
 
-## BLE GATT 服务
+## BLE GATT 鏈嶅姟
 
-| UUID | 名称 | 用途 |
+| UUID | 鍚嶇О | 鐢ㄩ€?|
 |------|------|------|
-| `00000211-b2d1-43f0-9b88-960cebf8b91e` | Tesla Service | 主 BLE 服务 |
-| `00000212-b2d1-43f0-9b88-960cebf8b91e` | TX Characteristic | 客户端 → 车辆 |
-| `00000213-b2d1-43f0-9b88-960cebf8b91e` | RX Characteristic | 车辆 → 客户端 (Notify) |
+| `00000211-b2d1-43f0-9b88-960cebf8b91e` | Tesla Service | 涓?BLE 鏈嶅姟 |
+| `00000212-b2d1-43f0-9b88-960cebf8b91e` | TX Characteristic | 瀹㈡埛绔?鈫?杞﹁締 |
+| `00000213-b2d1-43f0-9b88-960cebf8b91e` | RX Characteristic | 杞﹁締 鈫?瀹㈡埛绔?(Notify) |
 
-## 车辆发现
+## 杞﹁締鍙戠幇
 
-特斯拉车辆通过 VIN 的哈希值广播其 BLE 名称：
-
+鐗规柉鎷夎溅杈嗛€氳繃 VIN 鐨勫搱甯屽€煎箍鎾叾 BLE 鍚嶇О锛?
 ```
-本地名称 = "S" + SHA1(VIN)[0:8].hex() + "C"
+鏈湴鍚嶇О = "S" + SHA1(VIN)[0:8].hex() + "C"
 ```
 
-示例：VIN `5YJS0000000000000` → `S1a87a5a75f3df858C`
+绀轰緥锛歏IN `5YJS0000000000000` 鈫?`S1a87a5a75f3df858C`
 
-## 双域架构
+## 鍙屽煙鏋舵瀯
 
-协议在一个 GATT 连接上建立两个独立的加密会话：
-
-### VCSEC 域（车辆安全）
-
-| 特性 | 说明 |
+鍗忚鍦ㄤ竴涓?GATT 杩炴帴涓婂缓绔嬩袱涓嫭绔嬬殑鍔犲瘑浼氳瘽锛?
+### VCSEC 鍩燂紙杞﹁締瀹夊叏锛?
+| 鐗规€?| 璇存槑 |
 |------|------|
-| 域 ID | `2` |
-| 用途 | 安全操作 |
-| 命令 | 唤醒、锁定、解锁、前备箱/后备箱 |
+| 鍩?ID | `2` |
+| 鐢ㄩ€?| 瀹夊叏鎿嶄綔 |
+| 鍛戒护 | 鍞ら啋銆侀攣瀹氥€佽В閿併€佸墠澶囩/鍚庡绠?|
 
-### 信息娱乐域
-
-| 特性 | 说明 |
+### 淇℃伅濞变箰鍩?
+| 鐗规€?| 璇存槑 |
 |------|------|
-| 域 ID | `3` |
-| 用途 | 车辆数据 |
-| 命令 | GetVehicleState |
+| 鍩?ID | `3` |
+| 鐢ㄩ€?| 杞﹁締鏁版嵁 |
+| 鍛戒护 | GetVehicleState |
 
-## 消息格式
+## 娑堟伅鏍煎紡
 
-### RoutableMessage（顶层）
+### RoutableMessage锛堥《灞傦級
 
 ```protobuf
 message RoutableMessage {
@@ -79,136 +60,94 @@ message RoutableMessage {
 }
 ```
 
-### SessionInfoRequest（握手）
+### SessionInfoRequest锛堟彙鎵嬶級
 
 ```protobuf
 message SessionInfoRequest {
-    bytes public_key = 1;  // 65 字节非压缩 EC 点
-}
+    bytes public_key = 1;  // 65 瀛楄妭闈炲帇缂?EC 鐐?}
 ```
 
-### SessionInfo（握手响应）
+### SessionInfo锛堟彙鎵嬪搷搴旓級
 
 ```protobuf
 message SessionInfo {
     uint32 counter = 1;
-    bytes public_key = 2;  // 车辆 65 字节公钥
-    bytes epoch = 3;       // 16 字节 epoch ID
+    bytes public_key = 2;  // 杞﹁締 65 瀛楄妭鍏挜
+    bytes epoch = 3;       // 16 瀛楄妭 epoch ID
     uint32 clock_time = 4;
 }
 ```
 
-## 加密流程
+## 鍔犲瘑娴佺▼
 
-### 1. ECDH 密钥协商
-
-```
-客户端                        车辆
-  │                            │
-  │  SessionInfoRequest        │
-  │  { public_key: client_pub }│
-  │──────────────────────────▶│
-  │                            │
-  │  SessionInfo               │
-  │  { public_key: vehicle_pub,│
-  │    epoch, counter }        │
-  │◀──────────────────────────│
-  │                            │
-  shared_key = SHA1(ECDH(client_priv, vehicle_pub))[0:16]
-```
-
-### 2. 命令加密
+### 1. ECDH 瀵嗛挜鍗忓晢
 
 ```
-1. 递增 counter
-2. nonce = epoch[0:8] || counter (4 字节大端序)
-3. 构建 TLV AAD:
+瀹㈡埛绔?                       杞﹁締
+  鈹?                           鈹?  鈹? SessionInfoRequest        鈹?  鈹? { public_key: client_pub }鈹?  鈹傗攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈻垛攤
+  鈹?                           鈹?  鈹? SessionInfo               鈹?  鈹? { public_key: vehicle_pub,鈹?  鈹?   epoch, counter }        鈹?  鈹傗梹鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?  鈹?                           鈹?  shared_key = SHA1(ECDH(client_priv, vehicle_pub))[0:16]
+```
+
+### 2. 鍛戒护鍔犲瘑
+
+```
+1. 閫掑 counter
+2. nonce = epoch[0:8] || counter (4 瀛楄妭澶х搴?
+3. 鏋勫缓 TLV AAD:
    - signature_type: AES_GCM_PERSONALIZED (5)
-   - domain: 目标域
-   - personalization: VIN
-   - epoch: 会话 epoch
+   - domain: 鐩爣鍩?   - personalization: VIN
+   - epoch: 浼氳瘽 epoch
    - expires_at: current_time + 10s
-   - counter: 当前 counter
+   - counter: 褰撳墠 counter
    - flags: 0
-4. 加密: AES-GCM(key=shared_key, nonce, plaintext, aad)
-5. 构建 SignatureData: { epoch, nonce, counter, expires_at, tag }
-6. 发送 RoutableMessage { ciphertext, signature_data }
+4. 鍔犲瘑: AES-GCM(key=shared_key, nonce, plaintext, aad)
+5. 鏋勫缓 SignatureData: { epoch, nonce, counter, expires_at, tag }
+6. 鍙戦€?RoutableMessage { ciphertext, signature_data }
 ```
 
-### 3. 响应解密
+### 3. 鍝嶅簲瑙ｅ瘑
 
 ```
-1. 从响应中提取 SignatureData
-2. 解析 AES_GCM_Personalized_Signature_Data:
+1. 浠庡搷搴斾腑鎻愬彇 SignatureData
+2. 瑙ｆ瀽 AES_GCM_Personalized_Signature_Data:
    - epoch, nonce, counter, tag
-3. 构建响应 AAD（与命令类似）
-4. 解密: AES-GCM(key=shared_key, nonce, ciphertext, tag, aad)
-5. 解析明文 protobuf
+3. 鏋勫缓鍝嶅簲 AAD锛堜笌鍛戒护绫讳技锛?4. 瑙ｅ瘑: AES-GCM(key=shared_key, nonce, ciphertext, tag, aad)
+5. 瑙ｆ瀽鏄庢枃 protobuf
 ```
 
-## 消息定界
+## 娑堟伅瀹氱晫
 
-BLE 消息使用 2 字节长度前缀进行定界：
-
+BLE 娑堟伅浣跨敤 2 瀛楄妭闀垮害鍓嶇紑杩涜瀹氱晫锛?
 ```
-┌──────────────┬────────────────────┐
-│ 长度 (2B)    │ 载荷                │
-│ 大端序       │ (protobuf 字节)      │
-└──────────────┴────────────────────┘
-```
+鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?闀垮害 (2B)    鈹?杞借嵎                鈹?鈹?澶х搴?      鈹?(protobuf 瀛楄妭)      鈹?鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹粹攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?```
 
-超过 MTU 的消息会分块传输：
-
+瓒呰繃 MTU 鐨勬秷鎭細鍒嗗潡浼犺緭锛?
 ```
-分块大小 = MTU - ATT_HEADER_SIZE (3)
+鍒嗗潡澶у皬 = MTU - ATT_HEADER_SIZE (3)
 ```
 
-## 轮询序列
+## 杞搴忓垪
 
 ```
-┌─────────────────────────────────────────────┐
-│ 1. 从 Keystore 加载私钥                      │
-├─────────────────────────────────────────────┤
-│ 2. 连接（缓存地址或扫描）                     │
-├─────────────────────────────────────────────┤
-│ 3. VCSEC 握手                               │
-│    - 发送 SessionInfoRequest                 │
-│    - 接收 SessionInfo                        │
-│    - 计算共享密钥                             │
-├─────────────────────────────────────────────┤
-│ 4. 唤醒车辆                                  │
-│    - RKE_ACTION_WAKE_VEHICLE (30)           │
-├─────────────────────────────────────────────┤
-│ 5. 信息娱乐握手                              │
-│    - 新的 SessionInfoRequest                 │
-│    - 新的共享密钥                             │
-├─────────────────────────────────────────────┤
-│ 6. GetVehicleState                          │
-│    - 发送空 Action                           │
-│    - 接收加密响应                            │
-│    - 解密并解析                              │
-├─────────────────────────────────────────────┤
-│ 7. 断开连接                                  │
-└─────────────────────────────────────────────┘
-```
+鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?1. 浠?Keystore 鍔犺浇绉侀挜                      鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?2. 杩炴帴锛堢紦瀛樺湴鍧€鎴栨壂鎻忥級                     鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?3. VCSEC 鎻℃墜                               鈹?鈹?   - 鍙戦€?SessionInfoRequest                 鈹?鈹?   - 鎺ユ敹 SessionInfo                        鈹?鈹?   - 璁＄畻鍏变韩瀵嗛挜                             鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?4. 鍞ら啋杞﹁締                                  鈹?鈹?   - RKE_ACTION_WAKE_VEHICLE (30)           鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?5. 淇℃伅濞变箰鎻℃墜                              鈹?鈹?   - 鏂扮殑 SessionInfoRequest                 鈹?鈹?   - 鏂扮殑鍏变韩瀵嗛挜                             鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?6. GetVehicleState                          鈹?鈹?   - 鍙戦€佺┖ Action                           鈹?鈹?   - 鎺ユ敹鍔犲瘑鍝嶅簲                            鈹?鈹?   - 瑙ｅ瘑骞惰В鏋?                             鈹?鈹溾攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?7. 鏂紑杩炴帴                                  鈹?鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?```
 
-## 车辆控制命令
+## 杞﹁締鎺у埗鍛戒护
 
-### 解锁
+### 瑙ｉ攣
 
 ```kotlin
 RKE_ACTION_UNLOCK = 0
 // UnsignedMessage { rke_action: 0 }
 ```
 
-### 锁定
+### 閿佸畾
 
 ```kotlin
 RKE_ACTION_LOCK = 1
 // UnsignedMessage { rke_action: 1 }
 ```
 
-### 开启前备箱
+### 寮€鍚墠澶囩
 
 ```kotlin
 CLOSURE_FRUNK = 1
@@ -216,7 +155,7 @@ CLOSURE_ACTION_OPEN = 2
 // UnsignedMessage { closure_move_request: { closure: 1, action: 2 } }
 ```
 
-### 开启后备箱
+### 寮€鍚悗澶囩
 
 ```kotlin
 CLOSURE_TRUNK = 2
@@ -224,47 +163,42 @@ CLOSURE_ACTION_OPEN = 2
 // UnsignedMessage { closure_move_request: { closure: 2, action: 2 } }
 ```
 
-## 时序参数
+## 鏃跺簭鍙傛暟
 
-| 参数 | 值 | 说明 |
+| 鍙傛暟 | 鍊?| 璇存槑 |
 |------|-----|------|
-| 轮询间隔 | 5s | 正常轮询 |
-| 行驶中轮询 | 2.5s | 车辆移动时 |
-| 连接超时 | 10s | GATT 连接 |
-| 扫描超时 | 15s | BLE 扫描 |
-| 命令超时 | 5s | 单个命令 |
-| NFC 超时 | 30s | 配对确认 |
-| 最大退避 | 30s | 指数退避上限 |
+| 杞闂撮殧 | 5s | 姝ｅ父杞 |
+| 琛岄┒涓疆璇?| 2.5s | 杞﹁締绉诲姩鏃?|
+| 杩炴帴瓒呮椂 | 10s | GATT 杩炴帴 |
+| 鎵弿瓒呮椂 | 15s | BLE 鎵弿 |
+| 鍛戒护瓒呮椂 | 5s | 鍗曚釜鍛戒护 |
+| NFC 瓒呮椂 | 30s | 閰嶅纭 |
+| 鏈€澶ч€€閬?| 30s | 鎸囨暟閫€閬夸笂闄?|
 
-## 错误处理
+## 閿欒澶勭悊
 
-### 连接失败
+### 杩炴帴澶辫触
 
-- 缓存地址失败 → 全量扫描
-- 扫描超时 → 发射过期数据
-- GATT 断开 → 发射过期数据
+- 缂撳瓨鍦板潃澶辫触 鈫?鍏ㄩ噺鎵弿
+- 鎵弿瓒呮椂 鈫?鍙戝皠杩囨湡鏁版嵁
+- GATT 鏂紑 鈫?鍙戝皠杩囨湡鏁版嵁
 
-### 加密失败
+### 鍔犲瘑澶辫触
 
-- 公钥不匹配 → 中止（可能 MITM 攻击）
-- 解密失败 → 记录日志并跳过
-- 计数器重放 → 车辆拒绝
+- 鍏挜涓嶅尮閰?鈫?涓锛堝彲鑳?MITM 鏀诲嚮锛?- 瑙ｅ瘑澶辫触 鈫?璁板綍鏃ュ織骞惰烦杩?- 璁℃暟鍣ㄩ噸鏀?鈫?杞﹁締鎷掔粷
 
-### 指数退避
-
+### 鎸囨暟閫€閬?
 ```
-第 1 次尝试: 5s
-第 2 次尝试: 10s
-第 3 次尝试: 20s
-第 4 次及以后: 30s（上限）
+绗?1 娆″皾璇? 5s
+绗?2 娆″皾璇? 10s
+绗?3 娆″皾璇? 20s
+绗?4 娆″強浠ュ悗: 30s锛堜笂闄愶級
 ```
 
-## 安全特性
+## 瀹夊叏鐗规€?
+1. **ECDH 瀵嗛挜鍗忓晢** 鈥?鍏变韩瀵嗛挜涓嶄細鍦ㄧ綉缁滀腑浼犺緭
+2. **AES-GCM 鍔犲瘑** 鈥?128 浣嶅瘑閽ョ殑璁よ瘉鍔犲瘑
+3. **璁℃暟鍣ㄩ槻閲嶆斁** 鈥?鍗曡皟閫掑璁℃暟鍣?4. **鍏挜鍥哄畾** 鈥?杞﹁締鍏挜鏈湴瀛樺偍
+5. **绉侀挜淇″皝淇濇姢** 鈥?Android Keystore AES-256-GCM 淇濇姢
 
-1. **ECDH 密钥协商** — 共享密钥不会在网络中传输
-2. **AES-GCM 加密** — 128 位密钥的认证加密
-3. **计数器防重放** — 单调递增计数器
-4. **公钥固定** — 车辆公钥本地存储
-5. **私钥信封保护** — Android Keystore AES-256-GCM 保护
-
-详见 [安全](Security_zh.md)。
+璇﹁ [瀹夊叏](Security_zh.md)銆?

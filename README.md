@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="wiki/zh/README_zh.md">中文文档</a> | English
+  <a href="README_zh.md">中文文档</a> | English
 </p>
 
 <p align="center">
@@ -236,8 +236,8 @@ This project is for educational purposes. Tesla is a trademark of Tesla, Inc. Th
 
 ## Community
 
-- [Code of Conduct](CODE_OF_CONDUCT.md) / [行为准则](wiki/zh/CODE_OF_CONDUCT_zh.md)
-- [Contributing](CONTRIBUTING.md) / [贡献指南](wiki/zh/CONTRIBUTING_zh.md)
-- [Security Policy](SECURITY.md) / [安全策略](wiki/zh/SECURITY_zh.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md) / [行为准则](CODE_OF_CONDUCT_zh.md)
+- [Contributing](CONTRIBUTING.md) / [贡献指南](CONTRIBUTING_zh.md)
+- [Security Policy](SECURITY.md) / [安全策略](SECURITY_zh.md)
 
 ---

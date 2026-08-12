@@ -1,39 +1,33 @@
-# Tesla Dashboard 开发指南
-
+﻿# Tesla Dashboard 寮€鍙戞寚鍗?
 [English](Home.md)
 
-欢迎查阅 Tesla Dashboard 中文文档！本文档面向开发者和贡献者。
+娆㈣繋鏌ラ槄 Tesla Dashboard 涓枃鏂囨。锛佹湰鏂囨。闈㈠悜寮€鍙戣€呭拰璐＄尞鑰呫€?
+## 鐩綍
 
-## 目录
+- [蹇€熷紑濮媇(Getting-Started_zh.md)
+- [鏋舵瀯璁捐](Architecture_zh.md)
+- [BLE 鍗忚](BLE-Protocol_zh.md)
+- [瀹夊叏](Security_zh.md)
+- [鑷畾涔?View](Custom-Views_zh.md)
+- [甯歌闂](FAQ_zh.md)
+- [璐＄尞鎸囧崡](Contributing_zh.md)
 
-- [快速开始](Getting-Started_zh.md)
-- [架构设计](Architecture_zh.md)
-- [BLE 协议](BLE-Protocol_zh.md)
-- [安全](Security_zh.md)
-- [自定义 View](Custom-Views_zh.md)
-- [常见问题](FAQ_zh.md)
-- [贡献指南](Contributing_zh.md)
+## 椤圭洰绠€浠?
+Tesla Dashboard 鏄竴娆惧師鐢?Android 搴旂敤锛屽彲灏嗘偍鐨勮澶囧彉鎴愮壒鏂媺杞﹁締鐨勫疄鏃朵华琛ㄧ洏銆傚簲鐢ㄩ€氳繃**钃濈墮浣庡姛鑰楋紙BLE锛夌洿杩炶溅杈?*鈥斺€旀棤闇€浜?API銆佹棤璁㈤槄璐光€斺€斾互鑻规灉寮忕畝绾﹁璁″疄鏃跺睍绀洪┚椹舵暟鎹€?
+## 涓昏鍔熻兘
 
-## 项目简介
+- **BLE 鐩磋繛** 鈥?瀹炵幇 Tesla vehicle-command 钃濈墮鍗忚
+- **瀹炴椂鏁版嵁** 鈥?杞﹂€熴€佺數閲忋€佹俯搴︺€佷綅缃€丟 鍔?- **杞﹁締鎺у埗** 鈥?閫氳繃 BLE 瑙ｉ攣/闂攣
+- **GNSS 闄嶇骇** 鈥?BLE 鏂紑鏃惰嚜鍔ㄥ垏鎹㈡墜鏈?GPS
+- **11 濂椾富棰?* 鈥?娣辫壊/娴呰壊 + 寮鸿皟鑹诧紝瀹炴椂鍒囨崲
+- **澶氳瑷€** 鈥?涓枃 / English
+- **澶氬崟浣?* 鈥?鍏埗 / 鑻卞埗
 
-Tesla Dashboard 是一款原生 Android 应用，可将您的设备变成特斯拉车辆的实时仪表盘。应用通过**蓝牙低功耗（BLE）直连车辆**——无需云 API、无订阅费——以苹果式简约设计实时展示驾驶数据。
-
-## 主要功能
-
-- **BLE 直连** — 实现 Tesla vehicle-command 蓝牙协议
-- **实时数据** — 车速、电量、温度、位置、G 力
-- **车辆控制** — 通过 BLE 解锁/闭锁
-- **GNSS 降级** — BLE 断开时自动切换手机 GPS
-- **11 套主题** — 深色/浅色 + 强调色，实时切换
-- **多语言** — 中文 / English
-- **多单位** — 公制 / 英制
-
-## 快速链接
-
-- [GitHub 仓库](https://github.com/TimHuang336699/tesla-dashboard)
+## 蹇€熼摼鎺?
+- [GitHub 浠撳簱](https://github.com/TimHuang336699/tesla-dashboard)
 - [Releases](https://github.com/TimHuang336699/tesla-dashboard/releases)
 - [Issues](https://github.com/TimHuang336699/tesla-dashboard/issues)
 
-## 许可
+## 璁稿彲
 
-本项目仅用于学习交流。Tesla 是 Tesla, Inc. 的商标。本应用与 Tesla 无任何关联或背书。
+鏈」鐩粎鐢ㄤ簬瀛︿範浜ゆ祦銆俆esla 鏄?Tesla, Inc. 鐨勫晢鏍囥€傛湰搴旂敤涓?Tesla 鏃犱换浣曞叧鑱旀垨鑳屼功銆?
