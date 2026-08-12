@@ -242,8 +242,8 @@ This project is for educational purposes. Tesla is a trademark of Tesla, Inc. Th
 
 ## Community
 
-- [Code of Conduct](CODE_OF_CONDUCT.md) / [行为准则](CODE_OF_CONDUCT_zh.md)
-- [Contributing](CONTRIBUTING.md) / [贡献指南](CONTRIBUTING_zh.md)
-- [Security Policy](SECURITY.md) / [安全策略](SECURITY_zh.md)
+- [Code of Conduct](.github/CODE_OF_CONDUCT.md) / [行为准则](.github/CODE_OF_CONDUCT_zh.md)
+- [Contributing](.github/CONTRIBUTING.md) / [贡献指南](.github/CONTRIBUTING_zh.md)
+- [Security Policy](.github/SECURITY.md) / [安全策略](.github/SECURITY_zh.md)
 
 ---

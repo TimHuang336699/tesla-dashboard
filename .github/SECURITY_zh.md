@@ -1,6 +1,6 @@
 ﻿# 瀹夊叏绛栫暐
 
-[English](../SECURITY.md)
+[English](SECURITY.md)
 
 ## 鏀寔鐨勭増鏈?
 | 鐗堟湰 | 鏀寔 |

@@ -1,6 +1,6 @@
 ﻿# 濡備綍涓?Tesla Dashboard 璐＄尞
 
-[English](../CONTRIBUTING.md)
+[English](CONTRIBUTING.md)
 
 鎰熻阿鎮ㄥ Tesla Dashboard 鐨勮础鐚叴瓒ｏ紒鏈枃妗ｄ负璐＄尞鑰呮彁渚涙寚鍗楀拰淇℃伅銆?
 ## 琛屼负鍑嗗垯
