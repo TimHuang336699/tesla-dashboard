@@ -260,7 +260,7 @@ class PluginCenterActivity : BaseImmersiveActivity() {
             rowBinding.tvRowChevron.text = statusText(plugin, installed, compatible)
             rowBinding.root.setOnClickListener {
                 val downloading = downloadStates[plugin.id] == STATE_DOWNLOADING
-                if (!installed && compatible && plugin.downloadUrl != null && !downloading) {
+                if (!installed && compatible && plugin.downloadUrl != null && plugin.isDownloadUrlValid && !downloading) {
                     startDownload(plugin)
                 }
             }

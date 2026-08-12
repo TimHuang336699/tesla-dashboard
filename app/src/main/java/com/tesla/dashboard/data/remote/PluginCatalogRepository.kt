@@ -82,12 +82,31 @@ class PluginCatalogRepository @Inject constructor(
                 conn.inputStream.use { input ->
                     target.outputStream().use { output -> input.copyTo(output) }
                 }
+                // 安全: 校验下载文件完整性（非空 + APK magic bytes）
+                if (!isValidApk(target)) {
+                    target.delete()
+                    throw IOException("Downloaded file is not a valid APK")
+                }
                 AppLog.d(TAG, "APK downloaded: ${target.absolutePath} (${target.length()} bytes)")
             } finally {
                 conn.disconnect()
             }
             target
         }
+
+    /** 校验 APK 文件: 非空 + ZIP magic bytes (APK = ZIP) */
+    private fun isValidApk(file: File): Boolean {
+        if (file.length() < 4) return false
+        return runCatching {
+            file.inputStream().use { input ->
+                val magic = ByteArray(4)
+                input.read(magic)
+                // ZIP/APK magic: 0x50 0x4B 0x03 0x04
+                magic[0] == 0x50.toByte() && magic[1] == 0x4B.toByte() &&
+                    magic[2] == 0x03.toByte() && magic[3] == 0x04.toByte()
+            }
+        }.getOrDefault(false)
+    }
 
     /** 已下载插件文件 (不存在时返回 null) */
     fun downloadedApkFile(pluginId: String): File? {

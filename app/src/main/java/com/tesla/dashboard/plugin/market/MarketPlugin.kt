@@ -3,6 +3,7 @@ package com.tesla.dashboard.plugin.market
 import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
 import com.tesla.dashboard.plugin.PluginCategory
+import java.net.URI
 
 /**
  * 市场插件信息 (v0.5.3 插件市场在线化)
@@ -35,6 +36,15 @@ data class MarketPluginInfo(
             "utility" -> PluginCategory.UTILITY
             else -> null
         }
+
+    /** 下载 URL 是否合法 (HTTPS + 有效主机) */
+    val isDownloadUrlValid: Boolean
+        get() = downloadUrl?.let { url ->
+            runCatching {
+                val uri = URI(url)
+                uri.scheme == "https" && !uri.host.isNullOrBlank()
+            }.getOrDefault(false)
+        } ?: true // null URL is valid (no download available)
 }
 
 /**
@@ -86,6 +96,8 @@ object PluginCatalogParser {
      */
     private fun parseItem(item: com.google.gson.JsonObject): MarketPluginInfo? {
         val id = optString(item, "id").takeIf { it.isNotBlank() } ?: return null
+        // 安全: 校验插件 ID 格式（仅允许字母、数字、连字符、下划线）
+        if (!id.matches(Regex("^[a-zA-Z0-9_-]+$"))) return null
         val name = optString(item, "name").takeIf { it.isNotBlank() } ?: return null
         val description = optString(item, "description")
         val version = optString(item, "version").takeIf { it.isNotBlank() } ?: "0.0.0"
@@ -94,6 +106,8 @@ object PluginCatalogParser {
             ?: false
         val minAppVersion = optString(item, "minAppVersion").takeIf { it.isNotBlank() }
         val downloadUrl = optString(item, "downloadUrl").takeIf { it.isNotBlank() }
+        // 安全: 校验下载 URL 必须为 HTTPS
+        if (downloadUrl != null && !downloadUrl.startsWith("https://")) return null
         return MarketPluginInfo(
             id = id,
             name = name,

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    网络安全配置
+    - 禁止明文流量（已在 manifest 设置 usesCleartextTraffic=false）
+    - 证书固定：仅信任系统证书 + 指定域名的备用 pin
+    - 插件市场域名使用证书固定，防止 MITM 攻击
+-->
+<network-security-config>
+    <!-- 默认配置：禁止明文，仅信任系统证书 -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 插件市场域名：证书固定 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        <pin-set expiration="2027-12-31">
+            <!-- GitHub 中间 CA 证书 pin (SHA-256) -->
+            <pin digest="SHA-256">RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=</pin>
+            <pin digest="SHA-256">k2v657xBsOVe1PQRwOsHsw3bsGT2VzIqz5K+59sNQws=</pin>
+            <pin digest="SHA-256">WecZpqMMC4JnMGVS1COI6JPp/R7tMD3cXBA+PLcy3yk=</pin>
+        </pin-set>
+    </domain-config>
+</network-security-config>
