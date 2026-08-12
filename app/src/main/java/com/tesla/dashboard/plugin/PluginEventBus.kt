@@ -77,17 +77,45 @@ class PluginEventBus @Inject constructor() {
      * @param payload 载荷
      */
     fun publish(type: String, payload: Any? = null) {
-        val event = PluginEvent(type, payload)
-        synchronized(historyLock) {
-            recentEvents.addLast(event)
-            if (recentEvents.size > MAX_HISTORY) recentEvents.removeFirst()
-        }
         subscriptions[type]?.forEach { entry ->
+            if (entry.active) {
+                scope.launch {
+                    runCatching { entry.listener(PluginEvent(type, payload)) }
+                }
+            }
+        }
+        recordHistory(type, payload)
+    }
+
+    /**
+     * 发布事件并等待所有订阅者处理完成
+     *
+     * 与 [publish] 的区别: 挂起直到所有活跃订阅回调执行完毕。
+     * 适用于需要严格顺序保证的场景 (测试 / 关键链路)。
+     *
+     * @param type 事件类型
+     * @param payload 载荷
+     */
+    suspend fun publishAndWait(type: String, payload: Any? = null) {
+        val event = PluginEvent(type, payload)
+        val jobs = subscriptions[type]?.mapNotNull { entry ->
             if (entry.active) {
                 scope.launch {
                     runCatching { entry.listener(event) }
                 }
+            } else {
+                null
             }
+        } ?: emptyList()
+        recordHistory(type, payload)
+        jobs.forEach { it.join() }
+    }
+
+    /** 记录事件历史 (线程安全) */
+    private fun recordHistory(type: String, payload: Any?) {
+        synchronized(historyLock) {
+            recentEvents.addLast(PluginEvent(type, payload))
+            if (recentEvents.size > MAX_HISTORY) recentEvents.removeFirst()
         }
     }
 

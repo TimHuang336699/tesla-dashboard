@@ -1,11 +1,12 @@
 ﻿package com.tesla.dashboard
 
 import com.tesla.dashboard.plugin.PluginEventBus
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * 插件事件总线测试 (v0.6.0 PluginContext API)
@@ -16,8 +17,9 @@ import org.junit.Test
  * - 历史记录
  * - 多订阅者
  *
- * 注意: 事件总线使用真实 Dispatchers.Default 分发,
- * 测试必须用 runBlocking + 真实 delay 等待异步分发。
+ * 注意: 事件总线在 Dispatchers.Default 异步分发,
+ * 测试统一使用 [PluginEventBus.publishAndWait] 确定性等待订阅者完成,
+ * 不使用固定 delay, 避免 CI 慢机器上的时序竞争。
  */
 class PluginEventBusTest {
 
@@ -28,8 +30,7 @@ class PluginEventBusTest {
         bus.subscribe("ble:data_updated") { event ->
             received = event.payload as String
         }
-        bus.publish("ble:data_updated", "hello")
-        delay(100)
+        bus.publishAndWait("ble:data_updated", "hello")
         assertEquals("hello", received)
         bus.clearAll()
     }
@@ -37,40 +38,36 @@ class PluginEventBusTest {
     @Test
     fun `unsubscribed listener no longer receives events`() = runBlocking {
         val bus = PluginEventBus()
-        var count = 0
-        val sub = bus.subscribe("x") { count++ }
-        bus.publish("x")
-        delay(100)
-        assertEquals(1, count)
+        val count = AtomicInteger(0)
+        val sub = bus.subscribe("x") { count.incrementAndGet() }
+        bus.publishAndWait("x")
+        assertEquals(1, count.get())
         sub.cancel()
-        bus.publish("x")
-        delay(100)
-        assertEquals(1, count)
+        bus.publishAndWait("x")
+        assertEquals(1, count.get())
         bus.clearAll()
     }
 
     @Test
     fun `events routed only to matching type`() = runBlocking {
         val bus = PluginEventBus()
-        val received = mutableListOf<String>()
+        val received = CopyOnWriteArrayList<String>()
         bus.subscribe("type_a") { received.add("a") }
         bus.subscribe("type_b") { received.add("b") }
-        bus.publish("type_a")
-        bus.publish("type_b")
-        delay(100)
-        assertEquals(listOf("a", "b"), received)
+        bus.publishAndWait("type_a")
+        bus.publishAndWait("type_b")
+        assertEquals(listOf("a", "b"), received.sorted())
         bus.clearAll()
     }
 
     @Test
     fun `multiple subscribers all receive event`() = runBlocking {
         val bus = PluginEventBus()
-        var count = 0
-        bus.subscribe("multi") { count++ }
-        bus.subscribe("multi") { count++ }
-        bus.publish("multi")
-        delay(100)
-        assertEquals(2, count)
+        val count = AtomicInteger(0)
+        bus.subscribe("multi") { count.incrementAndGet() }
+        bus.subscribe("multi") { count.incrementAndGet() }
+        bus.publishAndWait("multi")
+        assertEquals(2, count.get())
         bus.clearAll()
     }
 
