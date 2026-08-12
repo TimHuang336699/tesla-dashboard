@@ -235,6 +235,12 @@ app/src/main/java/com/tesla/dashboard/
 
 本项目仅用于学习交流。Tesla 是 Tesla, Inc. 的商标。本应用与 Tesla 无任何关联或背书。
 
+## 社区
+
+- [行为准则](CODE_OF_CONDUCT_zh.md)
+- [贡献指南](CONTRIBUTING_zh.md)
+- [安全策略](SECURITY_zh.md)
+
 ---
 
 <p align="center">

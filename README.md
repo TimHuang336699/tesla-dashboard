@@ -234,6 +234,12 @@ app/src/main/java/com/tesla/dashboard/
 
 This project is for educational purposes. Tesla is a trademark of Tesla, Inc. This app is not affiliated with or endorsed by Tesla.
 
+## Community
+
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+
 ---
 
 <p align="center">
