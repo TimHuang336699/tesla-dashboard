@@ -2,6 +2,35 @@
 
 [English](CHANGELOG_en.md)
 
+## v0.6.0
+
+### BLE 指令安全代理
+- BleCommandProxy: 插件 BLE 指令强制入口, 抽象发送通道, 独立可测
+- 指令白名单风险分级: 只读/低风险直接放行, 高风险 (开门/空调/充电等) 须用户确认
+- 统一结果模型: Success / Rejected (永不发送) / VehicleError / Failed
+- CommandScheduler: 冲突指令严格串行, 高优先级插队 (非抢占), 防指令互相覆盖
+
+### APK 插件沙箱
+- DexClassLoader + 独立 ClassLoader 同进程加载, 插件无法访问宿主内部
+- manifest meta-data 声明插件入口类, 反射实例化
+
+### 插件签名验证
+- 证书 SHA-256 指纹: 白名单 → Trusted 放行; 自签名 → 用户确认后放行; 异常 → 拒绝
+- 兼容签名方案 v1/v2/v3
+
+### PluginContext API 增强
+- PluginEventBus: 插件间类型化事件发布/订阅, 多订阅者/取消订阅/历史回放
+
+### 安全
+- 指令代理/调度/沙箱/签名全链路单元测试覆盖 (纯 JVM)
+- AppLog 测试环境自动降级, 生产行为不变
+
+### 工程化
+- 版本号 0.6.0 (versionCode = 21)
+- 90 个单元测试全绿
+
+---
+
 ## v0.5.2
 
 ### 插件系统

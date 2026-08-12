@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.tesla.dashboard.data.local.SettingsRepository
 import com.tesla.dashboard.data.local.VehicleRepository
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
+import com.tesla.dashboard.plugin.security.BleCommandProxy
 import com.tesla.dashboard.util.AppLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +53,10 @@ class PluginManager @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val settingsRepository: SettingsRepository,
     private val bleProvider: TeslaBleProvider,
+    /** BLE 指令代理 (v0.6.0 安全核心) */
+    private val commandProxy: BleCommandProxy,
+    /** 插件事件总线 (v0.6.0) */
+    private val eventBus: PluginEventBus,
 ) {
     private val TAG = "PluginManager"
 
@@ -181,14 +186,18 @@ class PluginManager @Inject constructor(
     }
 
     /**
-     * 构建插件上下文 (v0.5.2)
+     * 构建插件上下文 (v0.5.2, v0.6.0 安全增强)
      *
      * 供插件中心 / 命令页面获取 [PluginContext] 以调用插件能力。
+     * v0.6.0: 注入 [BleCommandProxy] (指令白名单+确认+调度) 与
+     * [PluginEventBus] (插件间通信)。
      */
     fun buildContext(): PluginContext = PluginContext(
         vehicleRepository = vehicleRepository,
         settingsRepository = settingsRepository,
         bleProvider = bleProvider,
+        commandProxy = commandProxy,
+        eventBus = eventBus,
     )
 
     private fun refreshState() {

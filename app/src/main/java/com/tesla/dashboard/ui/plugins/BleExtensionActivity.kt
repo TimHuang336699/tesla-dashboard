@@ -15,9 +15,11 @@ import com.tesla.dashboard.databinding.ActivitySubSettingsBinding
 import com.tesla.dashboard.databinding.ItemSettingsRowBinding
 import com.tesla.dashboard.plugin.PluginManager
 import com.tesla.dashboard.plugin.ble.BleExtensionPlugin
+import com.tesla.dashboard.plugin.security.BleCommandProxy
 import com.tesla.dashboard.util.BaseImmersiveActivity
 import com.tesla.dashboard.util.ThemeColors
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,9 +51,55 @@ class BleExtensionActivity : BaseImmersiveActivity() {
         setContentView(binding.root)
         binding.btnBack.setOnClickListener { finish() }
         binding.tvTitle.text = getString(R.string.plugin_ble_extension_name)
+        registerCommandConfirmation()
         populateCommands()
         observeThemeColors()
         applyThemeColors(themeManager.colors.value)
+    }
+
+    /**
+     * 注册 BLE 指令用户确认回调 (v0.6.0 安全核心)
+     *
+     * 高风险指令 (充电/低功耗等) 发送前必须经用户确认:
+     * - 对话框在 UI 线程展示, 说明指令名称与来源
+     * - 用户拒绝 → 指令不发送, 返回 [CommandResult.Rejected]
+     *
+     * 页面销毁时自动注销, 避免对话框残留。
+     */
+    private fun registerCommandConfirmation() {
+        pluginManager.buildContext().commandProxy.setConfirmationProvider { spec, requester ->
+            val result = CompletableDeferred<Boolean>()
+            withContext(Dispatchers.Main) {
+                val requesterLabel = if (requester == BleCommandProxy.REQUESTER_UI) {
+                    getString(R.string.ble_ext_requester_ui)
+                } else {
+                    requester.removePrefix(BleCommandProxy.REQUESTER_PLUGIN_PREFIX)
+                }
+                MaterialAlertDialogBuilder(this@BleExtensionActivity)
+                    .setTitle(R.string.ble_ext_confirm_title)
+                    .setMessage(
+                        getString(
+                            R.string.ble_ext_confirm_message,
+                            requesterLabel,
+                            spec.name,
+                        ),
+                    )
+                    .setPositiveButton(R.string.ble_ext_confirm_allow) { _, _ ->
+                        result.complete(true)
+                    }
+                    .setNegativeButton(R.string.action_cancel) { _, _ ->
+                        result.complete(false)
+                    }
+                    .setOnCancelListener { result.complete(false) }
+                    .show()
+            }
+            result.await()
+        }
+    }
+
+    override fun onDestroy() {
+        pluginManager.buildContext().commandProxy.setConfirmationProvider(null)
+        super.onDestroy()
     }
 
     private fun populateCommands() {

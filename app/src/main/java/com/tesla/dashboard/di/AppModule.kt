@@ -6,6 +6,9 @@ import com.tesla.dashboard.data.local.dao.TripDao
 import com.tesla.dashboard.data.source.VehicleDataSource
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
 import com.tesla.dashboard.data.source.gnss.PhoneGnssProvider
+import com.tesla.dashboard.plugin.security.ApkPluginSandbox
+import com.tesla.dashboard.plugin.security.ApkSignatureResult
+import com.tesla.dashboard.plugin.security.BleCommandProxy
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -72,4 +75,46 @@ object PluginModule {
     @Provides
     @IntoSet
     fun bindBleExtensionPlugin(plugin: com.tesla.dashboard.plugin.ble.BleExtensionPlugin): com.tesla.dashboard.plugin.DashboardPlugin = plugin
+}
+
+// ===== 插件安全 (v0.6.0) =====
+
+/**
+ * 插件安全模块
+ *
+ * - [BleCommandProxy]: BLE 指令代理 (白名单 + 用户确认 + 优先级调度)
+ * - [ApkPluginSandbox]: APK 沙箱加载器 (DexClassLoader 隔离 + 签名验证)
+ *
+ * 沙箱信任策略: 证书在白名单内直接放行, 自签名证书需用户确认
+ * (信任记录由 SettingsRepository 持久化)。
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+object PluginSecurityModule {
+
+    @Provides
+    @Singleton
+    fun provideBleCommandProxy(bleProvider: TeslaBleProvider): BleCommandProxy =
+        BleCommandProxy(bleProvider)
+    @Provides
+    @Singleton
+    fun provideApkPluginSandbox(
+        @ApplicationContext context: Context,
+        settingsRepository: com.tesla.dashboard.data.local.SettingsRepository,
+    ): ApkPluginSandbox = ApkPluginSandbox(
+        context = context,
+        trustChecker = { result ->
+            // 白名单直接放行
+            if (result is ApkSignatureResult.Trusted) return@ApkPluginSandbox true
+            // 自签名: 查询用户已确认的信任记录 (协程包装为同步查询,
+            // 沙箱加载在 IO 线程执行, 此处为快速路径)
+            if (result is ApkSignatureResult.SelfSigned) {
+                return@ApkPluginSandbox kotlinx.coroutines.runBlocking {
+                    settingsRepository.getTrustedPluginFingerprints()
+                        .contains(result.fingerprintSha256)
+                }
+            }
+            false
+        },
+    )
 }

@@ -74,7 +74,7 @@ class TeslaBleProvider @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val settingsRepository: SettingsRepository,
     private val screenStateTracker: ScreenStateTracker,
-) : VehicleDataSource {
+) : VehicleDataSource, com.tesla.dashboard.plugin.security.BleCommandExecutor {
 
     private val TAG = "TeslaBleProvider"
 
@@ -1171,7 +1171,7 @@ class TeslaBleProvider @Inject constructor(
      * @param payload 现代协议 Action protobuf 编码 (由 TeslaBleMessages.encodeXxx 生成)
      * @return 执行状态: OP_STATUS_OK(0)=成功, 其他=车辆返回错误码, null=超时/连接失败
      */
-    suspend fun sendExtendedCommand(payload: ByteArray): Int? = sessionMutex.withLock {
+    override suspend fun sendExtendedCommand(payload: ByteArray): Int? = sessionMutex.withLock {
         val currentVin = vin
         if (currentVin.isNullOrBlank()) return@withLock null
         val privateKey = keyManager.loadPrivateKey() ?: return@withLock null

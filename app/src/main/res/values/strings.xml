@@ -339,6 +339,13 @@
     <string name="ble_ext_not_enabled">请先在插件中心启用“BLE 拓展命令”插件</string>
     <string name="ble_ext_no_vehicle">尚未设置当前车辆，请先在设置中配对车辆</string>
 
+    <!-- ===== BLE 指令确认对话框 (v0.6.0 安全核心) ===== -->
+    <string name="ble_ext_confirm_title">确认车辆指令</string>
+    <string name="ble_ext_confirm_message">来源：%1$s\n指令：%2$s\n\n该指令将直接控制您的车辆，是否继续？</string>
+    <string name="ble_ext_confirm_allow">允许执行</string>
+    <string name="ble_ext_requester_ui">仪表盘界面</string>
+    <string name="ble_ext_rejected">指令已被安全代理拒绝</string>
+
     <!-- ===== BLE 拓展命令: 读取车辆数据 (v0.5.2) ===== -->
     <string name="ble_ext_vehicle_data">读取车辆数据</string>
     <string name="ble_ext_vehicle_data_summary">充电状态 / 续航 / 温度 / 车速（现代协议）</string>

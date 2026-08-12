@@ -44,9 +44,12 @@ object AppLog {
 
     /**
      * 写入 Debug 级日志 (同步输出 logcat + 内存缓冲)
+     *
+     * logcat 调用在单元测试环境 (android.util.Log 未 mock) 下自动降级,
+     * 仅保留内存缓冲, 不影响生产行为。
      */
     fun d(tag: String, message: String) {
-        Log.d(tag, message)
+        runCatching { Log.d(tag, message) }
         append("D", tag, message)
     }
 
@@ -54,7 +57,7 @@ object AppLog {
      * 写入 Warning 级日志
      */
     fun w(tag: String, message: String) {
-        Log.w(tag, message)
+        runCatching { Log.w(tag, message) }
         append("W", tag, message)
     }
 
@@ -62,8 +65,12 @@ object AppLog {
      * 写入 Error 级日志 (含异常堆栈)
      */
     fun e(tag: String, message: String, throwable: Throwable? = null) {
-        Log.e(tag, message, throwable)
-        val stack = throwable?.let { Log.getStackTraceString(it) } ?: ""
+        runCatching { Log.e(tag, message, throwable) }
+        val stack = if (throwable != null) {
+            runCatching { Log.getStackTraceString(throwable) }.getOrNull() ?: ""
+        } else {
+            ""
+        }
         append("E", tag, if (stack.isBlank()) message else "$message\n$stack")
     }
 

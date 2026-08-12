@@ -315,6 +315,11 @@
     <string name="ble_ext_failed_unsupported">Vehicle rejected: firmware unsupported or vehicle state not allowed</string>
     <string name="ble_ext_not_enabled">Please enable the \u0022BLE extension commands\u0022 plugin in Plugin Center first</string>
     <string name="ble_ext_no_vehicle">No current vehicle set. Pair a vehicle in Settings first</string>
+    <string name="ble_ext_confirm_title">Confirm vehicle command</string>
+    <string name="ble_ext_confirm_message">Source: %1$s\nCommand: %2$s\n\nThis command will directly control your vehicle. Continue?</string>
+    <string name="ble_ext_confirm_allow">Allow</string>
+    <string name="ble_ext_requester_ui">Dashboard UI</string>
+    <string name="ble_ext_rejected">Command blocked by security proxy</string>
     <string name="ble_ext_vehicle_data">Read vehicle data</string>
     <string name="ble_ext_vehicle_data_summary">Charge state / range / temperature / speed (modern protocol)</string>
     <string name="ble_ext_data_charging">Charge state</string>

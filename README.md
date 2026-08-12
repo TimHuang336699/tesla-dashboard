@@ -63,6 +63,12 @@ Tesla Dashboard is a native Android application that turns your device into a re
 - **BLE Extension Plugin**: charge limit / start-stop / AC temp / charge port / low-power mode
 - **Plugin Marketplace**: fetches `plugin-catalog.json` from GitHub, one-tap APK download, version compatibility check
 
+### Security (v0.6.0)
+- **BLE Command Proxy**: mandatory gateway for all vehicle commands — risk-classified whitelist, high-risk commands require user confirmation, conflicting commands execute strictly serially
+- **APK Plugin Sandbox**: isolated `ClassLoader` (DexClassLoader) so external plugins cannot reach host internals
+- **Plugin Signature Verification**: SHA-256 certificate fingerprint, whitelist / self-signed user-confirmation / refuse
+- **Plugin Event Bus**: typed pub/sub between plugins for decoupled cross-plugin communication
+
 ### Vehicle Data (Modern carserver Protocol, v0.5.2)
 - Read: charge state / rated & estimated range / charge current / in-outside temp / speed / power / gear / odometer / heading
 - Fall back to "vehicle rejected" on old firmware without modern protocol support

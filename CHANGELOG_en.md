@@ -2,6 +2,35 @@
 
 [中文](CHANGELOG.md)
 
+## v0.6.0
+
+### BLE Command Proxy
+- BleCommandProxy: mandatory gateway for plugin BLE commands, testable send abstraction
+- Risk-classified whitelist: read-only/low-risk pass through; high-risk (unlock/AC/charging) need user confirmation
+- Unified result model: Success / Rejected (never sent) / VehicleError / Failed
+- CommandScheduler: strictly serial execution of conflicting commands, high-priority queue-jump (non-preemptive)
+
+### APK Plugin Sandbox
+- DexClassLoader with isolated ClassLoader; plugins cannot reach host internals
+- Plugin entry class declared via manifest meta-data, instantiated via reflection
+
+### Plugin Signature Verification
+- SHA-256 cert fingerprint: whitelisted → Trusted; self-signed → after user confirmation; abnormal → refused
+- Works across signing schemes v1/v2/v3
+
+### PluginContext API Enhancements
+- PluginEventBus: typed event pub/sub between plugins, multi-subscriber/unsubscribe/history replay
+
+### Security
+- Full unit-test coverage of proxy/scheduler/sandbox/signature chain (pure JVM)
+- AppLog degrades gracefully in test env; production behavior unchanged
+
+### Engineering
+- Version 0.6.0 (versionCode = 21)
+- 90 unit tests green
+
+---
+
 ## v0.5.2
 
 ### Plugin System

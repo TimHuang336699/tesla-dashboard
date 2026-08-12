@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -68,6 +69,9 @@ class SettingsRepository @Inject constructor(
 
     /** 旧版车型键 (v0.5.1 迁移后不再写入) */
     private val BATTERY_MODEL = stringPreferencesKey("battery_model")
+
+    /** 用户已确认信任的插件签名证书 SHA-256 指纹集合 (v0.6.0) */
+    private val TRUSTED_PLUGIN_FINGERPRINTS = stringSetPreferencesKey("trusted_plugin_fingerprints")
 
     // ===== Theme Mode =====
 
@@ -154,6 +158,43 @@ class SettingsRepository @Inject constructor(
     suspend fun saveShowTurnSignals(show: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[SHOW_TURN_SIGNALS] = show
+        }
+    }
+
+    // ===== Plugin Trust (v0.6.0 插件签名信任) =====
+
+    /**
+     * 用户已确认信任的插件签名证书指纹集合
+     *
+     * 自签名证书插件首次安装时提示用户确认, 确认后指纹持久化,
+     * 后续版本升级无需重复确认 (指纹不变)。
+     *
+     * @return SHA-256 指纹集合 (大写十六进制, 冒号分隔)
+     */
+    suspend fun getTrustedPluginFingerprints(): Set<String> =
+        context.settingsDataStore.data.first()[TRUSTED_PLUGIN_FINGERPRINTS] ?: emptySet()
+
+    /**
+     * 添加信任的插件签名证书指纹
+     *
+     * @param fingerprint SHA-256 指纹 (大写十六进制, 冒号分隔)
+     */
+    suspend fun addTrustedPluginFingerprint(fingerprint: String) {
+        context.settingsDataStore.edit { prefs ->
+            val current = prefs[TRUSTED_PLUGIN_FINGERPRINTS] ?: emptySet()
+            prefs[TRUSTED_PLUGIN_FINGERPRINTS] = current + fingerprint
+        }
+    }
+
+    /**
+     * 移除信任的插件签名证书指纹 (用户撤销信任)
+     *
+     * @param fingerprint SHA-256 指纹
+     */
+    suspend fun removeTrustedPluginFingerprint(fingerprint: String) {
+        context.settingsDataStore.edit { prefs ->
+            val current = prefs[TRUSTED_PLUGIN_FINGERPRINTS] ?: emptySet()
+            prefs[TRUSTED_PLUGIN_FINGERPRINTS] = current - fingerprint
         }
     }
 
