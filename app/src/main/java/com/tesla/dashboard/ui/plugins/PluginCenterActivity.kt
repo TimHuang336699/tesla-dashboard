@@ -1,4 +1,4 @@
-package com.tesla.dashboard.ui.plugins
+﻿package com.tesla.dashboard.ui.plugins
 
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -37,14 +37,14 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * 插件中心 (v0.5.2 插件系统 + v0.5.3 插件市场在线化)
+ * 鎻掍欢涓績 (v0.5.2 鎻掍欢绯荤粺 + v0.5.3 鎻掍欢甯傚満鍦ㄧ嚎鍖?
  *
- * 两个页签:
- * - "已安装": 展示所有已注册插件 (按分类分组), 支持启用/停用;
- *   点击已启用的 BLE 拓展命令插件进入命令页面 [BleExtensionActivity]
- * - "市场": 从 [PluginCatalogRepository.CATALOG_URL] 拉取 plugin-catalog.json,
- *   展示外部可选插件, 支持刷新 / 兼容性检查 / APK 下载
- *   (动态加载仍在安全审计中)
+ * 涓や釜椤电:
+ * - "宸插畨瑁?: 灞曠ず鎵€鏈夊凡娉ㄥ唽鎻掍欢 (鎸夊垎绫诲垎缁?, 鏀寔鍚敤/鍋滅敤;
+ *   鐐瑰嚮宸插惎鐢ㄧ殑 BLE 鎷撳睍鍛戒护鎻掍欢杩涘叆鍛戒护椤甸潰 [BleExtensionActivity]
+ * - "甯傚満": 浠?[PluginCatalogRepository.CATALOG_URL] 鎷夊彇 plugin-catalog.json,
+ *   灞曠ず澶栭儴鍙€夋彃浠? 鏀寔鍒锋柊 / 鍏煎鎬ф鏌?/ APK 涓嬭浇
+ *   (鍔ㄦ€佸姞杞戒粛鍦ㄥ畨鍏ㄥ璁′腑)
  */
 @AndroidEntryPoint
 class PluginCenterActivity : BaseImmersiveActivity() {
@@ -57,16 +57,21 @@ class PluginCenterActivity : BaseImmersiveActivity() {
     @Inject
     lateinit var catalogRepository: PluginCatalogRepository
 
-    /** 市场插件列表 */
+    /** 甯傚満鎻掍欢鍒楄〃 */
     private var marketPlugins: List<MarketPluginInfo> = emptyList()
 
-    /** 市场加载状态: loading / error / null */
+    /** 甯傚満鍔犺浇鐘舵€? loading / error / null */
     private var marketStatus: String? = null
 
-    /** 下载状态集合 (插件 ID → "downloading" | "downloaded") */
+    /** 涓嬭浇鐘舵€侀泦鍚?(鎻掍欢 ID 鈫?鐘舵€? */
     private val downloadStates = mutableMapOf<String, String>()
 
-    /** 正在运行的市场加载 job (用于取消并发请求) */
+    companion object {
+        const val STATE_DOWNLOADING = "downloading"
+        const val STATE_DOWNLOADED = "downloaded"
+    }
+
+    /** 姝ｅ湪杩愯鐨勫競鍦哄姞杞?job (鐢ㄤ簬鍙栨秷骞跺彂璇锋眰) */
     private var marketJob: KJob? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,7 +111,7 @@ class PluginCenterActivity : BaseImmersiveActivity() {
         }
     }
 
-    // ===== 已安装页签 =====
+    // ===== 宸插畨瑁呴〉绛?=====
 
     private fun observePlugins() {
         lifecycleScope.launch {
@@ -126,7 +131,7 @@ class PluginCenterActivity : BaseImmersiveActivity() {
         var lastCategory: PluginCategory? = null
 
         states.forEach { state ->
-            // 分类分组头
+            // 鍒嗙被鍒嗙粍澶?
             val category = state.plugin.category
             if (category != lastCategory) {
                 lastCategory = category
@@ -139,10 +144,10 @@ class PluginCenterActivity : BaseImmersiveActivity() {
             rowBinding.tvRowTitle.text = getString(state.plugin.nameRes)
             val summary = buildString {
                 append(getString(state.plugin.descriptionRes))
-                append("  ·  v")
+                append("  路  v")
                 append(state.plugin.version)
                 if (state.plugin.isExperimental) {
-                    append("  ·  ")
+                    append("  路  ")
                     append(getString(R.string.plugin_experimental_tag))
                 }
             }
@@ -152,7 +157,7 @@ class PluginCenterActivity : BaseImmersiveActivity() {
                 pluginManager.setEnabled(state.plugin.id, isChecked)
             }
             rowBinding.root.setOnClickListener {
-                // 点击行: 进入 BLE 拓展命令页面 (仅当启用)
+                // 鐐瑰嚮琛? 杩涘叆 BLE 鎷撳睍鍛戒护椤甸潰 (浠呭綋鍚敤)
                 if (state.enabled && state.plugin is BleExtensionPlugin) {
                     startActivity(Intent(this, BleExtensionActivity::class.java))
                 } else {
@@ -165,12 +170,12 @@ class PluginCenterActivity : BaseImmersiveActivity() {
         applyThemeColors(currentColors)
     }
 
-    // ===== 市场页签 =====
+    // ===== 甯傚満椤电 =====
 
     /**
-     * 拉取市场目录并渲染
+     * 鎷夊彇甯傚満鐩綍骞舵覆鏌?
      *
-     * @param forceRefresh 强制联网刷新 (忽略缓存)
+     * @param forceRefresh 寮哄埗鑱旂綉鍒锋柊 (蹇界暐缂撳瓨)
      */
     private fun loadMarket(forceRefresh: Boolean) {
         marketJob?.cancel()
@@ -198,7 +203,7 @@ class PluginCenterActivity : BaseImmersiveActivity() {
         container.removeAllViews()
         val inflater = LayoutInflater.from(this)
 
-        // 刷新行
+        // 鍒锋柊琛?
         val refreshBinding = ItemSettingsRowBinding.inflate(inflater, container, false)
         refreshBinding.tvRowTitle.setText(R.string.plugin_market_refresh)
         refreshBinding.tvRowSummary.text = getString(R.string.plugin_market_source_summary)
@@ -206,7 +211,7 @@ class PluginCenterActivity : BaseImmersiveActivity() {
         refreshBinding.root.setOnClickListener { loadMarket(forceRefresh = true) }
         container.addView(refreshBinding.root)
 
-        // 说明行
+        // 璇存槑琛?
         val noteBinding = ItemSettingsRowBinding.inflate(inflater, container, false)
         noteBinding.tvRowTitle.setText(R.string.plugin_market_note_title)
         noteBinding.tvRowSummary.setText(R.string.plugin_market_note_summary)
@@ -237,24 +242,24 @@ class PluginCenterActivity : BaseImmersiveActivity() {
             val compatible = VersionUtils.meetsMinimum(BuildConfig.VERSION_NAME, plugin.minAppVersion)
             val summary = buildString {
                 append(plugin.description.ifBlank { getString(R.string.plugin_market_no_description) })
-                append("  ·  v")
+                append("  路  v")
                 append(plugin.version)
-                append("  ·  ")
+                append("  路  ")
                 append(plugin.categoryEnum?.labelRes?.let { getString(it) }
                     ?: getString(R.string.plugin_market_category_unknown))
                 if (plugin.experimental) {
-                    append("  ·  ")
+                    append("  路  ")
                     append(getString(R.string.plugin_experimental_tag))
                 }
                 if (plugin.minAppVersion != null && !compatible) {
-                    append("  ·  ")
+                    append("  路  ")
                     append(getString(R.string.plugin_market_incompatible, plugin.minAppVersion))
                 }
             }
             rowBinding.tvRowSummary.text = summary
             rowBinding.tvRowChevron.text = statusText(plugin, installed, compatible)
             rowBinding.root.setOnClickListener {
-                val downloading = downloadStates[plugin.id] == "downloading"
+                val downloading = downloadStates[plugin.id] == STATE_DOWNLOADING
                 if (!installed && compatible && plugin.downloadUrl != null && !downloading) {
                     startDownload(plugin)
                 }
@@ -267,16 +272,16 @@ class PluginCenterActivity : BaseImmersiveActivity() {
     }
 
     /**
-     * 根据当前主题重刷市场页签各行右侧图标颜色
-     * - 刷新行 → accentCyan
-     * - 插件行 → 可下载/已安装为 accentCyan, 否则 textSecondary
+     * 鏍规嵁褰撳墠涓婚閲嶅埛甯傚満椤电鍚勮鍙充晶鍥炬爣棰滆壊
+     * - 鍒锋柊琛?鈫?accentCyan
+     * - 鎻掍欢琛?鈫?鍙笅杞?宸插畨瑁呬负 accentCyan, 鍚﹀垯 textSecondary
      */
     private fun tintMarketChevrons(c: ThemeColors) {
         val container = binding.marketContainer
         if (container.childCount < 2) return
-        // 刷新行 (index 0)
+        // 鍒锋柊琛?(index 0)
         container.getChildAt(0).findViewById<TextView>(R.id.tvRowChevron)?.setTextColor(c.accentCyan)
-        // 插件行 (从 index 2 开始)
+        // 鎻掍欢琛?(浠?index 2 寮€濮?
         for (i in 2 until container.childCount) {
             val child = container.getChildAt(i)
             val id = child.tag as? String ?: continue
@@ -289,12 +294,12 @@ class PluginCenterActivity : BaseImmersiveActivity() {
         }
     }
 
-    /** 行右侧状态文本 (下载 / 已下载 / 已安装 / 不兼容) */
+    /** 琛屽彸渚х姸鎬佹枃鏈?(涓嬭浇 / 宸蹭笅杞?/ 宸插畨瑁?/ 涓嶅吋瀹? */
     private fun statusText(plugin: MarketPluginInfo, installed: Boolean, compatible: Boolean): String = when {
         installed -> getString(R.string.plugin_market_action_installed)
         !compatible -> getString(R.string.plugin_market_incompatible_short)
-        downloadStates[plugin.id] == "downloading" -> getString(R.string.plugin_market_action_downloading)
-        downloadStates[plugin.id] == "downloaded" -> getString(R.string.plugin_market_action_downloaded)
+        downloadStates[plugin.id] == STATE_DOWNLOADING -> getString(R.string.plugin_market_action_downloading)
+        downloadStates[plugin.id] == STATE_DOWNLOADED -> getString(R.string.plugin_market_action_downloaded)
         plugin.downloadUrl != null -> getString(R.string.plugin_market_action_download)
         else -> "—"
     }
@@ -312,18 +317,18 @@ class PluginCenterActivity : BaseImmersiveActivity() {
     }
 
     /**
-     * 下载插件 APK 到应用私有目录 (filesDir/plugins/<id>.apk)
+     * 涓嬭浇鎻掍欢 APK 鍒板簲鐢ㄧ鏈夌洰褰?(filesDir/plugins/<id>.apk)
      */
     private fun startDownload(plugin: MarketPluginInfo) {
         val url = plugin.downloadUrl ?: return
-        downloadStates[plugin.id] = "downloading"
+        downloadStates[plugin.id] = STATE_DOWNLOADING
         renderMarket()
         lifecycleScope.launch {
             val result = runCatching {
                 catalogRepository.downloadApk(url, "${plugin.id}.apk")
             }
             result.onSuccess {
-                downloadStates[plugin.id] = "downloaded"
+                downloadStates[plugin.id] = STATE_DOWNLOADED
                 AppLog.d("PluginMarket", "Downloaded ${plugin.id}")
                 Toast.makeText(applicationContext, R.string.plugin_market_download_done, Toast.LENGTH_SHORT).show()
             }.onFailure {
@@ -357,3 +362,4 @@ class PluginCenterActivity : BaseImmersiveActivity() {
         }
     }
 }
+

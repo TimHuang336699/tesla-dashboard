@@ -185,7 +185,7 @@ class TeslaBleManager @Inject constructor(
 
         try {
             return withTimeout(timeoutMs) {
-                scanDeferred!!.await()
+                requireNotNull(scanDeferred).await()
             }
         } catch (e: TimeoutCancellationException) {
             // 诊断: 记录扫描期间所有可见设备, 帮助定位车辆广播异常
@@ -261,7 +261,7 @@ class TeslaBleManager @Inject constructor(
 
         try {
             withTimeout(timeoutMs) {
-                connectionDeferred!!.await()
+                requireNotNull(connectionDeferred).await()
             }
         } catch (e: TimeoutCancellationException) {
             AppLog.w(TAG, "GATT connect timeout to ${device.address}, timeout=${timeoutMs}ms")
