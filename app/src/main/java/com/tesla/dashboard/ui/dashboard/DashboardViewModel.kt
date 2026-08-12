@@ -3,6 +3,7 @@ package com.tesla.dashboard.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tesla.dashboard.data.local.SettingsRepository
+import com.tesla.dashboard.data.local.VehicleRepository
 import com.tesla.dashboard.data.model.VehicleData
 import com.tesla.dashboard.data.repository.VehicleDataRepository
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
@@ -58,27 +59,31 @@ data class DashboardUiState(
  *
  * ## 瞬时电耗 (v0.4)
  * 基于相邻两帧数据: 电池 SOC 下降量 × 电池容量 / 里程表差值,
- * 车型代码来自设置 (SettingsRepository.batteryModelFlow), 无车型时电耗为 null。
+ * 车型代码来自当前选中车辆 (VehicleRepository, v0.5.1 多车), 无车型时电耗为 null。
  *
  * @param vehicleDataRepository 车辆数据仓库
- * @param settingsRepository 设置持久化仓库 (单位系统/车型)
+ * @param settingsRepository 设置持久化仓库 (单位系统)
+ * @param vehicleRepository 车辆仓库 (当前车辆车型)
  */
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val vehicleDataRepository: VehicleDataRepository,
     settingsRepository: SettingsRepository,
+    vehicleRepository: VehicleRepository,
 ) : ViewModel() {
 
     /**
      * 车辆实时数据 + 单位系统 + 瞬时电耗合并流
      *
-     * 单位/车型切换时 (DataStore 变化) 重新发射, UI 层实时换算刷新, 无需重建 Activity。
+     * 单位/车型/当前车辆切换时 (DataStore 变化) 重新发射, UI 层实时换算刷新, 无需重建 Activity。
      */
     val uiState: StateFlow<DashboardUiState> = combine(
         vehicleDataRepository.observeVehicleData(),
         settingsRepository.unitSystemFlow,
-        settingsRepository.batteryModelFlow,
-    ) { data, unitCode, modelCode ->
+        vehicleRepository.vehiclesFlow,
+        vehicleRepository.currentVinFlow,
+    ) { data, unitCode, vehicles, currentVin ->
+        val modelCode = vehicles.find { it.vin == currentVin }?.batteryModel.orEmpty()
         DashboardUiState(
             vehicleData = data,
             unitSystem = UnitSystem.fromCode(unitCode),

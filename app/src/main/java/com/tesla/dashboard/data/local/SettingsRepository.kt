@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,12 +25,14 @@ private val Context.settingsDataStore by preferencesDataStore(name = "tesla_sett
  * 应用设置仓库 — 基于 DataStore Preferences
  *
  * 负责持久化用户在设置页面配置的各项参数,包括:
- * - [TESLA_VIN] Tesla 车辆识别号(VIN),用于 BLE 扫描和配对
  * - [THEME_MODE] 主题模式(深色 / 浅色 / 跟随系统),默认 "system"
- * - [BATTERY_MODEL] 车型代码(用于查询电池容量,如 "model_3_long_range")
+ * - [APP_LANGUAGE] 应用语言,默认 "system"
+ * - [UNIT_SYSTEM] 单位系统,默认 "metric"
+ * - [SHOW_TURN_SIGNALS] 转向灯显示开关,默认开启
  *
- * 注意: BLE 密钥对和配对信息由 [com.tesla.dashboard.data.source.ble.TeslaKeyManager] 单独管理,
- * 不在此仓库中存储。
+ * 注意: 已配对车辆信息 (VIN / 车型 / 车辆公钥) 由
+ * [com.tesla.dashboard.data.local.VehicleRepository] 统一管理 (v0.5.1 多车支持),
+ * 旧版存储的 `tesla_vin` / `battery_model` 通过 [consumeLegacyVinAndBatteryModel] 一次性迁移。
  *
  * ## 读写方式
  * - 读取: 每个设置项暴露一个 [Flow],数据变化时自动发射新值
@@ -48,14 +51,8 @@ class SettingsRepository @Inject constructor(
 
     // ===== Preferences Keys =====
 
-    /** Tesla 车辆识别号(VIN),17 位字母数字 */
-    private val TESLA_VIN = stringPreferencesKey("tesla_vin")
-
     /** 主题模式: "dark"(深色) / "light"(浅色) / "system"(跟随系统) */
     private val THEME_MODE = stringPreferencesKey("theme_mode")
-
-    /** 车型代码,用于查询电池容量(如 "model_3_long_range") */
-    private val BATTERY_MODEL = stringPreferencesKey("battery_model")
 
     /** 应用语言: "system"(跟随系统) / "zh"(中文) / "en"(English) */
     private val APP_LANGUAGE = stringPreferencesKey("app_language")
@@ -66,27 +63,11 @@ class SettingsRepository @Inject constructor(
     /** 是否显示转向灯指示 (v0.5.0, 默认开启) */
     private val SHOW_TURN_SIGNALS = booleanPreferencesKey("show_turn_signals")
 
-    // ===== VIN =====
+    /** 旧版 VIN 键 (v0.5.1 迁移后不再写入) */
+    private val TESLA_VIN = stringPreferencesKey("tesla_vin")
 
-    /**
-     * 观察 VIN 设置流
-     *
-     * @return VIN 字符串 Flow,未设置时发射空字符串
-     */
-    val vinFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
-        prefs[TESLA_VIN] ?: ""
-    }
-
-    /**
-     * 保存 Tesla VIN
-     *
-     * @param vin 17 位车辆识别号
-     */
-    suspend fun saveVin(vin: String) {
-        context.settingsDataStore.edit { prefs ->
-            prefs[TESLA_VIN] = vin.trim()
-        }
-    }
+    /** 旧版车型键 (v0.5.1 迁移后不再写入) */
+    private val BATTERY_MODEL = stringPreferencesKey("battery_model")
 
     // ===== Theme Mode =====
 
@@ -176,26 +157,26 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    // ===== Battery Model =====
+    // ===== Legacy Migration (v0.5.1 多车迁移) =====
 
     /**
-     * 观察车型代码设置流
+     * 读取并清除旧版 VIN / 车型设置 (v0.5.1 多车迁移用)
      *
-     * @return 车型代码 Flow(如 "model_3_long_range"),未设置时发射空字符串
-     */
-    val batteryModelFlow: Flow<String> = context.settingsDataStore.data.map { prefs ->
-        prefs[BATTERY_MODEL] ?: ""
-    }
-
-    /**
-     * 保存车型代码
+     * v0.5.0 及之前, VIN 和车型代码直接存储在设置中; 多车支持后由
+     * [com.tesla.dashboard.data.local.VehicleRepository] 按车辆管理。
+     * 本方法读取旧值后立即删除, 供迁移流程写入对应车辆的 VehicleInfo。
      *
-     * @param batteryModel 车型代码,对应 [com.tesla.dashboard.data.model.BatteryConfig] 中的 key
+     * @return (vin, batteryModel) 旧版 VIN 与车型代码, 无旧数据时返回 null
      */
-    suspend fun saveBatteryModel(batteryModel: String) {
-        context.settingsDataStore.edit { prefs ->
-            prefs[BATTERY_MODEL] = batteryModel
+    suspend fun consumeLegacyVinAndBatteryModel(): Pair<String, String>? {
+        val prefs = context.settingsDataStore.data.first()
+        val vin = prefs[TESLA_VIN]?.takeIf { it.isNotBlank() } ?: return null
+        val batteryModel = prefs[BATTERY_MODEL] ?: ""
+        context.settingsDataStore.edit { p ->
+            p.remove(TESLA_VIN)
+            p.remove(BATTERY_MODEL)
         }
+        return vin to batteryModel
     }
 
     companion object {

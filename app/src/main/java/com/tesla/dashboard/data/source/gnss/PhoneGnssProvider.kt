@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -72,6 +73,23 @@ class PhoneGnssProvider @Inject constructor(
     private var tripDistanceMeters: Float = 0f
 
     /**
+     * 定位更新间隔 (v0.5.2 数据刷新频率联动)
+     *
+     * 读取设置页 "数据刷新频率" (SharedPreferences `settings` 的 `refresh_rate`),
+     * 变更时实时更新定位请求间隔。
+     */
+    private val _refreshRateMs = MutableStateFlow(DEFAULT_UPDATE_INTERVAL_MS)
+
+    /** SharedPreferences 监听 — 设置页修改刷新频率后即时生效 */
+    private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key == REFRESH_RATE_PREF_KEY) {
+            _refreshRateMs.value = prefs.getInt(REFRESH_RATE_PREF_KEY, DEFAULT_UPDATE_INTERVAL_MS.toInt())
+                .toLong()
+                .coerceIn(MIN_REFRESH_RATE_MS, MAX_REFRESH_RATE_MS)
+        }
+    }
+
+    /**
      * 设置降级开关 (v0.5.0)
      *
      * 由 [com.tesla.dashboard.data.repository.VehicleDataRepository] 调用:
@@ -114,29 +132,31 @@ class PhoneGnssProvider @Inject constructor(
     override fun observeData(): Flow<VehicleData> = flow {
         // 初始空帧 — combine 合并流需要每个源先发射一次
         emit(VehicleData(dataSource = DataSource.GNSS, isGnssActive = false))
-        // 跟随开关动态启停 (修复: 原实现仅在流启动时检查一次 enabled)
+        // 跟随开关与刷新频率动态启停定位 (v0.5.2: 频率由设置页"数据刷新频率"驱动)
         emitAll(
-            _enabled.flatMapLatest { enabled ->
-                if (enabled && hasLocationPermission()) {
-                    locationFlow()
-                } else {
-                    emptyFlow()
-                }
-            },
+            combine(_enabled, _refreshRateMs) { enabled, rate -> enabled to rate }
+                .flatMapLatest { (enabled, rate) ->
+                    if (enabled && hasLocationPermission()) {
+                        locationFlow(rate)
+                    } else {
+                        emptyFlow()
+                    }
+                },
         )
     }
 
     /**
      * 定位数据流 — 仅在被 [observeData] 的 flatMapLatest 激活期间存在
+     *
+     * @param intervalMs 定位更新间隔 (由设置页刷新频率驱动, v0.5.2)
      */
     @SuppressLint("MissingPermission") // 调用方已检查 ACCESS_FINE_LOCATION 权限
-    private fun locationFlow(): Flow<VehicleData> = callbackFlow {
-        // 高精度定位请求, 更新间隔 1s
+    private fun locationFlow(intervalMs: Long): Flow<VehicleData> = callbackFlow {
         val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            UPDATE_INTERVAL_MS,
+            intervalMs,
         ).apply {
-            setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS)
+            setMinUpdateIntervalMillis(intervalMs)
         }.build()
 
         // 定位回调 — 将 LocationResult 转换为 VehicleData 并发送到 Flow
@@ -219,6 +239,8 @@ class PhoneGnssProvider @Inject constructor(
         lastLocation = null
         tripDistanceMeters = 0f
         _isAvailable.value = false
+        // 注册设置监听 (刷新频率联动, v0.5.2)
+        registerRefreshRateListener()
     }
 
     override suspend fun stop() {
@@ -228,9 +250,38 @@ class PhoneGnssProvider @Inject constructor(
         lastLocation = null
     }
 
+    /**
+     * 注册刷新频率监听 (v0.5.2)
+     *
+     * 幂等: 监听 SharedPreferences 的 `refresh_rate` 键, 变更时更新
+     * [_refreshRateMs]; 初始同步一次当前设置值。
+     */
+    private fun registerRefreshRateListener() {
+        runCatching {
+            val prefs = context.getSharedPreferences(SETTINGS_PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+            prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+            _refreshRateMs.value = prefs.getInt(REFRESH_RATE_PREF_KEY, DEFAULT_UPDATE_INTERVAL_MS.toInt())
+                .toLong()
+                .coerceIn(MIN_REFRESH_RATE_MS, MAX_REFRESH_RATE_MS)
+        }
+    }
+
     companion object {
-        /** 定位更新间隔(ms) */
-        private const val UPDATE_INTERVAL_MS = 1_000L
+        /** 定位更新间隔(ms) 默认值 */
+        private const val DEFAULT_UPDATE_INTERVAL_MS = 1_000L
+
+        /** 刷新频率下限 (500ms) — 避免过度定位耗电 */
+        private const val MIN_REFRESH_RATE_MS = 500L
+
+        /** 刷新频率上限 (60s) */
+        private const val MAX_REFRESH_RATE_MS = 60_000L
+
+        /** 设置页 SharedPreferences 文件名 */
+        private const val SETTINGS_PREFS_NAME = "settings"
+
+        /** 设置页刷新频率键 */
+        private const val REFRESH_RATE_PREF_KEY = "refresh_rate"
 
         /** m/s 转 km/h 的换算系数 */
         private const val MS_TO_KMH = 3.6f

@@ -171,7 +171,6 @@
     <string name="dialog_reset_confirm">重置</string>
     <string name="toast_settings_reset">设置已重置</string>
     <string name="toast_cache_cleared">缓存已清除</string>
-    <string name="toast_export_raw_developing">导出原始数据功能开发中…</string>
     <string name="about_description">Tesla BLE 直连仪表盘应用。通过蓝牙安全连接车辆，实时显示车速、电量、温度与行程数据。</string>
     <string name="settings_export_logs">导出诊断日志</string>
     <string name="settings_logs_share_subject">Tesla Dashboard 诊断日志</string>
@@ -255,6 +254,17 @@
     <string name="error_ble_permissions">需要蓝牙权限,请授予后重试</string>
     <string name="success_unpaired">已解除配对</string>
 
+    <!-- ===== 多车管理 (v0.5.1) ===== -->
+    <string name="settings_select_vehicle">选择当前车辆</string>
+    <string name="settings_add_vehicle">添加车辆</string>
+    <string name="settings_remove_vehicle">删除</string>
+    <string name="settings_remove_vehicle_title">解绑车辆</string>
+    <string name="settings_remove_vehicle_confirm">解绑后将无法通过蓝牙连接该车辆,确定解绑吗?</string>
+    <string name="settings_remove_vehicle_confirm_with_vin">解绑 %1$s 后,将无法通过蓝牙连接该车辆,确定解绑吗?</string>
+    <string name="settings_paired_vehicles">已配对车辆</string>
+    <string name="settings_no_vehicles">暂无已配对车辆,输入 VIN 并点击"配对车辆"添加</string>
+    <string name="action_cancel">取消</string>
+
     <!-- ===== 格式化模板 ===== -->
     <string name="format_speed_value">%1$.0f %2$s</string>
     <string name="format_distance_value">%1$.1f %2$s</string>
@@ -268,5 +278,91 @@
     <string name="pairing_nfc_instruction_highland">请在中控台无线充电板上方刷 NFC 卡片</string>
     <string name="pairing_nfc_instruction_legacy">请在前排中央扶手杯架后方刷 NFC 卡片</string>
     <string name="pairing_nfc_instruction_default">请在车辆中控台刷 NFC 卡片确认配对</string>
+
+    <!-- ===== 插件系统 (v0.5.2) ===== -->
+    <string name="plugin_category_ble_command">BLE 车辆命令</string>
+    <string name="plugin_category_utility">工具</string>
+    <string name="plugin_ble_extension_name">BLE 拓展命令</string>
+    <string name="plugin_ble_extension_desc">充电限值 / 充电开关 / 空调 / 充电口等高级命令（实验性，需新版固件）</string>
+    <string name="settings_plugin_center">插件中心</string>
+    <string name="plugin_experimental_tag">实验</string>
+
+    <!-- ===== 插件市场 (v0.5.3) ===== -->
+    <string name="plugin_center_tab_installed">已安装</string>
+    <string name="plugin_center_tab_market">市场</string>
+    <string name="plugin_market_refresh">刷新市场</string>
+    <string name="plugin_market_source_summary">来源: github.com/tesla-dashboard-plugins</string>
+    <string name="plugin_market_note_title">外部插件说明</string>
+    <string name="plugin_market_note_summary">当前版本支持浏览与 APK 下载；动态加载（签名校验后）在安全审计中</string>
+    <string name="plugin_market_loading">正在加载插件市场…</string>
+    <string name="plugin_market_load_failed">加载失败：请检查网络后点“刷新市场”重试</string>
+    <string name="plugin_market_empty">市场暂无可用插件</string>
+    <string name="plugin_market_no_description">（无描述）</string>
+    <string name="plugin_market_category_unknown">其他</string>
+    <string name="plugin_market_incompatible">需应用 v%s 及以上</string>
+    <string name="plugin_market_incompatible_short">需新版本</string>
+    <string name="plugin_market_action_download">下载</string>
+    <string name="plugin_market_action_downloading">下载中…</string>
+    <string name="plugin_market_action_downloaded">已下载</string>
+    <string name="plugin_market_action_installed">已安装</string>
+    <string name="plugin_market_download_done">插件 APK 已下载到应用目录</string>
+    <string name="plugin_market_download_failed">插件下载失败，请重试</string>
+    <string name="plugin_market_refresh_icon">⟳</string>
+
+    <!-- ===== BLE 拓展命令页面 (v0.5.2) ===== -->
+    <string name="ble_ext_charge_limit">设置充电限值</string>
+    <string name="ble_ext_charge_limit_summary">设置目标电量百分比 (50-100%)</string>
+    <string name="ble_ext_charge_start">开始充电</string>
+    <string name="ble_ext_charge_start_summary">标准充电模式</string>
+    <string name="ble_ext_charge_start_confirm">开始充电？执行前请确认已插入充电枪。</string>
+    <string name="ble_ext_charge_stop">停止充电</string>
+    <string name="ble_ext_hvac">空调开关</string>
+    <string name="ble_ext_hvac_summary">自动模式：开启 / 关闭空调</string>
+    <string name="ble_ext_hvac_on">开启空调</string>
+    <string name="ble_ext_hvac_off">关闭空调</string>
+    <string name="ble_ext_hvac_temp">空调温度</string>
+    <string name="ble_ext_hvac_temp_summary">双区同步设置目标温度 (°C)</string>
+    <string name="ble_ext_hvac_temp_message">输入目标温度 (摄氏度，双区同步)</string>
+    <string name="ble_ext_charge_port">充电口</string>
+    <string name="ble_ext_charge_port_summary">打开 / 关闭充电口</string>
+    <string name="ble_ext_port_open">打开充电口</string>
+    <string name="ble_ext_port_close">关闭充电口</string>
+    <string name="ble_ext_low_power">低功耗模式</string>
+    <string name="ble_ext_low_power_summary">车辆进入 / 退出深度休眠（实验性）</string>
+    <string name="ble_ext_low_power_message">低功耗模式为实验性功能，老车型可能不支持。</string>
+    <string name="ble_ext_low_power_on">进入低功耗</string>
+    <string name="ble_ext_low_power_off">退出低功耗</string>
+    <string name="ble_ext_invalid_value">请输入有效数值</string>
+    <string name="ble_ext_success">命令执行成功</string>
+    <string name="ble_ext_failed">命令执行失败：超时或连接异常</string>
+    <string name="ble_ext_failed_unsupported">车辆拒绝执行：固件不支持或车辆状态不允许</string>
+    <string name="ble_ext_not_enabled">请先在插件中心启用“BLE 拓展命令”插件</string>
+    <string name="ble_ext_no_vehicle">尚未设置当前车辆，请先在设置中配对车辆</string>
+
+    <!-- ===== BLE 拓展命令: 读取车辆数据 (v0.5.2) ===== -->
+    <string name="ble_ext_vehicle_data">读取车辆数据</string>
+    <string name="ble_ext_vehicle_data_summary">充电状态 / 续航 / 温度 / 车速（现代协议）</string>
+    <string name="ble_ext_data_charging">充电状态</string>
+    <string name="ble_ext_data_range">估算续航</string>
+    <string name="ble_ext_data_range_rated">额定</string>
+    <string name="ble_ext_data_current">充电电流</string>
+    <string name="ble_ext_data_temp">温度</string>
+    <string name="ble_ext_data_temp_inside">车内</string>
+    <string name="ble_ext_data_temp_outside">车外</string>
+    <string name="ble_ext_data_speed">车速</string>
+    <string name="ble_ext_data_power">功率</string>
+    <string name="ble_ext_data_gear">挡位</string>
+    <string name="ble_ext_data_odometer">里程表</string>
+    <string name="ble_ext_charging_disconnected">未插枪</string>
+    <string name="ble_ext_charging_no_power">已插枪·无电源</string>
+    <string name="ble_ext_charging_starting">启动中</string>
+    <string name="ble_ext_charging_charging">充电中</string>
+    <string name="ble_ext_charging_complete">充电完成</string>
+    <string name="ble_ext_charging_stopped">已停止</string>
+    <string name="ble_ext_charging_calibrating">校准中</string>
+    <string name="ble_ext_charging_unknown">未知</string>
+
+    <!-- ===== 导出功能 (v0.5.3) ===== -->
+    <string name="toast_export_raw_developing">导出原始数据功能开发中…</string>
 
 </resources>

@@ -2,9 +2,9 @@ package com.tesla.dashboard.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tesla.dashboard.data.local.SettingsRepository
+import com.tesla.dashboard.data.local.VehicleRepository
+import com.tesla.dashboard.data.model.VehicleInfo
 import com.tesla.dashboard.data.source.ble.TeslaBleProvider
-import com.tesla.dashboard.data.source.ble.TeslaKeyManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,45 +19,43 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * BLE 设置页面 UI 状态数据类
+ * BLE 设置页面 UI 状态数据类 (v0.5.1 多车支持)
  *
- * @property vin Tesla 车辆识别号,空字符串表示未设置
- * @property batteryModel 车型代码(如 "model_3_long_range"),空字符串表示未设置
- * @property isPaired BLE 是否已配对
+ * @property vehicles 已配对车辆列表
+ * @property currentVin 当前选中的车辆 VIN, 空字符串表示未选择
  * @property isLoaded 是否已从 DataStore 加载真实数据 (initialValue 为 false)
  */
 data class BleSettingsUiState(
-    val vin: String = "",
-    val batteryModel: String = "",
-    val isPaired: Boolean = false,
+    val vehicles: List<VehicleInfo> = emptyList(),
+    val currentVin: String = "",
     val isLoaded: Boolean = false,
-)
+) {
+    /** 当前选中的车辆, 未选择时返回 null */
+    val currentVehicle: VehicleInfo? get() = vehicles.find { it.vin == currentVin }
+
+    /** 当前是否有已选中的已配对车辆 */
+    val isPaired: Boolean get() = currentVehicle != null
+}
 
 /**
- * BLE 设置页面 ViewModel — 承载蓝牙与车辆设置
+ * BLE 设置页面 ViewModel — 多车管理 (v0.5.1)
  *
  * 从原 [SettingsViewModel] 拆分而来, 负责:
- * 1. 暴露 [uiState] StateFlow, 合并 VIN/车型/配对状态供 UI 观察并填充表单
- * 2. 提供 save 系列方法 (VIN/车型) 持久化到 DataStore
- * 3. 当 VIN 更新时同步更新 [TeslaBleProvider] 的运行时属性
- * 4. 提供 BLE 配对([startPairing])、解绑([unpair])、测试连接([testConnection])方法
- * 5. 暴露 [pairingState] Flow 供 UI 显示配对进度
+ * 1. 暴露 [uiState] StateFlow, 合并车辆列表与当前 VIN 供 UI 观察
+ * 2. 提供 BLE 配对([startPairing])、按 VIN 解绑([unpair])、切换当前车辆([switchVehicle])、
+ *    按车保存车型([saveBatteryModel])、测试连接([testConnection])方法
+ * 3. 暴露 [pairingState] Flow 供 UI 显示配对进度
  *
  * 同时被 [com.tesla.dashboard.ui.pairing.PairingActivity] 复用 (配对向导)。
  *
- * @param settingsRepository 设置持久化仓库(DataStore)
+ * @param vehicleRepository 车辆仓库(多车列表/当前车辆, DataStore)
  * @param teslaBleProvider Tesla BLE 数据源
- * @param keyManager BLE 密钥管理器
  */
 @HiltViewModel
 class BleSettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository,
+    private val vehicleRepository: VehicleRepository,
     private val teslaBleProvider: TeslaBleProvider,
-    private val keyManager: TeslaKeyManager,
 ) : ViewModel() {
-
-    /** BLE 配对状态 (用于 UI 显示进度) */
-    private val _isPaired = MutableStateFlow(false)
 
     /**
      * 设置保存专用作用域 — 不随 Activity 销毁取消
@@ -74,17 +72,15 @@ class BleSettingsViewModel @Inject constructor(
     /**
      * 设置页面合并后的 UI 状态流
      *
-     * 合并 VIN/车型/配对状态三个 Flow, 任一变化时重新发射完整的 [BleSettingsUiState]。
+     * 合并车辆列表与当前 VIN, 任一变化时重新发射完整的 [BleSettingsUiState]。
      */
     val uiState: StateFlow<BleSettingsUiState> = combine(
-        settingsRepository.vinFlow,
-        settingsRepository.batteryModelFlow,
-        _isPaired,
-    ) { vin, batteryModel, isPaired ->
+        vehicleRepository.vehiclesFlow,
+        vehicleRepository.currentVinFlow,
+    ) { vehicles, currentVin ->
         BleSettingsUiState(
-            vin = vin,
-            batteryModel = batteryModel,
-            isPaired = isPaired,
+            vehicles = vehicles,
+            currentVin = currentVin,
             isLoaded = true,
         )
     }.stateIn(
@@ -106,47 +102,12 @@ class BleSettingsViewModel @Inject constructor(
         )
 
     /**
-     * 初始化 — 加载已保存的配对状态并同步 VIN
+     * 初始化 — 同步当前车辆 VIN 到 BLE Provider
      */
     init {
         viewModelScope.launch {
-            // 检查配对状态
-            _isPaired.value = keyManager.isPaired()
-
-            // 加载已配对 VIN 并同步到 BLE Provider
-            val pairedVin = keyManager.loadPairedVin()
-            if (!pairedVin.isNullOrBlank()) {
-                teslaBleProvider.vin = pairedVin
-            }
-        }
-        viewModelScope.launch {
-            // 持续同步 VIN 设置到 BLE Provider
-            settingsRepository.vinFlow.collect { vin ->
-                teslaBleProvider.vin = vin.ifBlank { null }
-            }
-        }
-    }
-
-    /**
-     * 保存 VIN 并同步到 BLE Provider
-     *
-     * @param vin 用户输入的车辆识别号
-     */
-    fun saveVin(vin: String) {
-        saveScope.launch {
-            settingsRepository.saveVin(vin)
-            teslaBleProvider.vin = vin.trim().ifBlank { null }
-        }
-    }
-
-    /**
-     * 保存车型代码
-     *
-     * @param batteryModel 车型代码(对应 BatteryConfig 中的 key)
-     */
-    fun saveBatteryModel(batteryModel: String) {
-        saveScope.launch {
-            settingsRepository.saveBatteryModel(batteryModel)
+            val currentVin = vehicleRepository.getCurrentVin()
+            teslaBleProvider.vin = currentVin.ifBlank { null }
         }
     }
 
@@ -156,10 +117,7 @@ class BleSettingsViewModel @Inject constructor(
      * 调用 [TeslaBleProvider.startPairing] 发起配对流程:
      * 生成密钥 → 扫描车辆 → ECDH 握手 → 发送 add-key-request → 等待 NFC 确认
      *
-     * 配对成功后:
-     * - 更新 [isPaired] 状态
-     * - 将 VIN 保存到 SettingsRepository
-     * - 同步 VIN 到 BLE Provider
+     * 配对成功后车辆自动加入列表并设为当前车辆 (由 Provider 内部完成)。
      *
      * 注意: 每次调用都会先取消上一个 [pairingJob] 残留协程,
      * 保证中途退出后再次进入 PairingActivity 不会卡死。
@@ -172,11 +130,6 @@ class BleSettingsViewModel @Inject constructor(
         pairingJob?.takeIf { it.isActive }?.cancel()
         pairingJob = viewModelScope.launch {
             val success = teslaBleProvider.startPairing(vin.trim())
-            if (success) {
-                _isPaired.value = true
-                settingsRepository.saveVin(vin)
-                teslaBleProvider.vin = vin.trim()
-            }
             pairingJob = null
             onResult(success)
         }
@@ -194,14 +147,49 @@ class BleSettingsViewModel @Inject constructor(
     }
 
     /**
-     * 解除 BLE 配对
+     * 解绑指定车辆 (v0.5.1)
      *
-     * 清除本地密钥和配对信息,重置配对状态。
+     * 从车辆列表中移除该车辆, 若为当前车辆则自动切换到剩余车辆。
+     *
+     * @param vin 要解绑的车辆 VIN
      */
-    fun unpair() {
+    fun unpair(vin: String) {
         viewModelScope.launch {
-            teslaBleProvider.unpair()
-            _isPaired.value = false
+            teslaBleProvider.unpair(vin)
+        }
+    }
+
+    /**
+     * 切换当前车辆 (v0.5.1)
+     *
+     * @param vin 目标车辆 VIN (必须是已配对车辆)
+     */
+    fun switchVehicle(vin: String) {
+        viewModelScope.launch {
+            teslaBleProvider.switchVehicle(vin)
+        }
+    }
+
+    /**
+     * 取消当前车辆选择 (v0.5.1)
+     *
+     * 清空当前 VIN, 进入"添加新车"模式 (输入框解锁)。
+     */
+    fun clearCurrentSelection() {
+        viewModelScope.launch {
+            teslaBleProvider.clearCurrentSelection()
+        }
+    }
+
+    /**
+     * 保存指定车辆的车型代码 (v0.5.1)
+     *
+     * @param vin 车辆 VIN
+     * @param batteryModel 车型代码(对应 BatteryConfig 中的 key)
+     */
+    fun saveBatteryModel(vin: String, batteryModel: String) {
+        saveScope.launch {
+            vehicleRepository.updateBatteryModel(vin, batteryModel)
         }
     }
 

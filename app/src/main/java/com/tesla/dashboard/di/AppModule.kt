@@ -12,6 +12,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -53,4 +54,22 @@ object DatabaseModule {
 
     @Provides
     fun provideTripDao(db: AppDatabase): TripDao = db.tripDao()
+}
+
+// ===== 插件注册 (v0.5.2 插件系统) =====
+
+/**
+ * 插件 Multibinding 注册模块
+ *
+ * 每个内置插件在此用 `@Provides @IntoSet` 注册到 [com.tesla.dashboard.plugin.PluginManager]。
+ * 外部插件库 (GitHub `tesla-dashboard-plugins` 的 plugin-catalog.json) 中的
+ * 可选插件未来可通过动态加载在此追加绑定。
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+object PluginModule {
+
+    @Provides
+    @IntoSet
+    fun bindBleExtensionPlugin(plugin: com.tesla.dashboard.plugin.ble.BleExtensionPlugin): com.tesla.dashboard.plugin.DashboardPlugin = plugin
 }

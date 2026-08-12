@@ -40,6 +40,47 @@ object TeslaBleMessages {
         val clockTime: Int,
     )
 
+    /**
+     * 现代协议 getVehicleData 响应快照 (v0.5.2)
+     *
+     * 字段号与单位来源: vehicle-command v0.4.1 vehicle.proto。
+     * 所有字段可空 — 车辆可能按固件版本仅返回部分数据。
+     *
+     * @param chargingState 充电状态枚举 [TeslaBleConstants.CHARGING_STATE_*]
+     * @param batteryRangeMi 额定续航 (mi)
+     * @param estBatteryRangeMi 估算续航 (mi)
+     * @param chargerActualCurrentA 实际充电电流 (A)
+     * @param insideTempC 车内温度 (°C)
+     * @param outsideTempC 车外温度 (°C)
+     * @param driverTempC 驾驶员侧目标温度 (°C)
+     * @param passengerTempC 副驾驶侧目标温度 (°C)
+     * @param speedKmh 车速 (km/h)
+     * @param powerKw 功率 (kW, 负值=动能回收)
+     * @param shiftState 挡位枚举 [TeslaBleConstants.SHIFT_STATE_*]
+     * @param odometerKm 里程表 (km)
+     * @param headingDeg 航向 (°)
+     */
+    data class VehicleDataSnapshot(
+        val chargingState: Int?,
+        val batteryRangeMi: Float?,
+        val estBatteryRangeMi: Float?,
+        val chargerActualCurrentA: Int?,
+        val insideTempC: Float?,
+        val outsideTempC: Float?,
+        val driverTempC: Float?,
+        val passengerTempC: Float?,
+        val speedKmh: Int?,
+        val powerKw: Int?,
+        val shiftState: Int?,
+        val odometerKm: Float?,
+        val headingDeg: Float?,
+    ) {
+        /** 是否正在充电 (含启动中) */
+        val isCharging: Boolean
+            get() = chargingState == TeslaBleConstants.CHARGING_STATE_CHARGING ||
+                chargingState == TeslaBleConstants.CHARGING_STATE_STARTING
+    }
+
     // ===== Destination 编码 =====
 
     /**
@@ -379,17 +420,17 @@ object TeslaBleMessages {
 
         TeslaProtobuf.getBytes(vsFields, TeslaBleConstants.FIELD_VS_DRIVE_STATE)?.let { driveBytes ->
             val dsFields = TeslaProtobuf.parseAllFields(driveBytes)
-            speedMph = TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_SPEED)
+            speedMph = TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_SPEED_LEGACY)
             // 瞬时功率 kW (int32, 正=驱动/负=动能回收)
-            powerKw = TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_POWER)?.toFloat()
+            powerKw = TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_POWER_LEGACY)?.toFloat()
             // 优先使用原生高精度坐标 (double)，否则降级使用 float 坐标
             latitude = TeslaProtobuf.getDouble(dsFields, TeslaBleConstants.FIELD_DS_NATIVE_LATITUDE)
                 ?: TeslaProtobuf.getFloat(dsFields, TeslaBleConstants.FIELD_DS_LATITUDE)?.toDouble()
             longitude = TeslaProtobuf.getDouble(dsFields, TeslaBleConstants.FIELD_DS_NATIVE_LONGITUDE)
                 ?: TeslaProtobuf.getFloat(dsFields, TeslaBleConstants.FIELD_DS_LONGITUDE)?.toDouble()
             heading = TeslaProtobuf.getFloat(dsFields, TeslaBleConstants.FIELD_DS_NATIVE_HEADING)
-                ?: TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_HEADING)?.toFloat()
-            gear = TeslaProtobuf.getString(dsFields, TeslaBleConstants.FIELD_DS_SHIFT_STATE)
+                ?: TeslaProtobuf.getUint32(dsFields, TeslaBleConstants.FIELD_DS_HEADING_LEGACY)?.toFloat()
+            gear = TeslaProtobuf.getString(dsFields, TeslaBleConstants.FIELD_DS_SHIFT_STATE_LEGACY)
             // 海拔 — 尝试 elevation 字段
             altitude = TeslaProtobuf.getFloat(dsFields, TeslaBleConstants.FIELD_DS_ELEVATION)?.toDouble()
         }
@@ -401,8 +442,8 @@ object TeslaBleMessages {
         TeslaProtobuf.getBytes(vsFields, TeslaBleConstants.FIELD_VS_CHARGE_STATE)?.let { chargeBytes ->
             val csFields = TeslaProtobuf.parseAllFields(chargeBytes)
             batterySOC = TeslaProtobuf.getUint32(csFields, TeslaBleConstants.FIELD_CS_BATTERY_LEVEL)
-            batteryRange = TeslaProtobuf.getUint32(csFields, TeslaBleConstants.FIELD_CS_BATTERY_RANGE)?.toFloat()
-                ?: TeslaProtobuf.getFloat(csFields, TeslaBleConstants.FIELD_CS_EST_BATTERY_RANGE)
+            batteryRange = TeslaProtobuf.getUint32(csFields, TeslaBleConstants.FIELD_CS_BATTERY_RANGE_LEGACY)?.toFloat()
+                ?: TeslaProtobuf.getFloat(csFields, TeslaBleConstants.FIELD_CS_EST_BATTERY_RANGE_LEGACY)
         }
 
         // ===== CarState (field 7) — 车辆基本状态 =====
@@ -505,6 +546,271 @@ object TeslaBleMessages {
         val ft: Boolean? = null,
         val rt: Boolean? = null,
     )
+
+    // ===== 现代 carserver 协议 (v0.5.2 BLE 拓展插件) =====
+
+    /**
+     * 编码现代协议 Action 消息
+     *
+     * 现代协议结构 (teslamotors/vehicle-command):
+     * ```
+     * Action { vehicleAction { <具体动作> } }
+     * ```
+     * 其中 VehicleAction 位于 Action.field 2, 具体动作位于 VehicleAction 的 oneof。
+     *
+     * @param vehicleActionBytes VehicleAction 消息编码
+     * @return Action protobuf 编码
+     */
+    private fun encodeModernAction(vehicleActionBytes: ByteArray): ByteArray {
+        val buf = ByteArrayOutputStream()
+        TeslaProtobuf.writeMessage(buf, TeslaBleConstants.FIELD_ACTION_VEHICLE_ACTION, vehicleActionBytes)
+        return buf.toByteArray()
+    }
+
+    /**
+     * 编码 VehicleAction 包装
+     *
+     * @param field VehicleAction 动作字段编号
+     * @param actionBytes 动作消息编码
+     * @return Action protobuf 编码
+     */
+    private fun encodeModernVehicleAction(field: Int, actionBytes: ByteArray): ByteArray {
+        val vaBuf = ByteArrayOutputStream()
+        TeslaProtobuf.writeMessage(vaBuf, field, actionBytes)
+        return encodeModernAction(vaBuf.toByteArray())
+    }
+
+    /** 编码空动作消息 (如 ChargePortDoorOpen/Close) */
+    private fun encodeModernEmptyAction(field: Int): ByteArray =
+        encodeModernVehicleAction(field, ByteArray(0))
+
+    /**
+     * 编码设置充电限值命令 (v0.5.2)
+     *
+     * @param percent 充电限值百分比 50-100 (ChargingSetLimitAction.percent)
+     * @return Action protobuf 编码
+     */
+    fun encodeChargeLimit(percent: Int): ByteArray {
+        val buf = ByteArrayOutputStream()
+        TeslaProtobuf.writeUint32(buf, TeslaBleConstants.FIELD_CSL_PERCENT, percent)
+        return encodeModernVehicleAction(TeslaBleConstants.FIELD_VA_CHARGING_SET_LIMIT, buf.toByteArray())
+    }
+
+    /**
+     * 编码开始充电命令 (v0.5.2)
+     *
+     * @param maxRange 是否使用最大续航充电模式 (默认标准充电)
+     * @return Action protobuf 编码
+     */
+    fun encodeChargeStart(maxRange: Boolean = false): ByteArray {
+        val buf = ByteArrayOutputStream()
+        val field = if (maxRange) TeslaBleConstants.FIELD_CSS_START_MAX_RANGE else TeslaBleConstants.FIELD_CSS_START
+        TeslaProtobuf.writeMessage(buf, field, ByteArray(0))
+        return encodeModernVehicleAction(TeslaBleConstants.FIELD_VA_CHARGING_START_STOP, buf.toByteArray())
+    }
+
+    /**
+     * 编码停止充电命令 (v0.5.2)
+     *
+     * @return Action protobuf 编码
+     */
+    fun encodeChargeStop(): ByteArray {
+        val buf = ByteArrayOutputStream()
+        TeslaProtobuf.writeMessage(buf, TeslaBleConstants.FIELD_CSS_STOP, ByteArray(0))
+        return encodeModernVehicleAction(TeslaBleConstants.FIELD_VA_CHARGING_START_STOP, buf.toByteArray())
+    }
+
+    /**
+     * 编码空调开关命令 (v0.5.2, 自动模式)
+     *
+     * @param on true=开启空调, false=关闭
+     * @return Action protobuf 编码
+     */
+    fun encodeHvacAuto(on: Boolean): ByteArray {
+        val buf = ByteArrayOutputStream()
+        TeslaProtobuf.writeUint32(buf, TeslaBleConstants.FIELD_HA_POWER_ON, if (on) 1 else 0)
+        return encodeModernVehicleAction(TeslaBleConstants.FIELD_VA_HVAC_AUTO, buf.toByteArray())
+    }
+
+    /**
+     * 编码空调温度设置命令 (v0.5.2)
+     *
+     * @param driverCelsius 驾驶员侧目标温度 °C
+     * @param passengerCelsius 副驾驶侧目标温度 °C
+     * @return Action protobuf 编码
+     */
+    fun encodeHvacTemperature(driverCelsius: Float, passengerCelsius: Float): ByteArray {
+        val buf = ByteArrayOutputStream()
+        TeslaProtobuf.writeFloat(buf, TeslaBleConstants.FIELD_HTA_DRIVER_TEMP_CELSIUS, driverCelsius)
+        TeslaProtobuf.writeFloat(buf, TeslaBleConstants.FIELD_HTA_PASSENGER_TEMP_CELSIUS, passengerCelsius)
+        return encodeModernVehicleAction(TeslaBleConstants.FIELD_VA_HVAC_TEMPERATURE_ADJUSTMENT, buf.toByteArray())
+    }
+
+    /**
+     * 编码充电口开关命令 (v0.5.2)
+     *
+     * @param open true=打开充电口, false=关闭充电口
+     * @return Action protobuf 编码
+     */
+    fun encodeChargePort(open: Boolean): ByteArray =
+        if (open) {
+            encodeModernEmptyAction(TeslaBleConstants.FIELD_VA_CHARGE_PORT_DOOR_OPEN)
+        } else {
+            encodeModernEmptyAction(TeslaBleConstants.FIELD_VA_CHARGE_PORT_DOOR_CLOSE)
+        }
+
+    /**
+     * 编码车辆低功耗模式命令 (v0.5.2, 实验性)
+     *
+     * @param on true=进入低功耗(深度休眠), false=退出低功耗
+     * @return Action protobuf 编码
+     */
+    fun encodeLowPowerMode(on: Boolean): ByteArray {
+        val buf = ByteArrayOutputStream()
+        TeslaProtobuf.writeUint32(buf, TeslaBleConstants.FIELD_SLPM_LOW_POWER_MODE, if (on) 1 else 0)
+        return encodeModernVehicleAction(TeslaBleConstants.FIELD_VA_SET_LOW_POWER_MODE, buf.toByteArray())
+    }
+
+    /**
+     * 解析现代协议命令执行状态 (v0.5.2)
+     *
+     * 解析层次:
+     * ```
+     * Response
+     *   └── actionStatus (field 1)
+     *         └── result (field 1) → OP_STATUS_OK(0) / OP_STATUS_ERROR(1)
+     * ```
+     *
+     * @param plaintext 解密后的 Response protobuf
+     * @return result 值 (OP_STATUS_OK=0 等), 无 actionStatus 时返回 null
+     */
+    fun parseActionStatus(plaintext: ByteArray): Int? {
+        val responseFields = TeslaProtobuf.parseAllFields(plaintext)
+        val actionStatusBytes = TeslaProtobuf.getBytes(responseFields, TeslaBleConstants.FIELD_RESPONSE_ACTION_STATUS)
+            ?: return null
+        val asFields = TeslaProtobuf.parseAllFields(actionStatusBytes)
+        return TeslaProtobuf.getUint32(asFields, TeslaBleConstants.FIELD_AS_RESULT)
+    }
+
+    /**
+     * 编码 getVehicleData 请求 (v0.5.2)
+     *
+     * `VehicleAction { getVehicleData {} }` — 空消息请求全部车辆数据
+     * (ChargeState/ClimateState/DriveState 等, 固件支持时返回)。
+     *
+     * @return Action protobuf 编码
+     */
+    fun encodeGetVehicleData(): ByteArray =
+        encodeModernVehicleAction(TeslaBleConstants.FIELD_VA_GET_VEHICLE_DATA, ByteArray(0))
+
+    /**
+     * 解析现代协议 VehicleData 响应 (v0.5.2)
+     *
+     * 解析层次 (字段号来源: vehicle-command v0.4.1 vehicle.proto):
+     * ```
+     * Response
+     *   └── vehicleData (field 2)
+     *         ├── chargeState (field 3)
+     *         │     ├── chargingState (field 1, 嵌套枚举消息: field N=空消息)
+     *         │     ├── batteryRange / estBatteryRange (field 111/112, fixed32, 单位 mi)
+     *         │     └── chargerActualCurrent (field 121, A)
+     *         ├── climateState (field 4)
+     *         │     ├── insideTemp (field 3) / outsideTemp (field 4) / °C
+     *         │     └── driverTemp (field 5) / passengerTemp (field 6)
+     *         └── driveState (field 5)
+     *               ├── speed (field 1, km/h) / power (field 2, kW, 负值=回收)
+     *               └── odometer (field 4, km) / heading (field 8, °)
+     * ```
+     *
+     * @param plaintext 解密后的 Response protobuf
+     * @return 解析快照, 响应中无 vehicleData 时返回 null
+     */
+    fun parseVehicleData(plaintext: ByteArray): VehicleDataSnapshot? {
+        val responseFields = TeslaProtobuf.parseAllFields(plaintext)
+        val vehicleDataBytes = TeslaProtobuf.getBytes(responseFields, TeslaBleConstants.FIELD_RESPONSE_VEHICLE_DATA)
+            ?: return null
+        val vdFields = TeslaProtobuf.parseAllFields(vehicleDataBytes)
+        val c = TeslaBleConstants
+
+        // ChargeState
+        val chargeStateBytes = TeslaProtobuf.getBytes(vdFields, c.FIELD_VD_CHARGE_STATE)
+        var chargingState: Int? = null
+        var batteryRangeMi: Float? = null
+        var estBatteryRangeMi: Float? = null
+        var chargerActualCurrentA: Int? = null
+        if (chargeStateBytes != null) {
+            val csFields = TeslaProtobuf.parseAllFields(chargeStateBytes)
+            chargingState = parseChargingStateEnum(
+                TeslaProtobuf.getBytes(csFields, c.FIELD_CS_CHARGING_STATE),
+            )
+            batteryRangeMi = TeslaProtobuf.getFloat(csFields, c.FIELD_CS_BATTERY_RANGE)
+            estBatteryRangeMi = TeslaProtobuf.getFloat(csFields, c.FIELD_CS_EST_BATTERY_RANGE)
+            chargerActualCurrentA = TeslaProtobuf.getUint32(csFields, c.FIELD_CS_CHARGER_ACTUAL_CURRENT)
+        }
+
+        // ClimateState
+        val climateBytes = TeslaProtobuf.getBytes(vdFields, c.FIELD_VD_CLIMATE_STATE)
+        var insideTempC: Float? = null
+        var outsideTempC: Float? = null
+        var driverTempC: Float? = null
+        var passengerTempC: Float? = null
+        if (climateBytes != null) {
+            val clFields = TeslaProtobuf.parseAllFields(climateBytes)
+            insideTempC = TeslaProtobuf.getFloat(clFields, c.FIELD_CL_INSIDE_TEMP)
+            outsideTempC = TeslaProtobuf.getFloat(clFields, c.FIELD_CL_OUTSIDE_TEMP)
+            driverTempC = TeslaProtobuf.getFloat(clFields, c.FIELD_CL_DRIVER_TEMP)
+            passengerTempC = TeslaProtobuf.getFloat(clFields, c.FIELD_CL_PASSENGER_TEMP)
+        }
+
+        // DriveState
+        val driveBytes = TeslaProtobuf.getBytes(vdFields, c.FIELD_VD_DRIVE_STATE)
+        var speedKmh: Int? = null
+        var powerKw: Int? = null
+        var shiftState: Int? = null
+        var odometerKm: Float? = null
+        var headingDeg: Float? = null
+        if (driveBytes != null) {
+            val dsFields = TeslaProtobuf.parseAllFields(driveBytes)
+            speedKmh = TeslaProtobuf.getUint32(dsFields, c.FIELD_DS_SPEED)
+            powerKw = TeslaProtobuf.getUint32(dsFields, c.FIELD_DS_POWER)?.toInt()
+            shiftState = TeslaProtobuf.getUint32(dsFields, c.FIELD_DS_SHIFT_STATE)
+            odometerKm = TeslaProtobuf.getFloat(dsFields, c.FIELD_DS_ODOMETER)
+            headingDeg = TeslaProtobuf.getFloat(dsFields, c.FIELD_DS_HEADING)
+        }
+
+        return VehicleDataSnapshot(
+            chargingState = chargingState,
+            batteryRangeMi = batteryRangeMi,
+            estBatteryRangeMi = estBatteryRangeMi,
+            chargerActualCurrentA = chargerActualCurrentA,
+            insideTempC = insideTempC,
+            outsideTempC = outsideTempC,
+            driverTempC = driverTempC,
+            passengerTempC = passengerTempC,
+            speedKmh = speedKmh,
+            powerKw = powerKw,
+            shiftState = shiftState,
+            odometerKm = odometerKm,
+            headingDeg = headingDeg,
+        )
+    }
+
+    /**
+     * 解析 ChargingState 嵌套枚举消息
+     *
+     * `ChargingState { oneof { Void charging = 5; ... } }` —
+     * 枚举值 = 该字段号 (空消息标记存在)。
+     *
+     * @param chargingStateBytes 嵌套消息字节, null 时返回 null
+     * @return 枚举值 ([TeslaBleConstants.CHARGING_STATE_*]), 无法识别返回 null
+     */
+    private fun parseChargingStateEnum(chargingStateBytes: ByteArray?): Int? {
+        if (chargingStateBytes == null) return null
+        // 枚举字段为长度分隔消息, 直接解析一层即可
+        val fields = TeslaProtobuf.parseAllFields(chargingStateBytes)
+        return fields.firstOrNull()?.fieldNumber
+            ?.takeIf { it in TeslaBleConstants.CHARGING_STATE_UNKNOWN..TeslaBleConstants.CHARGING_STATE_CALIBRATING }
+    }
 
     // ===== RoutableMessage 响应解析 =====
 

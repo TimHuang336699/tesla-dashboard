@@ -253,6 +253,17 @@
     <string name="error_ble_permissions">Bluetooth permission is required, please grant it and retry</string>
     <string name="success_unpaired">Vehicle unpaired</string>
 
+    <!-- ===== Multi-vehicle (v0.5.1) ===== -->
+    <string name="settings_select_vehicle">Select current vehicle</string>
+    <string name="settings_add_vehicle">Add vehicle</string>
+    <string name="settings_remove_vehicle">Remove</string>
+    <string name="settings_remove_vehicle_title">Unpair vehicle</string>
+    <string name="settings_remove_vehicle_confirm">After unpairing, this vehicle can no longer be connected via Bluetooth. Unpair it?</string>
+    <string name="settings_remove_vehicle_confirm_with_vin">After unpairing %1$s, it can no longer be connected via Bluetooth. Unpair it?</string>
+    <string name="settings_paired_vehicles">Paired vehicles</string>
+    <string name="settings_no_vehicles">No vehicles paired yet. Enter a VIN and tap \u0022Pair vehicle\u0022 to add one</string>
+    <string name="action_cancel">Cancel</string>
+
     <!-- ===== Format Templates ===== -->
     <string name="format_speed_value">%1$.0f %2$s</string>
     <string name="format_distance_value">%1$.1f %2$s</string>
@@ -266,5 +277,86 @@
     <string name="pairing_nfc_instruction_highland">Tap your NFC card above the wireless charging pad on the center console</string>
     <string name="pairing_nfc_instruction_legacy">Tap your NFC card behind the front center console cup holders</string>
     <string name="pairing_nfc_instruction_default">Tap your NFC card on the vehicle center console to confirm pairing</string>
+
+    <!-- ===== Plugin system (v0.5.2) ===== -->
+    <string name="plugin_category_ble_command">BLE commands</string>
+    <string name="plugin_category_utility">Utility</string>
+    <string name="plugin_ble_extension_name">BLE extension commands</string>
+    <string name="plugin_ble_extension_desc">Charge limit / charge on-off / HVAC / charge port commands (experimental, newer firmware required)</string>
+    <string name="settings_plugin_center">Plugin Center</string>
+    <string name="plugin_experimental_tag">Experimental</string>
+
+    <!-- ===== BLE extension commands page (v0.5.2) ===== -->
+    <string name="ble_ext_charge_limit">Set charge limit</string>
+    <string name="ble_ext_charge_limit_summary">Set target battery percentage (50-100%)</string>
+    <string name="ble_ext_charge_start">Start charging</string>
+    <string name="ble_ext_charge_start_summary">Standard charge mode</string>
+    <string name="ble_ext_charge_start_confirm">Start charging? Make sure the charging cable is plugged in first.</string>
+    <string name="ble_ext_charge_stop">Stop charging</string>
+    <string name="ble_ext_hvac">HVAC</string>
+    <string name="ble_ext_hvac_summary">Auto mode: on / off</string>
+    <string name="ble_ext_hvac_on">Turn HVAC on</string>
+    <string name="ble_ext_hvac_off">Turn HVAC off</string>
+    <string name="ble_ext_hvac_temp">HVAC temperature</string>
+    <string name="ble_ext_hvac_temp_summary">Set target temperature, both zones (°C)</string>
+    <string name="ble_ext_hvac_temp_message">Enter target temperature (Celsius, both zones)</string>
+    <string name="ble_ext_charge_port">Charge port</string>
+    <string name="ble_ext_charge_port_summary">Open / close charge port</string>
+    <string name="ble_ext_port_open">Open charge port</string>
+    <string name="ble_ext_port_close">Close charge port</string>
+    <string name="ble_ext_low_power">Low power mode</string>
+    <string name="ble_ext_low_power_summary">Enter / exit deep sleep (experimental)</string>
+    <string name="ble_ext_low_power_message">Low power mode is experimental and unsupported on older vehicles.</string>
+    <string name="ble_ext_low_power_on">Enter low power</string>
+    <string name="ble_ext_low_power_off">Exit low power</string>
+    <string name="ble_ext_invalid_value">Please enter a valid value</string>
+    <string name="ble_ext_success">Command executed successfully</string>
+    <string name="ble_ext_failed">Command failed: timeout or connection error</string>
+    <string name="ble_ext_failed_unsupported">Vehicle rejected: firmware unsupported or vehicle state not allowed</string>
+    <string name="ble_ext_not_enabled">Please enable the \u0022BLE extension commands\u0022 plugin in Plugin Center first</string>
+    <string name="ble_ext_no_vehicle">No current vehicle set. Pair a vehicle in Settings first</string>
+    <string name="ble_ext_vehicle_data">Read vehicle data</string>
+    <string name="ble_ext_vehicle_data_summary">Charge state / range / temperature / speed (modern protocol)</string>
+    <string name="ble_ext_data_charging">Charge state</string>
+    <string name="ble_ext_data_range">Est. range</string>
+    <string name="ble_ext_data_range_rated">Rated</string>
+    <string name="ble_ext_data_current">Charge current</string>
+    <string name="ble_ext_data_temp">Temperature</string>
+    <string name="ble_ext_data_temp_inside">In</string>
+    <string name="ble_ext_data_temp_outside">Out</string>
+    <string name="ble_ext_data_speed">Speed</string>
+    <string name="ble_ext_data_power">Power</string>
+    <string name="ble_ext_data_gear">Gear</string>
+    <string name="ble_ext_data_odometer">Odometer</string>
+    <string name="ble_ext_charging_disconnected">Not plugged in</string>
+    <string name="ble_ext_charging_no_power">Plugged in, no power</string>
+    <string name="ble_ext_charging_starting">Starting</string>
+    <string name="ble_ext_charging_charging">Charging</string>
+    <string name="ble_ext_charging_complete">Complete</string>
+    <string name="ble_ext_charging_stopped">Stopped</string>
+    <string name="ble_ext_charging_calibrating">Calibrating</string>
+    <string name="ble_ext_charging_unknown">Unknown</string>
+
+    <!-- ===== Plugin market (v0.5.3) ===== -->
+    <string name="plugin_center_tab_installed">Installed</string>
+    <string name="plugin_center_tab_market">Market</string>
+    <string name="plugin_market_refresh">Refresh market</string>
+    <string name="plugin_market_source_summary">Source: github.com/tesla-dashboard-plugins</string>
+    <string name="plugin_market_note_title">About external plugins</string>
+    <string name="plugin_market_note_summary">This version supports browsing and APK download; dynamic loading (after signature verification) is under security audit</string>
+    <string name="plugin_market_loading">Loading plugin market…</string>
+    <string name="plugin_market_load_failed">Load failed: check your network and tap \u0022Refresh market\u0022 to retry</string>
+    <string name="plugin_market_empty">No plugins available in the market</string>
+    <string name="plugin_market_no_description">(no description)</string>
+    <string name="plugin_market_category_unknown">Other</string>
+    <string name="plugin_market_incompatible">Requires app v%1$s or newer</string>
+    <string name="plugin_market_incompatible_short">Needs newer app</string>
+    <string name="plugin_market_action_download">Download</string>
+    <string name="plugin_market_action_downloading">Downloading…</string>
+    <string name="plugin_market_action_downloaded">Downloaded</string>
+    <string name="plugin_market_action_installed">Installed</string>
+    <string name="plugin_market_download_done">Plugin APK downloaded to app directory</string>
+    <string name="plugin_market_download_failed">Download failed, please retry</string>
+    <string name="plugin_market_refresh_icon">⟳</string>
 
 </resources>

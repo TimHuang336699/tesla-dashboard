@@ -250,6 +250,109 @@ object TeslaBleConstants {
     /** Action.get_vehicle_state — 请求获取完整车辆状态 */
     const val FIELD_ACTION_GET_VEHICLE_STATE = 2
 
+    // ===== 现代 carserver 协议 (v0.5.2 BLE 拓展插件, teslamotors/vehicle-command) =====
+
+    /** Action.VehicleAction — 现代协议的动作包装 (field 2) */
+    const val FIELD_ACTION_VEHICLE_ACTION = 2
+
+    // VehicleAction (oneof vehicle_action_msg)
+    /** VehicleAction.getVehicleData — 获取车辆数据 (空消息=全部) */
+    const val FIELD_VA_GET_VEHICLE_DATA = 1
+    /** VehicleAction.chargingSetLimitAction — 设置充电限值 */
+    const val FIELD_VA_CHARGING_SET_LIMIT = 5
+    /** VehicleAction.chargingStartStopAction — 开始/停止充电 */
+    const val FIELD_VA_CHARGING_START_STOP = 6
+    /** VehicleAction.hvacAutoAction — 空调开关 (自动模式) */
+    const val FIELD_VA_HVAC_AUTO = 10
+    /** VehicleAction.hvacTemperatureAdjustmentAction — 空调温度调整 */
+    const val FIELD_VA_HVAC_TEMPERATURE_ADJUSTMENT = 14
+    /** VehicleAction.chargePortDoorClose — 关闭充电口 */
+    const val FIELD_VA_CHARGE_PORT_DOOR_CLOSE = 61
+    /** VehicleAction.chargePortDoorOpen — 打开充电口 */
+    const val FIELD_VA_CHARGE_PORT_DOOR_OPEN = 62
+    /** VehicleAction.setLowPowerModeAction — 车辆低功耗模式 (休眠) */
+    const val FIELD_VA_SET_LOW_POWER_MODE = 130
+
+    // ChargingSetLimitAction
+    const val FIELD_CSL_PERCENT = 1
+
+    // ChargingStartStopAction (oneof charging_action)
+    const val FIELD_CSS_START = 2
+    const val FIELD_CSS_START_STANDARD = 3
+    const val FIELD_CSS_START_MAX_RANGE = 4
+    const val FIELD_CSS_STOP = 5
+
+    // HvacAutoAction
+    const val FIELD_HA_POWER_ON = 1
+    const val FIELD_HA_MANUAL_OVERRIDE = 2
+
+    // HvacTemperatureAdjustmentAction
+    const val FIELD_HTA_DELTA_CELSIUS = 1
+    const val FIELD_HTA_ABSOLUTE_CELSIUS = 3
+    const val FIELD_HTA_DRIVER_TEMP_CELSIUS = 6
+    const val FIELD_HTA_PASSENGER_TEMP_CELSIUS = 7
+
+    // SetLowPowerModeAction
+    const val FIELD_SLPM_LOW_POWER_MODE = 1
+
+    // Response / ActionStatus (现代协议)
+    /** Response.actionStatus — 命令执行状态 (field 1) */
+    const val FIELD_RESPONSE_ACTION_STATUS = 1
+    /** Response.vehicleData — getVehicleData 响应数据 (field 2, v0.4.1 car_server.proto) */
+    const val FIELD_RESPONSE_VEHICLE_DATA = 2
+    /** ActionStatus.result — 执行结果 (OperationStatus_E) */
+    const val FIELD_AS_RESULT = 1
+    /** OperationStatus_E: OK */
+    const val OP_STATUS_OK = 0
+    /** OperationStatus_E: ERROR */
+    const val OP_STATUS_ERROR = 1
+
+    // ===== VehicleData / 子状态 (v0.5.2, 来源: vehicle-command v0.4.1 vehicle.proto) =====
+
+    // VehicleData (field 2 内的消息)
+    const val FIELD_VD_CHARGE_STATE = 3
+    const val FIELD_VD_CLIMATE_STATE = 4
+    const val FIELD_VD_DRIVE_STATE = 5
+
+    // ChargeState (vehicle.proto, oneof optional 字段)
+    /** ChargeState.charging_state — 充电状态枚举 (嵌套消息) */
+    const val FIELD_CS_CHARGING_STATE = 1
+    /** ChargeState.battery_range — 额定续航 (mi, fixed32) */
+    const val FIELD_CS_BATTERY_RANGE = 111
+    /** ChargeState.est_battery_range — 估算续航 (mi, fixed32) */
+    const val FIELD_CS_EST_BATTERY_RANGE = 112
+    /** ChargeState.charger_actual_current — 实际充电电流 (A, varint) */
+    const val FIELD_CS_CHARGER_ACTUAL_CURRENT = 121
+
+    // ChargingState 枚举 (ChargingState.charging_state 嵌套 oneof: 空消息标记)
+    const val CHARGING_STATE_UNKNOWN = 1
+    const val CHARGING_STATE_DISCONNECTED = 2
+    const val CHARGING_STATE_NO_POWER = 3
+    const val CHARGING_STATE_STARTING = 4
+    const val CHARGING_STATE_CHARGING = 5
+    const val CHARGING_STATE_COMPLETE = 6
+    const val CHARGING_STATE_STOPPED = 7
+    const val CHARGING_STATE_CALIBRATING = 8
+
+    // ClimateState (vehicle.proto)
+    const val FIELD_CL_FAN_STATUS = 1
+    const val FIELD_CL_INSIDE_TEMP = 3
+    const val FIELD_CL_OUTSIDE_TEMP = 4
+    const val FIELD_CL_DRIVER_TEMP = 5
+    const val FIELD_CL_PASSENGER_TEMP = 6
+
+    // DriveState (vehicle.proto)
+    const val FIELD_DS_SPEED = 1
+    const val FIELD_DS_POWER = 2
+    const val FIELD_DS_SHIFT_STATE = 3
+    const val FIELD_DS_ODOMETER = 4
+    const val FIELD_DS_HEADING = 8
+    /** ShiftState 枚举 (DriveState.shift_state) */
+    const val SHIFT_STATE_DRIVE = 1
+    const val SHIFT_STATE_NEUTRAL = 2
+    const val SHIFT_STATE_REVERSE = 3
+    const val SHIFT_STATE_PARK = 4
+
     // carserver.Response
     /** Response.response_status — 响应状态 */
     const val FIELD_RESPONSE_STATUS = 1
@@ -266,19 +369,19 @@ object TeslaBleConstants {
     /** VehicleState.climate_state — 空调/温度状态(车内/车外温度) */
     const val FIELD_VS_CLIMATE_STATE = 8
 
-    // carserver.DriveState — 行驶状态子消息
+    // carserver.DriveState — 行驶状态子消息 (传统 getVehicleState 协议)
     /** DriveState.latitude — 纬度 (float) */
     const val FIELD_DS_LATITUDE = 4
     /** DriveState.longitude — 经度 (float) */
     const val FIELD_DS_LONGITUDE = 5
     /** DriveState.heading — 航向角 0-360 (int32) */
-    const val FIELD_DS_HEADING = 6
+    const val FIELD_DS_HEADING_LEGACY = 6
     /** DriveState.speed — 车速 mph (int32) */
-    const val FIELD_DS_SPEED = 14
+    const val FIELD_DS_SPEED_LEGACY = 14
     /** DriveState.power — 功率 kW (int32, 正=驱动/负=动能回收) */
-    const val FIELD_DS_POWER = 15
+    const val FIELD_DS_POWER_LEGACY = 15
     /** DriveState.shift_state — 档位 P/R/N/D (string) */
-    const val FIELD_DS_SHIFT_STATE = 17
+    const val FIELD_DS_SHIFT_STATE_LEGACY = 17
     /** DriveState.gps_as_of — GPS 时间戳 (uint64) */
     const val FIELD_DS_GPS_AS_OF = 18
     /** DriveState.native_latitude — 原生纬度 (double, 高精度) */
@@ -292,17 +395,17 @@ object TeslaBleConstants {
     /** DriveState.elevation — 海拔 (float, 米) */
     const val FIELD_DS_ELEVATION = 35
 
-    // carserver.ChargeState — 充电状态子消息
+    // carserver.ChargeState — 充电状态子消息 (传统 getVehicleState 协议)
     /** ChargeState.battery_level — 电池电量百分比 0-100 (int32) */
     const val FIELD_CS_BATTERY_LEVEL = 3
     /** ChargeState.battery_range — 电池续航里程 (int32) */
-    const val FIELD_CS_BATTERY_RANGE = 5
+    const val FIELD_CS_BATTERY_RANGE_LEGACY = 5
     /** ChargeState.charge_energy_added — 已充入电量 kWh (float) */
     const val FIELD_CS_CHARGE_ENERGY_ADDED = 6
     /** ChargeState.charge_limit_soc — 充电上限百分比 (int32) */
     const val FIELD_CS_CHARGE_LIMIT_SOC = 9
     /** ChargeState.est_battery_range — 预估续航里程 (float) */
-    const val FIELD_CS_EST_BATTERY_RANGE = 28
+    const val FIELD_CS_EST_BATTERY_RANGE_LEGACY = 28
 
     // carserver.ClimateState — 温度状态子消息
     /** ClimateState.inside_temp — 车内温度 °C (float) */

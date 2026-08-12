@@ -28,6 +28,14 @@ class DashboardApplication : Application() {
     @Inject
     lateinit var languageManager: LanguageManager
 
+    /** 屏幕状态跟踪器 (v0.5.2 耗电优化: 熄屏降频轮询) */
+    @Inject
+    lateinit var screenStateTracker: com.tesla.dashboard.util.ScreenStateTracker
+
+    /** 插件管理器 (v0.5.2 插件系统) */
+    @Inject
+    lateinit var pluginManager: com.tesla.dashboard.plugin.PluginManager
+
     override fun onCreate() {
         super.onCreate()
 
@@ -47,5 +55,11 @@ class DashboardApplication : Application() {
 
         // 监听语言设置，变化时自动应用 (无需重启)
         languageManager.observeLanguage()
+
+        // 启动屏幕状态监听 (熄屏时 BLE 轮询降频, 节省电量)
+        screenStateTracker.start()
+
+        // 初始化插件系统 (注册已启用的插件)
+        pluginManager.init()
     }
 }

@@ -13,6 +13,8 @@ import com.tesla.dashboard.R
 import com.tesla.dashboard.databinding.ActivitySettingsBinding
 import com.tesla.dashboard.databinding.ItemSettingsRowBinding
 import com.tesla.dashboard.databinding.ItemSettingsSectionHeaderBinding
+import com.tesla.dashboard.plugin.ble.BleExtensionPlugin
+import com.tesla.dashboard.ui.plugins.PluginCenterActivity
 import com.tesla.dashboard.util.BaseImmersiveActivity
 import com.tesla.dashboard.util.LogExporter
 import com.tesla.dashboard.util.ThemeColors
@@ -45,6 +47,7 @@ class SettingsActivity : BaseImmersiveActivity() {
         val hasSummary: Boolean = true,
         val target: Class<*>? = null,
         val action: ((SettingsActivity) -> Unit)? = null,
+        val headerRes: Int? = null,  // null 表示该行无分组标题 (独立行)
     )
 
     /** 分组数据 */
@@ -54,6 +57,15 @@ class SettingsActivity : BaseImmersiveActivity() {
     )
 
     private val rowViews = mutableListOf<android.view.View>()
+
+    /** 独立行 (无分组标题, 渲染在分组之前) */
+    private val standaloneRows = listOf(
+        SettingsRow(
+            titleRes = R.string.settings_plugin_center,
+            hasSummary = false,
+            target = PluginCenterActivity::class.java,
+        ),
+    )
 
     /** 分组配置 — 每个大项只有一行, 点击进入二级页面 */
     private val groups = listOf(
@@ -166,28 +178,51 @@ class SettingsActivity : BaseImmersiveActivity() {
         rowViews.clear()
         val inflater = LayoutInflater.from(this)
 
-        groups.forEach { group ->
-            val headerBinding = ItemSettingsSectionHeaderBinding.inflate(inflater, container, false)
-            headerBinding.tvSectionTitle.setText(group.headerRes)
-            container.addView(headerBinding.root)
+        // 1. 车辆分组
+        val vehicleGroup = groups[0]
+        val headerBinding = ItemSettingsSectionHeaderBinding.inflate(inflater, container, false)
+        headerBinding.tvSectionTitle.setText(vehicleGroup.headerRes)
+        container.addView(headerBinding.root)
+        vehicleGroup.rows.forEach { row ->
+            renderRow(container, inflater, row)
+        }
 
+        // 2. 插件中心 (独立行, 无分组标题, 紧跟车辆分组后)
+        standaloneRows.forEach { row ->
+            renderRow(container, inflater, row)
+        }
+
+        // 3. 其余分组
+        groups.drop(1).forEach { group ->
+            val gHeader = ItemSettingsSectionHeaderBinding.inflate(inflater, container, false)
+            gHeader.tvSectionTitle.setText(group.headerRes)
+            container.addView(gHeader.root)
             group.rows.forEach { row ->
-                val rowBinding = ItemSettingsRowBinding.inflate(inflater, container, false)
-                rowBinding.tvRowTitle.setText(row.titleRes)
-                if (row.hasSummary && row.summaryRes != 0) {
-                    rowBinding.tvRowSummary.setText(row.summaryRes)
-                } else {
-                    rowBinding.tvRowSummary.visibility = android.view.View.GONE
-                }
-                rowBinding.root.setOnClickListener {
-                    row.action?.invoke(this) ?: row.target?.let { target ->
-                        startActivity(Intent(this, target))
-                    }
-                }
-                container.addView(rowBinding.root)
-                rowViews.add(rowBinding.root)
+                renderRow(container, inflater, row)
             }
         }
+    }
+
+    private fun renderRow(
+        container: android.widget.LinearLayout,
+        inflater: LayoutInflater,
+        row: SettingsRow,
+        headerRes: Int? = null,
+    ) {
+        val rowBinding = ItemSettingsRowBinding.inflate(inflater, container, false)
+        rowBinding.tvRowTitle.setText(row.titleRes)
+        if (row.hasSummary && row.summaryRes != 0) {
+            rowBinding.tvRowSummary.setText(row.summaryRes)
+        } else {
+            rowBinding.tvRowSummary.visibility = android.view.View.GONE
+        }
+        rowBinding.root.setOnClickListener {
+            row.action?.invoke(this) ?: row.target?.let { target ->
+                startActivity(Intent(this, target))
+            }
+        }
+        container.addView(rowBinding.root)
+        rowViews.add(rowBinding.root)
     }
 
     private fun observeListState() {
@@ -204,23 +239,24 @@ class SettingsActivity : BaseImmersiveActivity() {
     private fun updateRowSummaries(state: SettingsListUiState) {
         if (rowViews.isEmpty()) return
 
-        // 0: 蓝牙与车辆
-        rowViews.getOrNull(0)?.findViewById<TextView>(R.id.tvRowSummary)
+        // 0: 插件中心 (独立行, 无摘要)
+        // 1: 蓝牙与车辆
+        rowViews.getOrNull(1)?.findViewById<TextView>(R.id.tvRowSummary)
             ?.setText(if (state.isPaired) R.string.settings_paired else R.string.settings_not_paired)
 
-        // 1: 显示与外观
-        rowViews.getOrNull(1)?.findViewById<TextView>(R.id.tvRowSummary)
+        // 2: 显示与外观
+        rowViews.getOrNull(2)?.findViewById<TextView>(R.id.tvRowSummary)
             ?.text = themeDisplayName(state.themeMode)
 
-        // 2: 单位
-        rowViews.getOrNull(2)?.findViewById<TextView>(R.id.tvRowSummary)
+        // 3: 单位
+        rowViews.getOrNull(3)?.findViewById<TextView>(R.id.tvRowSummary)
             ?.setText(
                 if (state.unitSystem == "imperial") R.string.settings_unit_imperial
                 else R.string.settings_unit_metric
             )
 
-        // 3: 语言
-        rowViews.getOrNull(3)?.findViewById<TextView>(R.id.tvRowSummary)
+        // 4: 语言
+        rowViews.getOrNull(4)?.findViewById<TextView>(R.id.tvRowSummary)
             ?.text = languageDisplayName(state.appLanguage)
     }
 

@@ -11,9 +11,12 @@ import com.tesla.dashboard.R
 import com.tesla.dashboard.databinding.ActivitySubSettingsBinding
 import com.tesla.dashboard.databinding.ItemSettingsRowBinding
 import com.tesla.dashboard.databinding.ItemSettingsSwitchBinding
+import com.tesla.dashboard.plugin.PluginManager
 import com.tesla.dashboard.util.BaseImmersiveActivity
+import com.tesla.dashboard.util.LogExporter
 import com.tesla.dashboard.util.ThemeColors
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * 高级设置二级页面
@@ -23,6 +26,9 @@ class AdvancedSettingsActivity : BaseImmersiveActivity() {
 
     private lateinit var binding: ActivitySubSettingsBinding
     private val prefs by lazy { getSharedPreferences("settings", MODE_PRIVATE) }
+
+    @Inject
+    lateinit var pluginManager: PluginManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,6 +82,8 @@ class AdvancedSettingsActivity : BaseImmersiveActivity() {
             .setMessage(R.string.dialog_reset_message)
             .setPositiveButton(R.string.dialog_reset_confirm) { _, _ ->
                 prefs.edit().clear().apply()
+                // v0.5.2: 联动重置插件启用状态 (恢复默认全部启用)
+                pluginManager.resetAll()
                 Toast.makeText(this, R.string.toast_settings_reset, Toast.LENGTH_SHORT).show()
                 recreate()
             }
@@ -89,7 +97,8 @@ class AdvancedSettingsActivity : BaseImmersiveActivity() {
     }
 
     private fun exportRawData() {
-        Toast.makeText(this, R.string.toast_export_raw_developing, Toast.LENGTH_SHORT).show()
+        // v0.5.2: 落地实现 — 导出诊断日志 (含 BLE 原始数据帧日志) 并分享
+        LogExporter.export(this)
     }
 
     private fun addSwitchRow(container: android.widget.LinearLayout, inflater: LayoutInflater,

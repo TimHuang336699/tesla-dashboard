@@ -27,7 +27,7 @@ import javax.inject.Singleton
  * 负责:
  * - 生成 ECC 密钥对 (NIST P-256)
  * - 安全存储/加载密钥对
- * - 管理已配对车辆信息 (VIN, 会话信息)
+ * - 迁移旧版单车配对数据到 [com.tesla.dashboard.data.local.VehicleRepository]
  *
  * ## 私钥安全存储 (v0.4 升级)
  *
@@ -263,69 +263,41 @@ class TeslaKeyManager @Inject constructor(
     }
 
     /**
-     * 保存已配对的车辆 VIN
-     */
-    suspend fun savePairedVin(vin: String) {
-        context.bleKeyStore.edit { prefs ->
-            prefs[KEY_PAIRED_VIN] = vin
-        }
-    }
-
-    /**
-     * 保存车辆 VCSEC 公钥 (配对成功时固定)
-     *
-     * @param publicKeyRaw 65 字节未压缩格式公钥
-     */
-    suspend fun saveVehiclePublicKeyRaw(publicKeyRaw: ByteArray) {
-        context.bleKeyStore.edit { prefs ->
-            prefs[KEY_VEHICLE_PUBLIC_RAW] = Base64.encodeToString(publicKeyRaw, Base64.NO_WRAP)
-        }
-    }
-
-    /**
-     * 加载固定的车辆公钥
-     *
-     * @return 65 字节未压缩格式公钥, 未固定时返回 null
-     */
-    suspend fun loadVehiclePublicKeyRaw(): ByteArray? {
-        val prefs = context.bleKeyStore.data.first()
-        val b64 = prefs[KEY_VEHICLE_PUBLIC_RAW] ?: return null
-        return runCatching { Base64.decode(b64, Base64.NO_WRAP) }.getOrNull()
-    }
-
-    /**
-     * 加载已配对的车辆 VIN
-     *
-     * @return VIN 字符串，未配对时返回 null
-     */
-    suspend fun loadPairedVin(): String? {
-        val prefs = context.bleKeyStore.data.first()
-        return prefs[KEY_PAIRED_VIN]?.takeIf { it.isNotBlank() }
-    }
-
-    /**
      * 检查是否已有密钥对
      */
     suspend fun hasKeyPair(): Boolean = loadPrivateKey() != null
 
     /**
-     * 检查是否已配对车辆
+     * 旧版单车配对数据 (v0.5.0 之前)
+     *
+     * @param vin 已配对的车辆 VIN
+     * @param vehiclePublicKeyRaw 固定过的车辆公钥 (65 字节未压缩格式), 旧版本可能缺失
      */
-    suspend fun isPaired(): Boolean = !loadPairedVin().isNullOrBlank()
+    data class LegacyPairing(
+        val vin: String,
+        val vehiclePublicKeyRaw: ByteArray?,
+    )
 
     /**
-     * 清除所有密钥和配对信息 (同时删除 Keystore 封装密钥)
+     * 读取并清除旧版单车配对数据 (v0.5.0 多车迁移用)
      *
-     * 用于解绑车辆或重置配对。
+     * 多车支持 (v0.5.1) 之后, 车辆列表及车辆公钥由
+     * [com.tesla.dashboard.data.local.VehicleRepository] 统一管理,
+     * 本方法读取旧版 `paired_vin` / `vehicle_public_key_raw_b64` 后立即删除,
+     * 供 [com.tesla.dashboard.data.source.ble.TeslaBleProvider.start] 一次性迁移。
+     *
+     * @return 旧版配对信息, 无旧数据时返回 null
      */
-    suspend fun clearAll() {
-        context.bleKeyStore.edit { it.clear() }
-        cachedPrivateKey = null
-        cachedPublicKey = null
-        cachedPublicKeyRaw = null
-        runCatching {
-            val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            keyStore.deleteEntry(KEYSTORE_ALIAS)
+    suspend fun consumeLegacyPairing(): LegacyPairing? {
+        val prefs = context.bleKeyStore.data.first()
+        val vin = prefs[KEY_PAIRED_VIN]?.takeIf { it.isNotBlank() } ?: return null
+        val publicKeyRaw = prefs[KEY_VEHICLE_PUBLIC_RAW]
+            ?.let { runCatching { Base64.decode(it, Base64.NO_WRAP) }.getOrNull() }
+        context.bleKeyStore.edit { p ->
+            p.remove(KEY_PAIRED_VIN)
+            p.remove(KEY_VEHICLE_PUBLIC_RAW)
         }
+        AppLog.d(TAG, "Legacy pairing consumed for migration: VIN=$vin")
+        return LegacyPairing(vin, publicKeyRaw)
     }
 }

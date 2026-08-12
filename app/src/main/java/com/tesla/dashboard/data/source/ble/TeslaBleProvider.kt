@@ -1,9 +1,12 @@
 package com.tesla.dashboard.data.source.ble
 
 import android.util.Log
+import com.tesla.dashboard.data.local.SettingsRepository
+import com.tesla.dashboard.data.local.VehicleRepository
 import com.tesla.dashboard.data.model.VehicleData
 import com.tesla.dashboard.data.source.VehicleDataSource
 import com.tesla.dashboard.util.AppLog
+import com.tesla.dashboard.util.ScreenStateTracker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.security.PrivateKey
 import java.security.PublicKey
@@ -58,17 +62,25 @@ import kotlin.math.sqrt
  * - 距离限制 (蓝牙范围内约 10 米)
  *
  * @param bleManager BLE GATT 通信管理器
- * @param keyManager 密钥管理器
+ * @param keyManager 密钥管理器 (应用自身密钥对)
+ * @param vehicleRepository 车辆仓库 (多车列表 / 当前车辆 / 按 VIN 公钥固定)
+ * @param settingsRepository 设置仓库 (旧版单车数据迁移)
+ * @param screenStateTracker 屏幕状态跟踪 (熄屏降频, v0.5.2 耗电优化)
  */
 @Singleton
 class TeslaBleProvider @Inject constructor(
     private val bleManager: TeslaBleManager,
     private val keyManager: TeslaKeyManager,
+    private val vehicleRepository: VehicleRepository,
+    private val settingsRepository: SettingsRepository,
+    private val screenStateTracker: ScreenStateTracker,
 ) : VehicleDataSource {
 
     private val TAG = "TeslaBleProvider"
 
-    /** 车辆 VIN (运行时配置) */
+    /**
+     * 当前车辆 VIN (运行时配置, 多车时指向当前选中的车辆)
+     */
     @Volatile
     var vin: String? = null
 
@@ -226,14 +238,24 @@ class TeslaBleProvider @Inject constructor(
     }
 
     /**
-     * 计算下一次轮询延迟 (v0.4.2)
+     * 计算下一次轮询延迟 (v0.4.2 + v0.5.2 耗电优化)
      *
      * - 最近一次轮询成功: 行驶中 [POLL_INTERVAL_DRIVING_MS], 静止 [POLL_INTERVAL_MS]
-     * - 连续失败: 指数退避, 封顶 [MAX_BACKOFF_MS]
+     * - 熄屏: [POLL_INTERVAL_SCREEN_OFF_MS] (30s, 用户看不到界面, 降低唤醒次数)
+     * - 连续失败: 指数退避 (5s→10s→20s→40s), 封顶 [MAX_BACKOFF_MS]
+     * - 疑似车辆深度休眠 (失败 ≥ [DEEP_SLEEP_THRESHOLD]): 固定慢轮询 [MAX_BACKOFF_MS],
+     *   避免无效空转耗电, 车辆被唤醒后自然恢复高频
      */
     private fun nextPollDelayMs(): Long {
+        // 熄屏时优先降频 (即使行驶中, 用户也不看仪表盘)
+        if (!screenStateTracker.screenOn.value) {
+            return POLL_INTERVAL_SCREEN_OFF_MS
+        }
         if (consecutiveFailures == 0) {
             return if (isDriving()) POLL_INTERVAL_DRIVING_MS else POLL_INTERVAL_MS
+        }
+        if (consecutiveFailures >= DEEP_SLEEP_THRESHOLD) {
+            return MAX_BACKOFF_MS
         }
         val shift = (consecutiveFailures - 1).coerceAtMost(MAX_BACKOFF_SHIFT)
         return (POLL_INTERVAL_MS shl shift).coerceAtMost(MAX_BACKOFF_MS)
@@ -253,23 +275,54 @@ class TeslaBleProvider @Inject constructor(
             (lastPowerKw != null && abs(lastPowerKw!!) > DRIVING_POWER_THRESHOLD_KW)
 
     override suspend fun start() {
-        // 性能优化: 仅在内存中检查 vin,文件 IO (loadPairedVin/hasKeyPair) 改为后台执行
-        // 这样 start() 调用在主线程上几乎瞬时返回, 不会因为读 SP 而阻塞首帧渲染
+        // 性能优化: 仅在内存中检查 vin,文件 IO (读取车辆仓库/密钥) 改为后台执行
+        // 这样 start() 调用在主线程上几乎瞬时返回, 不会因为读 DataStore 而阻塞首帧渲染
         if (!vin.isNullOrBlank()) {
             return  // 已有 VIN,无需读盘
         }
         // 文件 IO 移到 IO 调度器, 不阻塞 start() 调用方
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val pairedVin = keyManager.loadPairedVin()
-            if (!pairedVin.isNullOrBlank()) {
-                vin = pairedVin
-                Log.i(TAG, "Auto-loaded paired VIN: $pairedVin")
+        withContext(kotlinx.coroutines.Dispatchers.IO) {
+            // v0.5.1 多车迁移: 旧版单车配对数据 (paired_vin + 车辆公钥 + 设置中 VIN/车型)
+            // 一次性迁移到 VehicleRepository, 保证升级后仍能继续使用
+            migrateLegacyPairing()
+
+            // 加载当前选中的车辆 VIN
+            val currentVin = vehicleRepository.getCurrentVin()
+            if (currentVin.isNotBlank()) {
+                vin = currentVin
+                Log.i(TAG, "Auto-loaded current VIN: $currentVin")
             }
             // 验证配对状态 (检查是否有密钥)
             if (vin.isNullOrBlank() || !keyManager.hasKeyPair()) {
                 _isAvailable.value = false
             }
         }
+    }
+
+    /**
+     * 旧版单车配对数据迁移 (v0.5.1)
+     *
+     * 将 v0.5.0 及之前存储的配对信息迁入 [VehicleRepository]:
+     * - TeslaKeyManager 中的 `paired_vin` / `vehicle_public_key_raw_b64`
+     * - SettingsRepository 中的 `tesla_vin` / `battery_model`
+     *
+     * 仅在车辆列表为空时执行一次 (已有多车数据则跳过)。
+     */
+    private suspend fun migrateLegacyPairing() {
+        if (vehicleRepository.hasPairedVehicles()) return
+
+        val legacy = keyManager.consumeLegacyPairing() ?: return
+        val (legacyVin, legacyBatteryModel) =
+            settingsRepository.consumeLegacyVinAndBatteryModel() ?: (legacy.vin to "")
+
+        val batteryModel = if (legacyVin.equals(legacy.vin, ignoreCase = true)) legacyBatteryModel else ""
+        vehicleRepository.addVehicle(
+            vin = legacy.vin,
+            vehiclePublicKeyRaw = legacy.vehiclePublicKeyRaw ?: ByteArray(0),
+            batteryModel = batteryModel,
+        )
+        vehicleRepository.setCurrentVin(legacy.vin)
+        Log.i(TAG, "Legacy pairing migrated: VIN=$legacy.vin, batteryModel=$batteryModel")
     }
 
     override suspend fun stop() {
@@ -365,7 +418,7 @@ class TeslaBleProvider @Inject constructor(
                 keyRole = TeslaBleConstants.ROLE_OWNER,
                 keyFormFactor = TeslaBleConstants.KEY_FORM_FACTOR_CLOUD_KEY,
             )
-            sendSignedCommand(tempSession, addKeyPayload, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            sendSignedCommand(tempSession, addKeyPayload, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY, vin)
             Log.i(TAG, "Add-key-request sent")
 
             // 6. 等待车机确认 (用户需在车机上用 NFC 卡片确认)
@@ -379,12 +432,17 @@ class TeslaBleProvider @Inject constructor(
                 return false
             }
 
-            // 7. 保存密钥
+            // 7. 保存密钥对 (多车共享同一应用密钥对, 车辆列表由 VehicleRepository 管理)
             _pairingState.value = PairingState.SavingKey
             keyManager.saveKeyPair(privateKey, publicKey)
-            keyManager.savePairedVin(vin)
-            // 固定车辆 VCSEC 公钥, 后续握手校验防止中继/伪装 (v0.4.1 安全加固)
-            keyManager.saveVehiclePublicKeyRaw(TeslaCrypto.encodePublicKey(tempSession.vehiclePublicKey))
+            // 将车辆加入多车列表并设为当前车辆 (固定车辆 VCSEC 公钥,
+            // 后续握手按 VIN 校验防止中继/伪装, v0.4.1 安全加固)
+            vehicleRepository.addVehicle(
+                vin = vin,
+                vehiclePublicKeyRaw = TeslaCrypto.encodePublicKey(tempSession.vehiclePublicKey),
+                batteryModel = "",
+            )
+            vehicleRepository.setCurrentVin(vin)
             this.vin = vin
 
             _pairingState.value = PairingState.Completed
@@ -436,18 +494,52 @@ class TeslaBleProvider @Inject constructor(
     }
 
     /**
-     * 解除配对
+     * 解除指定车辆的配对 (v0.5.1 多车)
      *
-     * 清除本地密钥和配对信息。
+     * 从车辆列表中移除该车辆并清除其公钥固定。
      * 注意: 不会从车辆信任列表中移除公钥 (需要车机操作)。
+     * 若解绑的是当前车辆, 自动切换到剩余第一辆车 (或未配对状态)。
+     *
+     * @param vin 要解绑的车辆 VIN
      */
-    suspend fun unpair() {
-        keyManager.clearAll()
-        vin = null
+    suspend fun unpair(vin: String) {
+        if (vin.isBlank()) return
+        vehicleRepository.removeVehicle(vin)
+        val currentVin = vehicleRepository.getCurrentVin()
+        this.vin = currentVin.ifBlank { null }
         bleManager.clearDeviceCache()
         _pairingState.value = PairingState.Idle
         _isAvailable.value = false
-        Log.i(TAG, "Unpaired and keys cleared")
+        Log.i(TAG, "Unpaired vehicle VIN=$vin, current now=${this.vin ?: "none"}")
+    }
+
+    /**
+     * 切换当前车辆 (v0.5.1 多车)
+     *
+     * 更新 [VehicleRepository] 中的当前 VIN 并同步运行时属性,
+     * 同时重置行驶状态追踪变量, 避免跨车数据串扰。
+     *
+     * @param vin 目标车辆 VIN (必须是已配对车辆)
+     */
+    suspend fun switchVehicle(vin: String) {
+        if (vin.isBlank() || !vehicleRepository.isVehiclePaired(vin)) return
+        vehicleRepository.setCurrentVin(vin)
+        this.vin = vin
+        resetTrip()
+        Log.i(TAG, "Switched current vehicle to VIN=$vin")
+    }
+
+    /**
+     * 取消当前车辆选择 (v0.5.1)
+     *
+     * 清空当前 VIN, 进入"添加新车"模式。
+     */
+    suspend fun clearCurrentSelection() {
+        vehicleRepository.setCurrentVin("")
+        this.vin = null
+        _isAvailable.value = false
+        resetTrip()
+        Log.i(TAG, "Current vehicle selection cleared")
     }
 
     // ===== BLE 会话管理 =====
@@ -516,11 +608,13 @@ class TeslaBleProvider @Inject constructor(
      * @param session 当前 BLE 会话
      * @param payload 命令 payload (protobuf 编码)
      * @param domain 目标 Domain
+     * @param vin 目标车辆 VIN (用于 personalization 元数据)
      */
     private suspend fun sendSignedCommand(
         session: BleSession,
         payload: ByteArray,
         domain: Int,
+        vin: String,
     ) {
         // 递增计数器
         session.counter++
@@ -536,7 +630,7 @@ class TeslaBleProvider @Inject constructor(
             TeslaBleConstants.TAG_DOMAIN to
                 TeslaCrypto.uint32ToBytes(domain),
             TeslaBleConstants.TAG_PERSONALIZATION to
-                (vin?.toByteArray() ?: ByteArray(0)),
+                vin.toByteArray(),
             TeslaBleConstants.TAG_EPOCH to session.epoch,
             TeslaBleConstants.TAG_EXPIRES_AT to
                 TeslaCrypto.uint32ToBytes(expiresAt),
@@ -583,6 +677,7 @@ class TeslaBleProvider @Inject constructor(
      * @param session 当前 BLE 会话
      * @param payload 命令 payload (protobuf 编码)
      * @param domain 目标 Domain
+     * @param vin 目标车辆 VIN (用于 personalization 元数据)
      * @param timeoutMs 单次响应超时
      * @param retries 超时后的重发次数
      * @return 响应消息, 全部尝试超时返回 null
@@ -591,12 +686,13 @@ class TeslaBleProvider @Inject constructor(
         session: BleSession,
         payload: ByteArray,
         domain: Int,
+        vin: String,
         timeoutMs: Long = TeslaBleConstants.COMMAND_TIMEOUT_MS,
         retries: Int = 0,
     ): ByteArray? {
         var attempt = 0
         while (true) {
-            sendSignedCommand(session, payload, domain)
+            sendSignedCommand(session, payload, domain, vin)
             val response = withTimeoutOrNull(timeoutMs) {
                 bleManager.receiveMessage(timeoutMs)
             }
@@ -648,18 +744,18 @@ class TeslaBleProvider @Inject constructor(
 
             // 2. VCSEC 域握手 → 唤醒车辆
             val vcsecSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
-            // 车辆公钥固定校验: 与配对时固定的公钥不符 → 拒绝连接 (防中继/伪装)
-            val pinnedVehicleKey = keyManager.loadVehiclePublicKeyRaw()
-            if (pinnedVehicleKey != null &&
+            // 车辆公钥固定校验 (按 VIN): 与配对时固定的公钥不符 → 拒绝连接 (防中继/伪装)
+            val pinnedVehicleKey = vehicleRepository.getVehiclePublicKeyRaw(vin)
+            if (pinnedVehicleKey != null && pinnedVehicleKey.isNotEmpty() &&
                 !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
             ) {
-                AppLog.e(TAG, "Vehicle public key MISMATCH vs pinned - aborting (possible relay/MITM)")
+                AppLog.e(TAG, "Vehicle public key MISMATCH vs pinned (VIN=$vin) - aborting (possible relay/MITM)")
                 return@withLock null
             }
             session = vcsecSession
 
             val wakePayload = TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_WAKE_VEHICLE)
-            sendSignedCommand(vcsecSession, wakePayload, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            sendSignedCommand(vcsecSession, wakePayload, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY, vin)
             Log.d(TAG, "Wake command sent via VCSEC")
 
             // 等待车辆唤醒
@@ -676,6 +772,7 @@ class TeslaBleProvider @Inject constructor(
                 infotainmentSession,
                 getStatePayload,
                 TeslaBleConstants.DOMAIN_INFOTAINMENT,
+                vin,
                 retries = COMMAND_RETRY_COUNT,
             )
             if (responseBytes == null) {
@@ -686,7 +783,7 @@ class TeslaBleProvider @Inject constructor(
 
             // 6. 解析 RoutableMessage 并解密
             val response = TeslaBleMessages.parseRoutableMessage(responseBytes)
-            val plaintext = decryptResponse(response, infotainmentSession, TeslaBleConstants.DOMAIN_INFOTAINMENT)
+            val plaintext = decryptResponse(response, infotainmentSession, TeslaBleConstants.DOMAIN_INFOTAINMENT, vin)
 
             if (plaintext == null) {
                 AppLog.w(TAG, "Failed to decrypt Infotainment response")
@@ -847,12 +944,14 @@ class TeslaBleProvider @Inject constructor(
      * @param response RoutableMessage 响应
      * @param session 当前会话 (用于获取共享密钥)
      * @param domain 响应来源 Domain (影响 AAD 构造)
+     * @param vin 目标车辆 VIN (用于 personalization 元数据)
      * @return 解密后的 plaintext，解密失败返回 null
      */
     private fun decryptResponse(
         response: TeslaBleMessages.RoutableMessageResponse,
         session: BleSession,
         domain: Int,
+        vin: String,
     ): ByteArray? {
         val payload = response.payload
         if (payload == null || payload.isEmpty()) return null
@@ -880,7 +979,7 @@ class TeslaBleProvider @Inject constructor(
                 TeslaBleConstants.TAG_DOMAIN to
                     TeslaCrypto.uint32ToBytes(domain),
                 TeslaBleConstants.TAG_PERSONALIZATION to
-                    (vin?.toByteArray() ?: ByteArray(0)),
+                    vin.toByteArray(),
                 TeslaBleConstants.TAG_EPOCH to respEpoch,
                 TeslaBleConstants.TAG_COUNTER to
                     TeslaCrypto.uint32ToBytes(respCounter),
@@ -994,13 +1093,13 @@ class TeslaBleProvider @Inject constructor(
                 bleManager.connect(device, timeoutMs = 15000L)
             }
 
-            // 2. VCSEC 域握手 + 公钥固定校验
+            // 2. VCSEC 域握手 + 公钥固定校验 (按当前 VIN)
             val vcsecSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
-            val pinnedVehicleKey = keyManager.loadVehiclePublicKeyRaw()
-            if (pinnedVehicleKey != null &&
+            val pinnedVehicleKey = vehicleRepository.getVehiclePublicKeyRaw(currentVin)
+            if (pinnedVehicleKey != null && pinnedVehicleKey.isNotEmpty() &&
                 !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
             ) {
-                AppLog.e(TAG, "Command $command aborted: vehicle public key MISMATCH vs pinned")
+                AppLog.e(TAG, "Command $command aborted: vehicle public key MISMATCH vs pinned (VIN=$currentVin)")
                 return@withLock false
             }
             session = vcsecSession
@@ -1010,6 +1109,7 @@ class TeslaBleProvider @Inject constructor(
                 vcsecSession,
                 TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_WAKE_VEHICLE),
                 TeslaBleConstants.DOMAIN_VEHICLE_SECURITY,
+                currentVin,
             )
             delay(500)
 
@@ -1030,6 +1130,7 @@ class TeslaBleProvider @Inject constructor(
                 vcsecSession,
                 payload,
                 TeslaBleConstants.DOMAIN_VEHICLE_SECURITY,
+                currentVin,
                 retries = COMMAND_RETRY_COUNT,
             ) ?: run {
                 AppLog.w(TAG, "Command $command: no response (may still have executed)")
@@ -1038,7 +1139,7 @@ class TeslaBleProvider @Inject constructor(
 
             // 5. 解密并解析 CommandStatus
             val responseMsg = TeslaBleMessages.parseRoutableMessage(response)
-            val plaintext = decryptResponse(responseMsg, vcsecSession, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            val plaintext = decryptResponse(responseMsg, vcsecSession, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY, currentVin)
             val status = plaintext?.let { TeslaBleMessages.parseCommandStatus(it) }
             AppLog.d(TAG, "Command $command status=$status")
             // SUCCESS 或无法解析时均视为成功 (未收到失败确认)
@@ -1049,6 +1150,173 @@ class TeslaBleProvider @Inject constructor(
         } catch (e: Exception) {
             AppLog.w(TAG, "Command $command failed: ${e.message}")
             false
+        } finally {
+            disconnectSession()
+        }
+    }
+
+    /**
+     * 发送 BLE 拓展命令 (v0.5.2 插件系统)
+     *
+     * 供 [com.tesla.dashboard.plugin.ble.BleExtensionPlugin] 调用, 使用现代 carserver 协议
+     * (teslamotors/vehicle-command), 在 Infotainment 域发送并等待 ActionStatus 确认。
+     *
+     * 流程:
+     * 1. 优先缓存地址直连, 失败回退全量扫描
+     * 2. VCSEC 域握手 + 车辆公钥固定校验 + 唤醒车辆
+     * 3. Infotainment 域握手
+     * 4. 发送现代协议 Action (加密 payload) 并等待响应
+     * 5. 解密响应, 解析 Response.actionStatus.result
+     *
+     * @param payload 现代协议 Action protobuf 编码 (由 TeslaBleMessages.encodeXxx 生成)
+     * @return 执行状态: OP_STATUS_OK(0)=成功, 其他=车辆返回错误码, null=超时/连接失败
+     */
+    suspend fun sendExtendedCommand(payload: ByteArray): Int? = sessionMutex.withLock {
+        val currentVin = vin
+        if (currentVin.isNullOrBlank()) return@withLock null
+        val privateKey = keyManager.loadPrivateKey() ?: return@withLock null
+        val publicKeyRaw = keyManager.loadPublicKeyRaw() ?: return@withLock null
+
+        try {
+            // 1. 连接 (优先缓存直连, 失败回退扫描)
+            val connected = bleManager.tryConnectCached(timeoutMs = 15000L)
+            if (!connected) {
+                val device = withTimeoutOrNull(10000L) {
+                    bleManager.scanForVehicle(currentVin, timeoutMs = 10000L)
+                } ?: run {
+                    AppLog.w(TAG, "Extended command failed: vehicle not found")
+                    return@withLock null
+                }
+                bleManager.connect(device, timeoutMs = 15000L)
+            }
+
+            // 2. VCSEC 域握手 + 公钥固定校验 + 唤醒车辆
+            val vcsecSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            val pinnedVehicleKey = vehicleRepository.getVehiclePublicKeyRaw(currentVin)
+            if (pinnedVehicleKey != null && pinnedVehicleKey.isNotEmpty() &&
+                !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
+            ) {
+                AppLog.e(TAG, "Extended command aborted: vehicle public key MISMATCH vs pinned (VIN=$currentVin)")
+                return@withLock null
+            }
+            session = vcsecSession
+            sendSignedCommand(
+                vcsecSession,
+                TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_WAKE_VEHICLE),
+                TeslaBleConstants.DOMAIN_VEHICLE_SECURITY,
+                currentVin,
+            )
+            delay(1000)
+
+            // 3. Infotainment 域握手
+            val infotainmentSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_INFOTAINMENT)
+
+            // 4. 发送现代协议 Action 并等待响应 (超时重发)
+            val response = sendSignedCommandAndWait(
+                infotainmentSession,
+                payload,
+                TeslaBleConstants.DOMAIN_INFOTAINMENT,
+                currentVin,
+                retries = COMMAND_RETRY_COUNT,
+            ) ?: run {
+                AppLog.w(TAG, "Extended command: no response (may still have executed)")
+                return@withLock null
+            }
+
+            // 5. 解密并解析 ActionStatus
+            val responseMsg = TeslaBleMessages.parseRoutableMessage(response)
+            val plaintext = decryptResponse(
+                responseMsg, infotainmentSession, TeslaBleConstants.DOMAIN_INFOTAINMENT, currentVin,
+            )
+            val status = plaintext?.let { TeslaBleMessages.parseActionStatus(it) }
+            AppLog.d(TAG, "Extended command status=$status")
+            status
+
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.w(TAG, "Extended command failed: ${e.message}")
+            null
+        } finally {
+            disconnectSession()
+        }
+    }
+
+    /**
+     * 请求现代协议 getVehicleData 快照 (v0.5.2)
+     *
+     * 流程同 [sendExtendedCommand], 但解析 `Response.vehicleData` 返回
+     * 充电状态 / 续航 / 温度 / 车速等数据快照, 而非执行状态。
+     *
+     * @return 数据快照; 超时 / 连接失败 / 车辆不支持时返回 null
+     */
+    suspend fun requestVehicleData(): TeslaBleMessages.VehicleDataSnapshot? = sessionMutex.withLock {
+        val currentVin = vin
+        if (currentVin.isNullOrBlank()) return@withLock null
+        val privateKey = keyManager.loadPrivateKey() ?: return@withLock null
+        val publicKeyRaw = keyManager.loadPublicKeyRaw() ?: return@withLock null
+
+        try {
+            // 1. 连接 (优先缓存直连, 失败回退扫描)
+            val connected = bleManager.tryConnectCached(timeoutMs = 15000L)
+            if (!connected) {
+                val device = withTimeoutOrNull(10000L) {
+                    bleManager.scanForVehicle(currentVin, timeoutMs = 10000L)
+                } ?: run {
+                    AppLog.w(TAG, "GetVehicleData failed: vehicle not found")
+                    return@withLock null
+                }
+                bleManager.connect(device, timeoutMs = 15000L)
+            }
+
+            // 2. VCSEC 域握手 + 公钥固定校验 + 唤醒车辆
+            val vcsecSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_VEHICLE_SECURITY)
+            val pinnedVehicleKey = vehicleRepository.getVehiclePublicKeyRaw(currentVin)
+            if (pinnedVehicleKey != null && pinnedVehicleKey.isNotEmpty() &&
+                !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
+            ) {
+                AppLog.e(TAG, "GetVehicleData aborted: vehicle public key MISMATCH vs pinned (VIN=$currentVin)")
+                return@withLock null
+            }
+            session = vcsecSession
+            sendSignedCommand(
+                vcsecSession,
+                TeslaBleMessages.encodeRkeAction(TeslaBleConstants.RKE_ACTION_WAKE_VEHICLE),
+                TeslaBleConstants.DOMAIN_VEHICLE_SECURITY,
+                currentVin,
+            )
+            delay(1000)
+
+            // 3. Infotainment 域握手
+            val infotainmentSession = performHandshake(privateKey, publicKeyRaw, TeslaBleConstants.DOMAIN_INFOTAINMENT)
+
+            // 4. 发送 getVehicleData 并等待响应 (超时重发)
+            val response = sendSignedCommandAndWait(
+                infotainmentSession,
+                TeslaBleMessages.encodeGetVehicleData(),
+                TeslaBleConstants.DOMAIN_INFOTAINMENT,
+                currentVin,
+                retries = COMMAND_RETRY_COUNT,
+            ) ?: run {
+                AppLog.w(TAG, "GetVehicleData: no response (vehicle may not support modern protocol)")
+                return@withLock null
+            }
+
+            // 5. 解密并解析 VehicleData
+            val responseMsg = TeslaBleMessages.parseRoutableMessage(response)
+            val plaintext = decryptResponse(
+                responseMsg, infotainmentSession, TeslaBleConstants.DOMAIN_INFOTAINMENT, currentVin,
+            )
+            val snapshot = plaintext?.let { TeslaBleMessages.parseVehicleData(it) }
+            AppLog.d(TAG, "GetVehicleData parsed: charging=${snapshot?.chargingState}, " +
+                "range=${snapshot?.estBatteryRangeMi}mi, inside=${snapshot?.insideTempC}°C")
+            snapshot
+
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLog.w(TAG, "GetVehicleData failed: ${e.message}")
+            null
         } finally {
             disconnectSession()
         }
@@ -1073,12 +1341,12 @@ class TeslaBleProvider @Inject constructor(
 
             bleManager.connect(device, timeoutMs = 15000L)
             val vcsecSession = performHandshake(privateKey, publicKeyRaw)
-            // 车辆公钥固定校验 (与配对时固定值一致才视为同一辆车)
-            val pinnedVehicleKey = keyManager.loadVehiclePublicKeyRaw()
-            if (pinnedVehicleKey != null &&
+            // 车辆公钥固定校验 (按 VIN, 与配对时固定值一致才视为同一辆车)
+            val pinnedVehicleKey = vehicleRepository.getVehiclePublicKeyRaw(vin)
+            if (pinnedVehicleKey != null && pinnedVehicleKey.isNotEmpty() &&
                 !pinnedVehicleKey.contentEquals(TeslaCrypto.encodePublicKey(vcsecSession.vehiclePublicKey))
             ) {
-                AppLog.e(TAG, "Connection test: vehicle public key MISMATCH vs pinned")
+                AppLog.e(TAG, "Connection test: vehicle public key MISMATCH vs pinned (VIN=$vin)")
                 disconnectSession()
                 return false
             }
@@ -1141,11 +1409,17 @@ class TeslaBleProvider @Inject constructor(
         /** 行驶中轮询间隔 (毫秒) — v0.4.2: 行驶状态数据更密集 */
         private const val POLL_INTERVAL_DRIVING_MS = 2_500L
 
-        /** 连续失败退避封顶 (毫秒) — v0.4.2: 避免无效空转耗电 */
-        private const val MAX_BACKOFF_MS = 30_000L
+        /** 连续失败退避封顶 (毫秒) — v0.4.2: 避免无效空转耗电; v0.5.2: 5s→40s→60s 封顶 */
+        private const val MAX_BACKOFF_MS = 60_000L
 
-        /** 退避最大移位次数 (5s → 10s → 20s → 30s 封顶) */
-        private const val MAX_BACKOFF_SHIFT = 2
+        /** 退避最大移位次数 (5s → 10s → 20s → 40s) */
+        private const val MAX_BACKOFF_SHIFT = 3
+
+        /** 熄屏轮询间隔 (毫秒) — v0.5.2 耗电优化: 用户看不到界面时大幅降频 */
+        private const val POLL_INTERVAL_SCREEN_OFF_MS = 30_000L
+
+        /** 连续失败达到该次数视为车辆深度休眠 — v0.5.2: 固定慢轮询等待唤醒 */
+        private const val DEEP_SLEEP_THRESHOLD = 6
 
         /** 判定"行驶中"的车速阈值 km/h */
         private const val DRIVING_SPEED_THRESHOLD_KMH = 1f

@@ -3,7 +3,7 @@ package com.tesla.dashboard.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tesla.dashboard.data.local.SettingsRepository
-import com.tesla.dashboard.data.source.ble.TeslaKeyManager
+import com.tesla.dashboard.data.local.VehicleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,12 +36,12 @@ data class SettingsListUiState(
  * 组合配对状态/主题/单位/语言四个 Flow, 供列表页各行的副标题显示当前值。
  *
  * @param settingsRepository 设置持久化仓库(DataStore)
- * @param keyManager BLE 密钥管理器(配对状态权威源)
+ * @param vehicleRepository 车辆仓库(配对状态权威源, v0.5.1)
  */
 @HiltViewModel
 class SettingsListViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val keyManager: TeslaKeyManager,
+    private val vehicleRepository: VehicleRepository,
 ) : ViewModel() {
 
     /** BLE 配对状态 */
@@ -71,7 +71,7 @@ class SettingsListViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            _isPaired.value = keyManager.isPaired()
+            _isPaired.value = vehicleRepository.hasPairedVehicles()
         }
     }
 }

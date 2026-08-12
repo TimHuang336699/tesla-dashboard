@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <!-- ===== 应用 ===== -->
     <string name="app_name">Tesla Dashboard</string>
-
-    <!-- ===== Dashboard 标题栏 ===== -->
-    
-    <!-- ===== 标签文字 ===== -->
-            <string name="label_temperature">TEMPERATURE</string>
-        <string name="label_odometer">ODO</string>
-                <string name="label_power">功率</string>
-
-    <!-- ===== 单位 ===== -->
+    <string name="label_temperature">TEMPERATURE</string>
+    <string name="label_odometer">ODO</string>
+    <string name="label_power">功率</string>
     <string name="unit_kmh">km/h</string>
     <string name="unit_km">km</string>
     <string name="unit_degree">°</string>
@@ -24,17 +16,11 @@
     <string name="unit_kw">kW</string>
     <string name="unit_hp">hp</string>
     <string name="label_consumption">电耗</string>
-
-    <!-- ===== 按钮 ===== -->
-            <string name="btn_history">HISTORY</string>
-
-    <!-- ===== 状态文字 ===== -->
+    <string name="btn_history">HISTORY</string>
     <string name="tesla_connected">Tesla: 已连接</string>
     <string name="tesla_disconnected">Tesla: 未连接</string>
     <string name="tesla_stale">Tesla: 数据过期</string>
     <string name="tesla_gnss_fallback">手机定位 (BLE 降级)</string>
-
-    <!-- ===== 车辆控制面板 (v0.5.0) ===== -->
     <string name="control_panel_title">车辆控制</string>
     <string name="control_unlock">解锁车辆</string>
     <string name="control_lock">锁定车辆</string>
@@ -44,34 +30,22 @@
     <string name="control_success">命令已执行</string>
     <string name="control_failed">命令发送失败，请靠近车辆后重试</string>
     <string name="control_not_paired">尚未配对车辆，请先在设置中配对</string>
-
-    <!-- ===== 转向灯设置 (v0.5.0) ===== -->
     <string name="settings_turn_signals">转向灯指示</string>
     <string name="settings_turn_signals_summary">在仪表盘顶部显示转向灯箭头</string>
-
-    <!-- ===== 默认占位符 ===== -->
     <string name="default_value">--</string>
-
-    <!-- ===== 通用 ===== -->
     <string name="back_arrow">←</string>
     <string name="dashboard_history_btn">历史</string>
     <string name="ready_label">READY</string>
-
-    <!-- ===== 历史记录页 ===== -->
     <string name="title_history">Trip History</string>
     <string name="label_date">DATE</string>
     <string name="label_distance">DISTANCE</string>
     <string name="label_duration">DURATION</string>
     <string name="label_avg_speed">AVG SPEED</string>
     <string name="no_trips">暂无行程记录</string>
-
-    <!-- ===== 通知 ===== -->
     <string name="notification_channel_name">行程记录</string>
     <string name="notification_channel_desc">行程记录进行中的持续通知</string>
     <string name="notification_title">Tesla Dashboard</string>
     <string name="notification_text">正在记录行程…</string>
-
-    <!-- ===== 设置页 ===== -->
     <string name="title_settings">设置</string>
     <string name="settings_tesla_ble">特斯拉蓝牙</string>
     <string name="settings_vin">VIN</string>
@@ -103,8 +77,6 @@
     <string name="settings_bluetooth_disabled">请先开启蓝牙</string>
     <string name="settings_ble_permissions_needed">需要蓝牙权限，请授予后重试</string>
     <string name="settings_vin_masked_hint">已配对车辆（尾号隐藏）</string>
-
-    <!-- ===== 设置页列表/二级页 (安卓分级) ===== -->
     <string name="settings_group_vehicle">车辆</string>
     <string name="settings_group_display">显示</string>
     <string name="settings_group_general">通用</string>
@@ -126,8 +98,6 @@
     <string name="settings_language_zh">中文</string>
     <string name="settings_language_en">English</string>
     <string name="settings_language_switch_failed">语言切换失败，请重试</string>
-
-    <!-- ===== 数据设置 (v0.5.0) ===== -->
     <string name="settings_gnss_fallback">GNSS 降级</string>
     <string name="settings_gnss_fallback_summary">BLE 断开时自动使用手机定位</string>
     <string name="settings_data_refresh">数据刷新频率</string>
@@ -136,8 +106,6 @@
     <string name="settings_trip_auto_record_summary">连接车辆后自动开始记录</string>
     <string name="settings_data_source">数据源优先级</string>
     <string name="settings_data_source_summary">BLE 优先，GNSS 降级</string>
-
-    <!-- ===== 通知设置 (v0.5.0) ===== -->
     <string name="settings_notify_low_battery">低电量提醒</string>
     <string name="settings_notify_low_battery_summary">电量低于 20% 时提醒</string>
     <string name="settings_notify_charging">充电状态提醒</string>
@@ -146,16 +114,12 @@
     <string name="settings_notify_temperature_summary">车内温度过高/过低时提醒</string>
     <string name="settings_notify_door">车门未关提醒</string>
     <string name="settings_notify_door_summary">车门/舱盖未关时提醒</string>
-
-    <!-- ===== 安全设置 (v0.5.0) ===== -->
     <string name="settings_security_lock_confirm">控制命令确认</string>
     <string name="settings_security_lock_confirm_summary">执行解锁/闭锁前弹窗确认</string>
     <string name="settings_security_auto_lock">自动锁车</string>
     <string name="settings_security_auto_lock_summary">BLE 断开后自动锁车</string>
     <string name="settings_security_nfc_auth">NFC 身份验证</string>
     <string name="settings_security_nfc_auth_summary">敏感操作需要 NFC 确认</string>
-
-    <!-- ===== 高级设置 (v0.5.0) ===== -->
     <string name="settings_advanced_debug">调试模式</string>
     <string name="settings_advanced_debug_summary">显示 BLE 原始数据帧</string>
     <string name="settings_advanced_reset">重置所有设置</string>
@@ -175,8 +139,6 @@
     <string name="settings_logs_share_subject">Tesla Dashboard 诊断日志</string>
     <string name="settings_logs_empty">暂无日志记录</string>
     <string name="settings_logs_export_failed">日志导出失败：%1$s</string>
-
-    <!-- ===== 主题选项 (显示名, 下拉菜单) ===== -->
     <string name="theme_option_tesla_blue_dark">特斯拉蓝（深色）</string>
     <string name="theme_option_tesla_blue_light">特斯拉蓝（浅色）</string>
     <string name="theme_option_forest_green_dark">森林绿（深色）</string>
@@ -185,8 +147,6 @@
     <string name="theme_option_ember_orange_light">琥珀橙（浅色）</string>
     <string name="theme_option_midnight_purple_dark">午夜紫（深色）</string>
     <string name="theme_option_midnight_purple_light">午夜紫（浅色）</string>
-
-    <!-- ===== 车型选项 (显示名, 下拉菜单) ===== -->
     <string name="battery_model_s_60">Model S 60 kWh (Nosecone 初代)</string>
     <string name="battery_model_s_75">Model S 75 kWh (Nosecone/Facelift)</string>
     <string name="battery_model_s_85">Model S 85 kWh (Nosecone 初代)</string>
@@ -209,8 +169,6 @@
     <string name="battery_model_y_performance">Model Y Performance (78 kWh)</string>
     <string name="battery_model_cybertruck_dual">Cybertruck 双电机 (123 kWh)</string>
     <string name="battery_model_cybertruck_tri">Cybertruck 三电机 (123 kWh)</string>
-
-    <!-- ===== 配对流程 ===== -->
     <string name="pairing_back">返回</string>
     <string name="pairing_step_format">Step %1$d/%2$d</string>
     <string name="pairing_vin_title">输入车辆 VIN</string>
@@ -236,8 +194,6 @@
     <string name="pairing_prev">上一步</string>
     <string name="pairing_next">下一步</string>
     <string name="pairing_saving_key">正在保存密钥...</string>
-
-    <!-- ===== 配对进度 (设置页/配对页共用) ===== -->
     <string name="pairing_progress_generating">正在生成密钥…</string>
     <string name="pairing_progress_scanning">正在扫描车辆…</string>
     <string name="pairing_progress_connecting">正在连接车辆…</string>
@@ -245,15 +201,20 @@
     <string name="pairing_progress_sending">正在发送配对请求…</string>
     <string name="pairing_progress_saving">正在保存密钥…</string>
     <string name="pairing_progress_failed">配对失败: %1$s</string>
-
-    <!-- ===== 错误/提示 ===== -->
     <string name="error_vin_required">请先输入 VIN</string>
     <string name="error_vin_length">VIN 应为 17 位</string>
     <string name="error_vin_invalid">无法识别该 VIN,请确认是否为 Tesla 车辆</string>
     <string name="error_ble_permissions">需要蓝牙权限,请授予后重试</string>
     <string name="success_unpaired">已解除配对</string>
-
-    <!-- ===== 格式化模板 ===== -->
+    <string name="settings_select_vehicle">选择当前车辆</string>
+    <string name="settings_add_vehicle">添加车辆</string>
+    <string name="settings_remove_vehicle">删除</string>
+    <string name="settings_remove_vehicle_title">解绑车辆</string>
+    <string name="settings_remove_vehicle_confirm">解绑后将无法通过蓝牙连接该车辆,确定解绑吗?</string>
+    <string name="settings_remove_vehicle_confirm_with_vin">解绑 %1$s 后,将无法通过蓝牙连接该车辆,确定解绑吗?</string>
+    <string name="settings_paired_vehicles">已配对车辆</string>
+    <string name="settings_no_vehicles">暂无已配对车辆,输入 VIN 并点击"配对车辆"添加</string>
+    <string name="action_cancel">取消</string>
     <string name="format_speed_value">%1$.0f %2$s</string>
     <string name="format_distance_value">%1$.1f %2$s</string>
     <string name="format_temperature_value">%1$d°</string>
@@ -261,10 +222,82 @@
     <string name="format_duration_h_m">%1$dh %2$dm</string>
     <string name="format_duration_m_s">%1$dm %2$ds</string>
     <string name="format_duration_s">%1$ds</string>
-
-    <!-- ===== 配对流程 Step 3 NFC 位置提示文案 (根据车型代际切换) ===== -->
     <string name="pairing_nfc_instruction_highland">请在中控台无线充电板上方刷 NFC 卡片</string>
     <string name="pairing_nfc_instruction_legacy">请在前排中央扶手杯架后方刷 NFC 卡片</string>
     <string name="pairing_nfc_instruction_default">请在车辆中控台刷 NFC 卡片确认配对</string>
-
+    <string name="plugin_category_ble_command">BLE 车辆命令</string>
+    <string name="plugin_category_utility">工具</string>
+    <string name="plugin_ble_extension_name">BLE 拓展命令</string>
+    <string name="plugin_ble_extension_desc">充电限值 / 充电开关 / 空调 / 充电口等高级命令（实验性，需新版固件）</string>
+    <string name="settings_plugin_center">插件中心</string>
+    <string name="plugin_experimental_tag">实验</string>
+    <string name="ble_ext_charge_limit">设置充电限值</string>
+    <string name="ble_ext_charge_limit_summary">设置目标电量百分比 (50-100%)</string>
+    <string name="ble_ext_charge_start">开始充电</string>
+    <string name="ble_ext_charge_start_summary">标准充电模式</string>
+    <string name="ble_ext_charge_start_confirm">开始充电？执行前请确认已插入充电枪。</string>
+    <string name="ble_ext_charge_stop">停止充电</string>
+    <string name="ble_ext_hvac">空调开关</string>
+    <string name="ble_ext_hvac_summary">自动模式：开启 / 关闭空调</string>
+    <string name="ble_ext_hvac_on">开启空调</string>
+    <string name="ble_ext_hvac_off">关闭空调</string>
+    <string name="ble_ext_hvac_temp">空调温度</string>
+    <string name="ble_ext_hvac_temp_summary">双区同步设置目标温度 (°C)</string>
+    <string name="ble_ext_hvac_temp_message">输入目标温度 (摄氏度，双区同步)</string>
+    <string name="ble_ext_charge_port">充电口</string>
+    <string name="ble_ext_charge_port_summary">打开 / 关闭充电口</string>
+    <string name="ble_ext_port_open">打开充电口</string>
+    <string name="ble_ext_port_close">关闭充电口</string>
+    <string name="ble_ext_low_power">低功耗模式</string>
+    <string name="ble_ext_low_power_summary">车辆进入 / 退出深度休眠（实验性）</string>
+    <string name="ble_ext_low_power_message">低功耗模式为实验性功能，老车型可能不支持。</string>
+    <string name="ble_ext_low_power_on">进入低功耗</string>
+    <string name="ble_ext_low_power_off">退出低功耗</string>
+    <string name="ble_ext_invalid_value">请输入有效数值</string>
+    <string name="ble_ext_success">命令执行成功</string>
+    <string name="ble_ext_failed">命令执行失败：超时或连接异常</string>
+    <string name="ble_ext_failed_unsupported">车辆拒绝执行：固件不支持或车辆状态不允许</string>
+    <string name="ble_ext_not_enabled">请先在插件中心启用“BLE 拓展命令”插件</string>
+    <string name="ble_ext_no_vehicle">尚未设置当前车辆，请先在设置中配对车辆</string>
+    <string name="ble_ext_vehicle_data">读取车辆数据</string>
+    <string name="ble_ext_vehicle_data_summary">充电状态 / 续航 / 温度 / 车速（现代协议）</string>
+    <string name="ble_ext_data_charging">充电状态</string>
+    <string name="ble_ext_data_range">估算续航</string>
+    <string name="ble_ext_data_range_rated">额定</string>
+    <string name="ble_ext_data_current">充电电流</string>
+    <string name="ble_ext_data_temp">温度</string>
+    <string name="ble_ext_data_temp_inside">车内</string>
+    <string name="ble_ext_data_temp_outside">车外</string>
+    <string name="ble_ext_data_speed">车速</string>
+    <string name="ble_ext_data_power">功率</string>
+    <string name="ble_ext_data_gear">挡位</string>
+    <string name="ble_ext_data_odometer">里程表</string>
+    <string name="ble_ext_charging_disconnected">未插枪</string>
+    <string name="ble_ext_charging_no_power">已插枪·无电源</string>
+    <string name="ble_ext_charging_starting">启动中</string>
+    <string name="ble_ext_charging_charging">充电中</string>
+    <string name="ble_ext_charging_complete">充电完成</string>
+    <string name="ble_ext_charging_stopped">已停止</string>
+    <string name="ble_ext_charging_calibrating">校准中</string>
+    <string name="ble_ext_charging_unknown">未知</string>
+    <string name="plugin_center_tab_installed">已安装</string>
+    <string name="plugin_center_tab_market">市场</string>
+    <string name="plugin_market_refresh">刷新市场</string>
+    <string name="plugin_market_source_summary">来源: github.com/tesla-dashboard-plugins</string>
+    <string name="plugin_market_note_title">外部插件说明</string>
+    <string name="plugin_market_note_summary">当前版本支持浏览与 APK 下载；动态加载（签名校验后）在安全审计中</string>
+    <string name="plugin_market_loading">正在加载插件市场…</string>
+    <string name="plugin_market_load_failed">加载失败：请检查网络后点“刷新市场”重试</string>
+    <string name="plugin_market_empty">市场暂无可用插件</string>
+    <string name="plugin_market_no_description">（无描述）</string>
+    <string name="plugin_market_category_unknown">其他</string>
+    <string name="plugin_market_incompatible">需应用 v%s 及以上</string>
+    <string name="plugin_market_incompatible_short">需新版本</string>
+    <string name="plugin_market_action_download">下载</string>
+    <string name="plugin_market_action_downloading">下载中…</string>
+    <string name="plugin_market_action_downloaded">已下载</string>
+    <string name="plugin_market_action_installed">已安装</string>
+    <string name="plugin_market_download_done">插件 APK 已下载到应用目录</string>
+    <string name="plugin_market_download_failed">插件下载失败，请重试</string>
+    <string name="plugin_market_refresh_icon">⟳</string>
 </resources>
