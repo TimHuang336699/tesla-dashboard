@@ -73,8 +73,10 @@ class PluginCatalogRepository @Inject constructor(
      */
     suspend fun downloadApk(downloadUrl: String, fileName: String): File =
         withContext(Dispatchers.IO) {
+            // 安全: 移除路径遍历字符，仅保留文件名
+            val safeName = fileName.replace("/", "_").replace("\\", "_").replace("..", "_")
             val dir = File(context.filesDir, "plugins").apply { mkdirs() }
-            val target = File(dir, fileName)
+            val target = File(dir, safeName)
             val conn = openConnection(downloadUrl)
             try {
                 conn.inputStream.use { input ->
@@ -89,7 +91,8 @@ class PluginCatalogRepository @Inject constructor(
 
     /** 已下载插件文件 (不存在时返回 null) */
     fun downloadedApkFile(pluginId: String): File? {
-        val file = File(File(context.filesDir, "plugins"), "$pluginId.apk")
+        val safeId = pluginId.replace("/", "_").replace("\\", "_").replace("..", "_")
+        val file = File(File(context.filesDir, "plugins"), "$safeId.apk")
         return file.takeIf { it.exists() }
     }
 
