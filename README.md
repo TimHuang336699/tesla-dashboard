@@ -241,7 +241,3 @@ This project is for educational purposes. Tesla is a trademark of Tesla, Inc. Th
 - [Security Policy](SECURITY.md)
 
 ---
-
-<p align="center">
-<a href="wiki/zh/README_zh.md">中文文档</a>
-</p>
