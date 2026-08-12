@@ -1,5 +1,7 @@
 # 如何为 Tesla Dashboard 贡献
 
+[English](CONTRIBUTING.md)
+
 感谢您对 Tesla Dashboard 的贡献兴趣！本文档为贡献者提供指南和信息。
 
 ## 行为准则
