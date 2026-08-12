@@ -243,5 +243,5 @@ This project is for educational purposes. Tesla is a trademark of Tesla, Inc. Th
 ---
 
 <p align="center">
-  <a href="README_zh.md">中文文档</a>
+<a href="wiki/zh/README_zh.md">中文文档</a>
 </p>
